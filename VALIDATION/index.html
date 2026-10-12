@@ -2105,10 +2105,10 @@ through both wherever both apply:</p>
   is exact — the interpreter's <code>TranFn</code> and <code>StateSpace</code> use an exact
   zero-order-hold — is held to machine precision instead.</li>
 </ul>
-<p>Some cases are single-path by nature: a discrete rate (<code>DiscreteTranFn</code>,
-<code>ZeroOrderHold</code>) or a <code>TransportDelay</code> forces the interpreter, since the
-compiled right-hand side has no notion of sample instants or of a signal's
-history; the stiff case is compiled-only, because a fixed-step explicit method
+<p>Some cases are single-path by nature: a <code>TransportDelay</code> forces the
+interpreter, since the compiled right-hand side has no notion of a signal's
+history (sampled blocks such as <code>DiscreteTranFn</code> and <code>ZeroOrderHold</code> compile
+since 2026-10-10, on the hybrid backend); the stiff case is compiled-only, because a fixed-step explicit method
 at <code>mu = 1000</code> is step-limited by stability rather than by accuracy and would be
 a different experiment.</p>
 <h2 id="methodology">Methodology<a class="headerlink" href="#methodology" title="Permanent link">&para;</a></h2>
@@ -2391,11 +2391,38 @@ gain; the Van der Pol case asserts its own Jacobian is stiff.</p>
 <td style="text-align: center;">yes</td>
 </tr>
 <tr>
+<td>DiscreteTranFn vs scipy.signal.dlsim (at samples)</td>
+<td>compiled</td>
+<td>z-domain, Ts=0.1</td>
+<td>0.01</td>
+<td style="text-align: right;">0.00e+00</td>
+<td style="text-align: right;">1.0e-12</td>
+<td style="text-align: center;">yes</td>
+</tr>
+<tr>
+<td>Discrete output is constant between sample instants</td>
+<td>compiled</td>
+<td>z-domain, Ts=0.1</td>
+<td>0.01</td>
+<td style="text-align: right;">0.00e+00</td>
+<td style="text-align: right;">1.0e-12</td>
+<td style="text-align: center;">yes</td>
+</tr>
+<tr>
 <td>ZeroOrderHold of a sine vs analytic staircase</td>
 <td>interpreter</td>
 <td>ZOH, Ts=0.1</td>
 <td>0.005</td>
 <td style="text-align: right;">5.97e-14</td>
+<td style="text-align: right;">1.0e-09</td>
+<td style="text-align: center;">yes</td>
+</tr>
+<tr>
+<td>ZeroOrderHold of a sine vs analytic staircase</td>
+<td>compiled</td>
+<td>ZOH, Ts=0.1</td>
+<td>0.005</td>
+<td style="text-align: right;">7.77e-16</td>
 <td style="text-align: right;">1.0e-09</td>
 <td style="text-align: center;">yes</td>
 </tr>

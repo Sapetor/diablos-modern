@@ -2112,21 +2112,21 @@ either tool, and the reference is evaluated at each tool's own output times.</p>
 <tbody>
 <tr>
 <td>S1a linear plant + digital PI</td>
-<td>exact (2e-14), 0.1 s, interpreter</td>
+<td>1.6e-10 at 0.1 s, compiled (hybrid); exact (2e-14) on the interpreter</td>
 <td>6e-12 at 0.1 s (RKDP54)</td>
-<td>Fallback costs nothing for linear plants. A one-period control delay found here is fixed (<code>68e8289</code>)</td>
+<td>Parity. A one-period control delay found here is fixed (<code>68e8289</code>)</td>
 </tr>
 <tr>
 <td>S1b nonlinear stiff plant + digital PI</td>
-<td><strong>1st order</strong>: 1.3e-3 (3.4 s) ... 2.4e-5 (44 s)</td>
+<td>2.2e-13 at 1.4 s, compiled (hybrid); interpreter was 1st order, 2.4e-5 at 44 s</td>
 <td>1.7e-10 at 0.9 s; 1.9e-13 at 1.8 s</td>
-<td>The interpreter fallback is the real accuracy gap</td>
+<td>Parity since the hybrid path and the <code>Function</code> kernel</td>
 </tr>
 <tr>
 <td>S2 algebraic loop</td>
-<td>solved to 1e-16, ~32 ms (since <code>95f83ff</code>; was rejected)</td>
+<td>solved to 1e-16, ~6 ms compiled (interpreter ~32 ms; rejected before <code>95f83ff</code>)</td>
 <td>solved to 3e-13, 2 ms</td>
-<td>Gap closed; DiaBloS ~14x slower per step</td>
+<td>Gap closed; DiaBloS ~3x slower</td>
 </tr>
 <tr>
 <td>S3 delayed platoon, N=50</td>
@@ -2143,10 +2143,14 @@ either tool, and the reference is evaluated at each tool's own output times.</p>
 </tbody>
 </table>
 <h2 id="s1-digital-controller-on-a-continuous-plant">S1 - digital controller on a continuous plant<a class="headerlink" href="#s1-digital-controller-on-a-continuous-plant" title="Permanent link">&para;</a></h2>
-<p>Any block with a discrete sample time makes the whole diagram fall back to
-the fixed-step interpreter (recorded reason: <code>ZeroOrderHold: it has a
-discrete sample time</code>). The step reference is placed at t=0.93 s, off every
-sampling grid, so "sample before or after the step" is not a factor.</p>
+<p>Until 2026-10-10 any block with a discrete sample time made the whole
+diagram fall back to the fixed-step interpreter. Since phase 1 of the hybrid
+compiled path (<code>tasks/hybrid_compiled_path.md</code>), <code>ZeroOrderHold</code>,
+<code>DiscreteTranFn</code> and <code>DiscreteStateSpace</code> compile: adaptive <code>solve_ivp</code>
+between sample instants, the blocks' own updates at each instant. S1a now
+runs compiled, and so does S1b since its <code>Function</code> block got a compiled
+kernel (<code>19497e1</code>). The step reference is placed at t=0.93 s, off every sampling grid, so "sample
+before or after the step" is not a factor.</p>
 <p><strong>S1a</strong> (<code>examples/discrete_pi_zoh.diablos</code>: ZOH 0.1 s -&gt; PI -&gt; 2/((s+1)(s+2))).</p>
 <table>
 <thead>
@@ -2159,7 +2163,13 @@ sampling grid, so "sample before or after the step" is not a factor.</p>
 </thead>
 <tbody>
 <tr>
-<td>DiaBloS</td>
+<td>DiaBloS, compiled (hybrid, RK45 rtol 1e-9)</td>
+<td>sim_dt = 0.01 / 0.005 / 0.001</td>
+<td>0.10 / 0.11 / 0.23 s</td>
+<td>1.6e-10 / 1.8e-10 / 1.8e-10</td>
+</tr>
+<tr>
+<td>DiaBloS, interpreter (before phase 1)</td>
 <td>sim_dt = 0.01 / 0.005 / 0.001</td>
 <td>0.11 / 0.20 / 0.98 s</td>
 <td>2e-14 / 2e-14 / 1e-13</td>
@@ -2181,7 +2191,9 @@ sampling grid, so "sample before or after the step" is not a factor.</p>
 <p>Errors are against the standard semantics: u[k] computed from e[kT] is
 applied on [kT, (k+1)T), as in Simulink and PathSim. <code>TranFn</code> is discretized
 exactly (<code>cont2discrete</code>) in the interpreter, so for a linear plant the
-fallback costs no accuracy.</p>
+fallback cost no accuracy. The compiled run's error is the adaptive solver's
+tolerance (the default rtol 1e-9); its wall time grows with sim_dt only
+through the output grid and the replay.</p>
 <p><strong>Found and fixed: sampled blocks behind a ZOH acted one period late</strong>
 (<code>68e8289</code>, regression test <code>tests/regression/test_sampled_loop_delay.py</code>).
 Before the fix, DiaBloS matched the exact solution only <em>with one extra
@@ -2207,36 +2219,43 @@ built from <code>Integrator</code> blocks; discrete PI Kp=1, Ki=0.5, T=0.05 s; 1
 </thead>
 <tbody>
 <tr>
-<td>DiaBloS, Integrator SOLVE_IVP (default)</td>
+<td>DiaBloS, compiled (hybrid, RK45 rtol 1e-9)</td>
 <td>sim_dt 1e-3 / 5e-4 / 2.5e-4 / 1e-4</td>
-<td>3.4 / 5.8 / 11.9 / 27.1 s</td>
+<td>1.39 / 1.52 / 1.89 / 2.85 s</td>
+<td>2.2e-13 at every sim_dt</td>
+</tr>
+<tr>
+<td>DiaBloS, interpreter, Integrator SOLVE_IVP (before the hybrid path)</td>
+<td>sim_dt 1e-3 / 5e-4 / 2.5e-4 / 1e-4</td>
+<td>3.3 / 5.8 / 11.2 / 27.3 s</td>
 <td>1.3e-3 / 6.5e-4 / 3.2e-4 / 1.3e-4</td>
 </tr>
 <tr>
-<td>DiaBloS, Integrator RK4</td>
+<td>DiaBloS, interpreter, Integrator RK4 (before the hybrid path)</td>
 <td>sim_dt 1e-3 / 5e-4 / 2.5e-4 / 1e-4</td>
-<td>4.5 / 8.8 / 18.0 / 43.7 s</td>
+<td>4.3 / 8.7 / 17.6 / 43.8 s</td>
 <td>2.4e-4 / 1.2e-4 / 6.1e-5 / 2.4e-5</td>
 </tr>
 <tr>
 <td>PathSim RKDP54</td>
 <td>rtol 1e-4 / 1e-6 / 1e-8</td>
-<td>0.9 / 1.2 / 1.8 s</td>
+<td>0.9 / 1.1 / 1.8 s</td>
 <td>1.7e-10 / 1.8e-12 / 1.9e-13</td>
 </tr>
 <tr>
 <td>PathSim ESDIRK43</td>
 <td>rtol 1e-4 / 1e-6 / 1e-8</td>
-<td>4.6 / 5.0 / 8.2 s</td>
+<td>4.5 / 4.9 / 8.0 s</td>
 <td>4.1e-9 / 3.1e-10 / 1.7e-10</td>
 </tr>
 </tbody>
 </table>
-<p>DiaBloS wall times are 4-15 % above the pre-fix run (3.2 / 5.6 / 11.1 /
-25.8 s and 4.0 / 7.9 / 15.5 / 39.9 s). Most of that is CPU contention, since
-the post-fix run shared the machine with another test run. Re-timed on an
-idle machine, the sim_dt 1e-3 point takes 3.31 s (+2 %), which bounds the
-cost of the fix's per-step dependency check.</p>
+<p>Compiled rows: rerun after the <code>Function</code> kernel (2026-10-10). The script
+still sweeps the per-block Integrator method, but the compiled path ignores it
+(one state vector, one scheme; it logs a warning), so its "RK4" rows equal the
+SOLVE_IVP rows and are omitted. sim_dt only sets the output grid, which is
+what the wall time grows with. Interpreter rows: the run just before. The delay fix costs about 2 % per interpreter step, measured on an
+idle machine at sim_dt 1e-3.</p>
 <p>Both interpreter integrator modes converge at <strong>first order</strong>. The
 interpreter holds each block's input constant over a step: the SOLVE_IVP mode
 integrates <code>x' = u_held</code> exactly, and the RK4 label does not give fourth
@@ -2244,23 +2263,25 @@ order in a closed loop. Reaching 2.4e-5 takes 44 s, while PathSim reaches
 2e-12 in 1.2 s. For an explicit solver the 1 ms actuator is only mildly stiff over
 this horizon; the implicit ESDIRK43 does not pay off here.</p>
 <p><em>Roadmap implication:</em> this is the strongest result for "adaptive integration
-between scheduled sample instants". A compiled hybrid path -- <code>solve_ivp</code>
-from sample hit to sample hit, discrete updates as events -- would bring
-S1b to PathSim-class accuracy. With the delay fix the interpreter now
-follows the same standard semantics, so S1a/S1b can serve as the hybrid
-path's acceptance tests.</p>
+between scheduled sample instants". The compiled hybrid path -- <code>solve_ivp</code>
+from sample instant to sample instant, the discrete updates at each instant --
+landed for ZOH and discrete TF/SS on 2026-10-10, and with the <code>Function</code>
+kernel S1b runs compiled at PathSim-class accuracy and cost.</p>
 <h2 id="s2-algebraic-loops">S2 - algebraic loops<a class="headerlink" href="#s2-algebraic-loops" title="Permanent link">&para;</a></h2>
 <p><code>y = u - f(y)</code>, u = 1, 2 s at dt 0.01. Until <code>95f83ff</code> DiaBloS rejected every
 case (<code>Algebraic loop detected involving blocks: [...]</code>), and the workaround a
 user would try was a one-step <code>Delay</code> in the feedback path. DiaBloS now
-solves the loop directly (<code>lib/engine/algebraic_loop.py</code>,
+solves the loop directly: first on the interpreter
+(<code>lib/engine/algebraic_loop.py</code>), and since phase 3 of the hybrid compiled path
+inside the compiled RHS (<code>lib/engine/compiled_loops.py</code>,
 <code>docs/SOLVER_SEMANTICS.md</code> 4.4).</p>
 <table>
 <thead>
 <tr>
 <th>Loop</th>
 <th>Exact y</th>
-<th>DiaBloS (solved)</th>
+<th>DiaBloS compiled</th>
+<th>DiaBloS interpreter</th>
 <th>DiaBloS + Delay (old workaround)</th>
 <th>PathSim</th>
 </tr>
@@ -2269,34 +2290,36 @@ solves the loop directly (<code>lib/engine/algebraic_loop.py</code>,
 <tr>
 <td>f(y) = 0.5 y</td>
 <td>0.6667</td>
+<td>2e-16, 5.8 ms</td>
 <td>1e-16, 39 ms</td>
 <td>exact (contraction)</td>
-<td>2e-16, 2.3 ms</td>
+<td>2e-16, 2.1 ms</td>
 </tr>
 <tr>
 <td>f(y) = 3 y</td>
 <td>0.25</td>
+<td>exact, 5.3 ms</td>
 <td>exact, 32 ms</td>
 <td>diverges (1e95)</td>
-<td>exact, 2.4 ms</td>
+<td>exact, 2.2 ms</td>
 </tr>
 <tr>
 <td>f(y) = tanh(3 y)</td>
 <td>0.2934</td>
+<td>exact, 6.0 ms</td>
 <td>exact, 31 ms</td>
 <td>wrong: period-2 oscillation between 0.006 and 0.984</td>
-<td>3e-13, 2.3 ms</td>
+<td>3e-13, 2.2 ms</td>
 </tr>
 </tbody>
 </table>
 <p>The delay turns the loop into the fixed-point iteration y &lt;- u - f(y), which
-only converges when |f'(y*)| &lt; 1. The DiaBloS solver runs <code>scipy.optimize.root</code>
-every step, warm-started from the previous step, and restores the members'
-params before each trial evaluation. That is the ~14x per-step cost against
-PathSim's booster; it is irrelevant at this size, but it would show on large
-or vector-valued loops. Loops through discrete-rate blocks are still
-rejected, and a diagram with a loop runs on the interpreter, so it cannot be
-linearized or exported.</p>
+only converges when |f'(y*)| &lt; 1. Both DiaBloS solvers run
+<code>scipy.optimize.root</code> (warm-started); the interpreter's also restores the
+members' params before each trial evaluation, which is most of its ~14x cost
+against PathSim. The compiled loop costs one solve per RHS evaluation (about
+3x PathSim here). Loops through discrete-rate blocks are still rejected, and
+linearization and Python export both work through them.</p>
 <h2 id="s3-delayed-platoon-scaling-in-n">S3 - delayed platoon, scaling in N<a class="headerlink" href="#s3-delayed-platoon-scaling-in-n" title="Permanent link">&para;</a></h2>
 <p>Predecessor-following double integrators,
 <code>a_i = 1 (p_{i-1}(t-0.1) - p_i) + 2 (v_{i-1}(t-0.1) - v_i)</code>, leader <code>p0 = t</code>,
@@ -2413,10 +2436,11 @@ gives it as a menu action with ensemble plots.</p>
   every ZOH (S1), which silently changed digital-control results. It is
   fixed in <code>68e8289</code>, with a regression test against the S1a exact
   reference.</li>
-<li>Remaining engine gap: the hybrid compiled path (S1b), which would also let
-  diagrams with algebraic loops compile and linearize. A PathSim backend
-  adapter is the alternative route. The S1 script is the acceptance test
-  for either.</li>
+<li>The sampled-data gap (S1b) is closed: 2.2e-13 in 1.4 s compiled, against
+  2.4e-5 in 44 s on the interpreter and 1.9e-13 in 1.8 s for PathSim.
+  Remaining engine gaps: rated continuous blocks (TranFn/PID/Integrator with
+  <code>sampling_time &gt; 0</code>) still fall back, and diagrams with algebraic loops
+  still cannot compile or linearize (<code>tasks/hybrid_compiled_path.md</code>).</li>
 </ul>
 <h2 id="reproducing">Reproducing<a class="headerlink" href="#reproducing" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python3<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>~/.venvs/diablos-bench

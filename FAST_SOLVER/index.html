@@ -1028,6 +1028,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#sampled-data-blocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sampled-Data Blocks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#special-handling" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2353,6 +2364,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#sampled-data-blocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sampled-Data Blocks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#special-handling" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2514,6 +2536,9 @@ a <code>.diablos</code> file stores — see <a href="../SOLVER_SEMANTICS/">SOLVE
 <li><strong>Hysteresis</strong>: Relay with upper/lower thresholds. Compiled only with
     zero-crossing detection on (see below); otherwise the diagram falls back to
     the interpreter.</li>
+<li><strong>ZeroOrderHold</strong>, <strong>DiscreteTranFn</strong>, <strong>DiscreteStateSpace</strong>: sampled-data
+    blocks with a resolved rate, on the <code>scipy+hybrid</code> backend (see
+    Sampled-Data Blocks below).</li>
 </ul>
 <h3 id="sources">Sources<a class="headerlink" href="#sources" title="Permanent link">&para;</a></h3>
 <ul>
@@ -2683,6 +2708,15 @@ and the solver is called exactly as before. Measured on this repo's examples
 while a single located step edge costs one extra restart:
 <code>c05_mass_spring_state_space</code> 10.0 -&gt; 11.4 ms and <code>c01_tank_feedback</code> 7.7 -&gt;
 9.0 ms.</p>
+<h2 id="sampled-data-blocks">Sampled-Data Blocks<a class="headerlink" href="#sampled-data-blocks" title="Permanent link">&para;</a></h2>
+<p><code>ZeroOrderHold</code>, <code>DiscreteTranFn</code> and <code>DiscreteStateSpace</code> compile on the
+<code>scipy+hybrid</code> backend: the solver integrates adaptively between sample
+instants and stops exactly at each one, where the due blocks run their own
+<code>execute()</code> in dataflow order (a ZOH before the discrete controller it feeds)
+and the next segment restarts at the same time and state. Between instants
+their outputs are held. The samples match the interpreter's; the continuous
+plant in between gets the adaptive solver's accuracy instead of the
+interpreter's fixed step. Details: <a href="../SOLVER_SEMANTICS/#3-sample-times-and-multirate">SOLVER_SEMANTICS.md, section 3</a>.</p>
 <h2 id="special-handling">Special Handling<a class="headerlink" href="#special-handling" title="Permanent link">&para;</a></h2>
 <h3 id="zero-state-systems-pure-algebraic">Zero-State Systems ("Pure Algebraic")<a class="headerlink" href="#zero-state-systems-pure-algebraic" title="Permanent link">&para;</a></h3>
 <p>Systems without any states (e.g., <code>Ramp</code> -&gt; <code>Gain</code> -&gt; <code>Scope</code>) do not require an ODE solver. However, the Fast Solver stack handles them efficiently by:
@@ -2691,7 +2725,7 @@ while a single located step edge costs one extra restart:
 3.  Generating a time vector manually.
 4.  Executing the <strong>Replay Loop</strong> to compute all algebraic signals at each time step.</p>
 <h3 id="mixed-mode-fallback">Mixed Mode / Fallback<a class="headerlink" href="#mixed-mode-fallback" title="Permanent link">&para;</a></h3>
-<p>If a diagram contains unsupported blocks (e.g., custom scripted blocks, <code>PythonFunction</code>, or legacy blocks), the Engine automatically falls back to <strong>Interpreter Mode</strong>. The block that caused it is recorded and shown in the property panel — see <a href="../SOLVER_SEMANTICS/#63-why-a-run-fell-back-and-where-to-see-it">SOLVER_SEMANTICS.md</a>. This is slower but guarantees compatibility. A block with a discrete sample time (<code>sampling_time &gt; 0</code>) also forces the fallback, even if it is otherwise supported: the compiled ODE right-hand side has no notion of sample instants, so only the interpreter runs such a block at its own rate.</p>
+<p>If a diagram contains unsupported blocks (e.g., custom scripted blocks, <code>PythonFunction</code>, or legacy blocks), the Engine automatically falls back to <strong>Interpreter Mode</strong>. The block that caused it is recorded and shown in the property panel — see <a href="../SOLVER_SEMANTICS/#63-why-a-run-fell-back-and-where-to-see-it">SOLVER_SEMANTICS.md</a>. This is slower but guarantees compatibility. <code>ZeroOrderHold</code>, <code>DiscreteTranFn</code> and <code>DiscreteStateSpace</code> compile on the hybrid backend (see Sampled-Data Blocks above); any other block with a discrete sample time (<code>sampling_time &gt; 0</code>) still forces the fallback, as do sampled blocks under the fixed-step <code>Euler</code>/<code>RK4</code> settings.</p>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <h3 id="solver-returned-no-states-empty-plot">"Solver returned no states" / Empty Plot<a class="headerlink" href="#solver-returned-no-states-empty-plot" title="Permanent link">&para;</a></h3>
 <ul>
@@ -2701,8 +2735,8 @@ while a single located step edge costs one extra restart:
 <h3 id="algebraic-loops">Algebraic Loops<a class="headerlink" href="#algebraic-loops" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Issue</strong>: A feedback loop without a delay/integrator (e.g., <code>Gain</code> -&gt; <code>Sum</code> -&gt; <code>Gain</code> -&gt; ...).</li>
-<li><strong>Behavior</strong>: The compiler generally cannot resolve algebraic loops analytically. The simulation may fail to initialize or fallback to Interpreter Mode (which attempts iterative resolution).</li>
-<li><strong>Fix</strong>: Insert an <code>Integrator</code> or <code>TransferFcn</code> (with denominator order &gt; numerator) in the feedback path.</li>
+<li><strong>Behavior</strong>: Solved, on both paths. The compiler runs each loop as one unit and solves it with Newton (<code>hybr</code>) at every right-hand-side evaluation (<code>lib/engine/compiled_loops.py</code>), so the diagram stays compiled and can be linearized. A loop with no solution fails the compiled run, and the interpreter then reports it ("did not converge").</li>
+<li><strong>Cost</strong>: One nonlinear solve per RHS evaluation. If a loop is an artifact of the model rather than physics, an <code>Integrator</code> or a strictly proper <code>TransferFcn</code> in the feedback path removes it.</li>
 </ul>
 <h2 id="performance">Performance<a class="headerlink" href="#performance" title="Permanent link">&para;</a></h2>
 <p>For a benchmark system of 50 coupled oscillators (100 states), Fast Solver runs in <strong>~0.1s</strong> vs <strong>~3.5s</strong> for the Interpreter.</p>

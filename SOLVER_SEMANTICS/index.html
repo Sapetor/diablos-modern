@@ -2588,7 +2588,7 @@ performance); <a href="../ARCHITECTURE/"><code>ARCHITECTURE.md</code></a> has th
 </tr>
 <tr>
 <td>Discrete rates</td>
-<td>none — a <code>sampling_time &gt; 0</code> anywhere sends the diagram here</td>
+<td><code>ZeroOrderHold</code>, <code>DiscreteTranFn</code>, <code>DiscreteStateSpace</code> (hybrid backend, section 6.1); any other rated block sends the diagram here</td>
 <td>honoured per block</td>
 </tr>
 <tr>
@@ -2733,10 +2733,39 @@ before any block executes:</p>
   by the <code>output_only</code> pass, or the staircase would lead the true sampled
   response by a whole period.</li>
 </ul>
-<p><strong>Multirate is interpreter-only.</strong> <code>SystemCompiler.check_compilability</code> rejects
-any block with a declared <code>sampling_time &gt; 0</code> outright
-(<code>lib/engine/system_compiler.py</code>): a compiled ODE right-hand side has no notion
-of a sample instant and would run the block as if it were continuous.</p>
+<p><strong>Sampled blocks on the compiled path (hybrid backend).</strong> <code>ZeroOrderHold</code>,
+<code>DiscreteTranFn</code> and <code>DiscreteStateSpace</code> compile when their rate is resolved
+(declared, or inherited by <code>propagate_sample_times</code>), and so do <code>TranFn</code>,
+<code>StateSpace</code>, <code>PID</code>, <code>Integrator</code> and <code>Derivative</code> given a rate
+(<code>discrete.RATED_FNS</code>, <code>discrete.is_sampled_block</code>): those then get no ODE
+state, because the interpreter runs them only at their instants, discretized
+over <code>dtime = Ts</code>, and holds their output in between. Inside the ODE
+right-hand side each is a source that reads its held output from a per-compile
+holder (<code>lib/engine/compiler_kernels/discrete.py</code>). The sample instants are
+known in advance -- the union of <code>k * Ts</code> over all rates, merged and snapped
+onto the output grid (<code>compiled_runner.sample_schedule</code>) -- so they are
+<em>breakpoints</em> of the segmented solve, not located events:
+<code>zero_crossing.solve_with_events</code> ends a segment exactly at each instant, runs
+the updates, and restarts at the same <code>t</code> with the same <code>y</code>. At an instant the
+due blocks update in dataflow order (<code>system_compiler._sample_update_order</code>:
+a block after every sampled block that feeds it through direct-feedthrough
+blocks), with the diagram re-evaluated before each one, so a DiscreteTF behind
+a ZOH latches the fresh sample (the interpreter's rule in section 4.2). The
+update calls the block's own <code>execute()</code> on a run-local copy of its params, so
+the samples equal the interpreter's; the holder's params carry the same
+<code>dtime = Ts</code> the interpreter stamps (step 5 above), and an
+<code>output_is_post_update</code> block (<code>Integrator</code>) holds its <code>output_only</code> value
+taken before the advance, as <code>stamp_held_outputs</code> does.</p>
+<p>Under a fixed-step solver (<code>Euler</code>/<code>RK4</code> in Simulation settings) the same
+holders run on the output grid plus every sample instant
+(<code>zero_crossing.solve_fixed_step_with_breakpoints</code>): an instant between grid
+points ends a shortened step exactly there, and the next step resumes from it.</p>
+<p>What still sends the diagram to the interpreter: a sampled block whose rate
+stays unresolved; and <code>FirstOrderHold</code> and <code>RateTransition</code>, which run every
+solver step with <code>sampling_time = -1</code> and sample on their own parameter
+(<code>input_sample_time</code>, <code>output_sample_time</code>): FOH outputs a ramp extrapolated
+between samples rather than a held value, and RateTransition's <code>Average</code> mode
+averages over solver steps, so neither has a held output to compile.</p>
 <hr />
 <h2 id="4-execution-order">4. Execution order<a class="headerlink" href="#4-execution-order" title="Permanent link">&para;</a></h2>
 <h3 id="41-initialization-both-paths">4.1 Initialization (both paths)<a class="headerlink" href="#41-initialization-both-paths" title="Permanent link">&para;</a></h3>
@@ -2749,15 +2778,25 @@ three loops:</p>
   <code>optional_inputs</code>) is zero and <code>b_type == 0</code>; it executes and is pinned to
   <code>hierarchy = 0</code>. Memory blocks are executed with <code>output_only=True</code> so
   <code>y[0] = h(x[0])</code> is available to their consumers, and pinned to hierarchy 0
-  as well. Outputs are propagated.</li>
+  as well. Outputs are propagated. A memory block with direct feedthrough
+  (<code>b_type == 2</code>: PID, ZeroOrderHold, Hysteresis, FirstOrderHold,
+  RateTransition, RateLimiter, ...) that needs inputs is the exception
+  (<code>_defers_t0_output</code>): its <code>y[0]</code> depends on <code>u[0]</code>, which this pass does not
+  know yet, so it is left for Loop 2.</li>
 <li><strong>Loop 2 — hierarchy fixpoint</strong> (<code>_init_resolve_hierarchy</code>). Repeatedly
   execute every block whose required inputs have all arrived, assigning
-  ascending <code>hierarchy</code> numbers, until every block is computed. If a pass
-  computes nothing new, the remaining blocks are examined (section 4.4).</li>
+  ascending <code>hierarchy</code> numbers, until every block is computed. A deferred
+  feedthrough memory block runs here for real once its inputs are ready (and
+  keeps hierarchy 0). If a pass computes nothing new, deferred blocks still
+  waiting are in a loop of feedthrough blocks only: they are released with
+  their Loop 1 <code>output_only</code> value, which breaks the loop
+  (<code>_release_t0_deferred</code>). Then the remaining blocks are examined
+  (section 4.4).</li>
 <li><strong>Loop 3 — advance memory state</strong> (<code>_init_advance_memory_state</code>). Memory
   blocks are executed again, this time for real, using the inputs Loop 2
   produced. Without it the first simulation step would re-read <code>x[0]</code> and emit a
-  duplicate sample.</li>
+  duplicate sample. A deferred block that Loop 2 already ran is skipped, or it
+  would advance twice at t = 0.</li>
 </ul>
 <p><code>hierarchy</code> is what the interpreter steps through; the compiled path uses it
 only as an input ordering that it then re-sorts (4.3).</p>
@@ -2841,10 +2880,17 @@ no execution order. It is <strong>solved</strong>, not rejected (since 2026-10-1
 <li>Errors name the block: a loop through a block with a discrete sample time
   is rejected (its schedule lives on the <code>DBlock</code>, not in params), and a
   loop with no solution reports <code>"did not converge (residual ...)"</code>.</li>
-<li>A diagram with a solved loop does not compile. The fallback reason is
-  <code>"&lt;members&gt;: algebraic loop, solved iteratively by the interpreter"</code>, so
-  linearization and Python export, which need the compiled path, are not
-  available for it.</li>
+<li><strong>On the compiled path</strong> (since 2026-10-10, <code>lib/engine/compiled_loops.py</code>)
+  the compiler finds the cycles itself, among the middle group's
+  feedthrough blocks, and runs each as one unit in the position a single
+  block would take (<code>order_units</code>). At every RHS evaluation the unit solves
+  the same fixed point with <code>hybr</code> (<code>xtol 1e-12</code>, warm-started; a retry
+  from <code>F(z0)</code> if that fails) and then runs the members once on the
+  solution, which writes their outputs and <code>dy_vec</code>. The replay reads loop
+  members from one compiled evaluation per output sample. A loop that does
+  not converge fails the compiled run, which falls back to the interpreter
+  and its solver. Linearization works through the loop, and the Python
+  exporter emits it as a nested step function solved the same way.</li>
 </ul>
 <p>Two stall outcomes remain errors: a loop that is unsupported (above), and no
 cycle but blocks still uncomputed. In that case only memory blocks may
@@ -2929,6 +2975,11 @@ on <code>self</code> (see the Block Contract in <code>CLAUDE.md</code>). The lif
 <td>in-house, steps on the output grid (<code>integrate_fixed_step</code>)</td>
 </tr>
 <tr>
+<td><code>fixed_step+hybrid</code></td>
+<td>method is <code>RK4</code> or <code>Euler</code> and at least one sampled block</td>
+<td>the same steps on the output grid plus every sample instant (section 3); no event location. <code>zero_crossing.n_sample_hits</code> counts the instants</td>
+</tr>
+<tr>
 <td><code>scipy</code></td>
 <td>adaptive method, no events</td>
 <td>one <code>solve_ivp</code> call, no <code>events=</code> argument</td>
@@ -2937,6 +2988,11 @@ on <code>self</code> (see the Block Contract in <code>CLAUDE.md</code>). The lif
 <td><code>scipy+events</code></td>
 <td>adaptive method and at least one event, detection on</td>
 <td>segmented solve (<code>zero_crossing.solve_with_events</code>)</td>
+</tr>
+<tr>
+<td><code>scipy+hybrid</code></td>
+<td>adaptive method and at least one sampled block</td>
+<td>the same segmented solve, split at every sample instant (section 3); events too when detection is on. <code>zero_crossing.n_sample_hits</code> counts the instants, t0 included</td>
 </tr>
 </tbody>
 </table>
@@ -2972,8 +3028,8 @@ supported blocks by family.</p>
 <td>its latch is path-dependent, so it can only be part of an RHS if the mode is frozen inside each segment and flipped at a located instant.</td>
 </tr>
 <tr>
-<td>anything with <code>sampling_time &gt; 0</code></td>
-<td>section 3.</td>
+<td><code>FirstOrderHold</code>, <code>RateTransition</code>, and any rated block outside <code>ZeroOrderHold</code> / <code>DiscreteTranFn</code> / <code>DiscreteStateSpace</code> / <code>TranFn</code> / <code>StateSpace</code> / <code>PID</code> / <code>Integrator</code> / <code>Derivative</code></td>
+<td>no held output to compile; section 3.</td>
 </tr>
 <tr>
 <td>anything with no <code>@kernel</code> builder</td>
@@ -2981,6 +3037,12 @@ supported blocks by family.</p>
 </tr>
 </tbody>
 </table>
+<p><strong>Rated <code>PID</code> and <code>Derivative</code>.</strong> On the compiled path each runs its own
+<code>execute()</code> at <code>t_k</code> on the inputs at <code>t_k</code> (with <code>dtime = Ts</code>) and holds the
+result from <code>t_k</code>; the interpreter gives the same values, except that it
+currently reports 0 for any PID at <code>t = 0</code> (logged in <code>tasks/todo.md</code>).
+<code>tests/regression/test_hybrid_rated_blocks.py</code> pins both against the
+interpreter and against an exact sampled oracle.</p>
 <h3 id="63-why-a-run-fell-back-and-where-to-see-it">6.3 Why a run fell back, and where to see it<a class="headerlink" href="#63-why-a-run-fell-back-and-where-to-see-it" title="Permanent link">&para;</a></h3>
 <p><code>check_compilability</code> records the first blocking block on
 <code>SystemCompiler.last_incompatibility</code>, formatted
@@ -3170,9 +3232,14 @@ for it.</p>
 information, but it is not a gate: the textbook scalar stiff problem
 <code>dy/dt = -10⁴(y - u(t))</code> has exactly one eigenvalue and a ratio of 1.</p>
 <p>Costs are kept negligible. The Jacobian is only probed once <code>work_ratio</code> has
-already cleared its gate, and never for more than
-<code>STIFFNESS_MAX_STATES = 64</code> states (a 2-D PDE has thousands, and the probe is
-<code>n + 1</code> right-hand-side evaluations per sample point). Anything that raises
+already cleared its gate. Up to <code>STIFFNESS_MAX_STATES = 64</code> states it is formed
+densely (<code>n + 1</code> right-hand-side evaluations per sample point); above that (a
+PDE has hundreds to thousands of states) it is never formed: ARPACK finds the
+largest-magnitude eigenvalues from finite-difference Jacobian-vector products,
+about <code>STIFFNESS_SPARSE_MAX_EVALS = 400</code> evaluations at most per sample point
+(a 500-state heat equation takes ~260), stopping at the first point that
+flags. That path reports no <code>eig_ratio</code>, and if the largest modes are
+oscillations it underestimates, so it errs toward not flagging. Anything that raises
 degrades to the work-ratio-only result rather than failing the run. Implicit and
 fixed-step methods are not probed at all — there is nothing to suggest to
 someone already using one — so <code>stiffness</code> is <code>None</code> there.</p>
@@ -3306,13 +3373,19 @@ the built-in defaults.)</p>
   feedback-delay difference of section 4.2). Steady states agree; do not assert
   tight trajectory equality across the two.</li>
 <li><strong>The stiffness heuristic is a heuristic.</strong> It cannot see stiffness that has
-  not cost anything yet, it says nothing on implicit or fixed-step runs, and it
-  is skipped above 64 states — a large PDE is never flagged even when it is
-  stiff.</li>
-<li><strong>Algebraic loops run on the interpreter only.</strong> Continuous blocks around a
-  solved loop therefore integrate with the interpreter's fixed step (first
-  order for held inputs), and the diagram cannot be linearized or exported.
-  Loops through discrete-rate blocks are rejected.</li>
+  not cost anything yet, and it says nothing on implicit or fixed-step runs.
+  Above 64 states it only sees the largest-magnitude modes, so stiffness
+  hidden behind faster oscillations goes unflagged.</li>
+<li><strong>Sampled diagrams cannot be linearized</strong>, even though they compile: the
+  linearizer calls <code>check_compilability(..., allow_discrete=False)</code>, because a
+  held output would linearize a sampled loop as open. The Python exporter keeps
+  refusing rated blocks too.</li>
+<li><strong>One <code>solve_ivp</code> call per sample interval.</strong> A fast rate over a long span
+  (<code>Ts = 1 ms</code> for 10 s is 10^4 segments) pays the call overhead each time, and
+  implicit methods rebuild their Jacobian at every instant.</li>
+<li><strong>Algebraic loops cost one nonlinear solve per RHS evaluation</strong> on the
+  compiled path (and in an exported script). Loops through discrete-rate
+  blocks are rejected on both paths.</li>
 <li><strong><code>blocks/external.py</code> is a stub</strong> and returns an error dict on both paths.</li>
 </ul>
 <hr />

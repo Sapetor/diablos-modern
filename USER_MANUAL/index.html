@@ -4301,10 +4301,9 @@ the offending blocks:</p>
   and <code>Hysteresis</code> / <code>StateVariable</code> (path- or RNG-dependent), the PDE and
   Field families, <code>MathFunction</code> (arbitrary user expressions), and
   <code>RateLimiter</code></li>
-<li>any block with a discrete <code>sampling_time &gt; 0</code> (sampled-data blocks need the
-  interpreter)</li>
-<li>algebraic loops - break one with an Integrator or a strictly-proper transfer
-  function before exporting</li>
+<li>any block with a discrete <code>sampling_time &gt; 0</code> (the generated script has no
+  sample-instant scheduling, although the fast solver runs ZOH and discrete
+  TF/SS blocks since 2026-10-10)</li>
 </ul>
 <h3 id="export-the-linearized-model">Export the linearized model<a class="headerlink" href="#export-the-linearized-model" title="Permanent link">&para;</a></h3>
 <p>See <a href="#analysis">Analysis</a>: the linearization result window exports A/B/C/D as
