@@ -25,6 +25,7 @@ import numpy as np
 
 from lib.engine.block_names import canonical_fn
 from lib.engine.block_params import runtime_params
+from lib.engine.compiled_delays import CompiledDelayError, is_delay_block
 from lib.engine.compiler_kernels.discrete import DISCRETE_FNS, is_sampled_block, sample_update
 from lib.engine.solver_diagnostics import (
     estimate_stiffness,
@@ -195,8 +196,9 @@ def replay_has_feedthrough(block, block_matrices) -> bool:
     """
     fn = canonical_fn(getattr(block, "block_fn", ""))
 
-    if fn == "Integrator" or is_sampled_block(block):
-        # A sampled block's output between instants is its held value.
+    if fn == "Integrator" or is_sampled_block(block) or is_delay_block(block):
+        # A sampled block's output between instants is its held value; a
+        # transport delay's is recorded history.
         return False
     if fn not in ("TransferFcn", "StateSpace"):
         return True
@@ -342,7 +344,9 @@ def replay_compiled_signals(engine, sol, current_blocks, current_lines, state_ma
 
             # A rated TranFn/PID/... replays from its sampled holder, like the
             # discrete blocks, not through its continuous handler.
-            kernel_replay = fn in _KERNEL_REPLAY_FNS or is_sampled_block(block)
+            kernel_replay = (
+                fn in _KERNEL_REPLAY_FNS or is_sampled_block(block) or is_delay_block(block)
+            )
             executor = block_executors.get(b_name) if kernel_replay else None
             if executor is not None:
                 # The kernel reads its inputs from step.signals (same keys the
@@ -437,6 +441,9 @@ def seed_initial_states(model_func, executors, t0, y0, sampled=()):
 def make_sample_hook(model_func, sampled, t_span):
     """``on_breakpoint(t, y)``: update every sampled block due at ``t``.
 
+    Returns whether any block was due (False at a breakpoint that only bounds
+    a transport delay's segments).
+
     Blocks update in ``sampled`` order (feeders first, see
     ``system_compiler._sample_update_order``) and the diagram is re-evaluated
     before each one, so a block downstream of a ZOH latches the ZOH's fresh
@@ -449,12 +456,24 @@ def make_sample_hook(model_func, sampled, t_span):
         return abs(t - round(t / ts) * ts) <= tol
 
     def on_breakpoint(t, y):
+        fired = False
         for holder in sampled:
             if due(holder, t):
                 _dy, signals = model_func.evaluate(t, y)
                 sample_update(holder, t, signals)
+                fired = True
+        return fired
 
     return on_breakpoint
+
+
+def _no_fixed_step_tail(model_func, grid, y0, scheme):
+    """Chattering-guard fallback for a diagram with transport delays.
+
+    The fixed-step tail records no delay history, so the compiled run stops
+    here and ``DSim`` falls through to the interpreter.
+    """
+    raise CompiledDelayError("the zero-crossing guard tripped in a diagram with transport delays")
 
 
 class _StatelessRHS:
@@ -584,6 +603,10 @@ def run_compiled_simulation(
             engine._compile_system_cached(current_blocks, sorted_blocks, current_lines, dt)
         )
         compile_time = time_module.perf_counter() - compile_start
+        delays = getattr(model_func, "delays", None)
+        if delays is not None:
+            # Before seeding: a t0 evaluation reads the delays' initial value.
+            delays.reset(float(t_span[0]), dt, float(t_span[1]) - float(t_span[0]))
         y0 = seed_initial_states(
             model_func,
             getattr(engine.compiler, "block_executors", {}),
@@ -604,7 +627,7 @@ def run_compiled_simulation(
 
         sampled = list(getattr(model_func, "sampled", None) or [])
         solve_start = time_module.perf_counter()
-        if len(y0) == 0 and not sampled:
+        if len(y0) == 0 and not sampled and delays is None:
             # Purely algebraic system
             backend = "algebraic"
             sol = _SolverResult()
@@ -630,6 +653,10 @@ def run_compiled_simulation(
             # If one is ever made compilable it must force a fixed step:
             # an adaptive solver re-samples the RHS per stage and per
             # rejected step, which destroys its error estimate.
+            if method in FIXED_STEP_METHODS and delays is not None:
+                # SimulationEngine.check_compilability keeps these on the
+                # interpreter; reaching here is a gate bug.
+                raise CompiledDelayError("transport delays need an adaptive solver")
             if method in FIXED_STEP_METHODS and sampled:
                 # Fixed step on the output grid plus every sample instant, the
                 # sampled blocks' own updates at each instant.
@@ -682,15 +709,24 @@ def run_compiled_simulation(
                 # bookkeeping at all.
                 event_specs = list(getattr(model_func, "event_specs", None) or [])
                 use_events = bool(getattr(engine, "zero_crossing", True)) and bool(event_specs)
-                if sampled:
+                if sampled or delays is not None:
                     # Hybrid: adaptive between sample instants, the sampled
-                    # blocks' own updates at each instant.
+                    # blocks' own updates at each instant. Transport delays
+                    # add every k*tau (method of steps, compiled_delays).
                     backend = "scipy+hybrid"
                     rhs = model_func if len(y0) else _StatelessRHS(model_func)
-                    breakpoints = sample_schedule(sampled, t_span, t_eval)
+                    taus = [{"ts": tau} for tau in (delays.taus if delays is not None else ())]
+                    breakpoints = sample_schedule(list(sampled) + taus, t_span, t_eval)
+                    delay_hooks = {}
+                    fallback = integrate_fixed_step
+                    if delays is not None:
+                        delays.model_func = rhs
+                        delay_hooks = {"on_segment_end": delays.finish}
+                        fallback = _no_fixed_step_tail
                     logger.info(
                         f"Solving with {method} (rtol={rtol}, atol={atol}) between "
-                        f"{len(breakpoints)} sample instant(s) of {len(sampled)} sampled block(s)"
+                        f"{len(breakpoints)} breakpoint(s): {len(sampled)} sampled block(s), "
+                        f"{len(taus)} transport delay(s)"
                     )
                     sol = solve_with_events(
                         rhs,
@@ -705,9 +741,10 @@ def run_compiled_simulation(
                         or DEFAULT_MAX_EVENTS,
                         mode_states=getattr(model_func, "mode_states", None),
                         max_step=dt,
-                        fallback_integrator=integrate_fixed_step,
+                        fallback_integrator=fallback,
                         breakpoints=breakpoints,
-                        on_breakpoint=make_sample_hook(rhs, sampled, t_span),
+                        on_breakpoint=make_sample_hook(rhs, sampled, t_span) if sampled else None,
+                        **delay_hooks,
                     )
                     if not len(y0):
                         sol.y = sol.y[:0]

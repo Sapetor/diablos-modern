@@ -9,18 +9,15 @@ input is required to exercise it meaningfully, so the diagram here is
 which has the closed-form response y(t) = sin(3*(t - 0.5)) for t >= 0.5 and the
 initial output 0 before the delay elapses.
 
-Note on the two paths: TransportDelay is *not* in
-``SystemCompiler.COMPILABLE_BLOCKS`` -- its output depends on the whole recorded
-input history, which cannot be expressed as a pure function of (t, y) inside a
-solve_ivp RHS. So a diagram containing it is not compilable, and running with
-``use_fast_solver=True`` falls back to the interpreter. This test therefore
-guards two invariants at once:
+Note on the two paths: TransportDelay compiles by the method of steps
+(``lib/engine/compiled_delays.py``, 2026-10-12; before that the fast path fell
+back to the interpreter). This test therefore guards two invariants at once:
 
-  * the fast-solver path and the interpreter agree on the scope trajectory
-    (today via fallback; if a compiled TransportDelay kernel is ever added this
-    becomes a genuine RK45-vs-fixed-step comparison and the loose tolerance
-    below is the appropriate one -- see tests/regression/test_compiled_golden.py
-    for the same rationale), and
+  * the fast-solver path and the interpreter agree on the scope trajectory,
+    a genuine RK45-vs-fixed-step comparison, hence the loose tolerance below
+    (see tests/regression/test_compiled_golden.py for the same rationale;
+    tests/regression/test_compiled_transport_delay.py pins the compiled path
+    against exact references), and
   * the interpreted TransportDelay reproduces the analytic delayed sine.
 
 The diagram is built programmatically (there is no shipped example with a
@@ -170,10 +167,9 @@ class TestTransportDelayEquivalence:
         _, t_interp, y_interp = _run(use_fast=False)
         compilable, t_fast, y_fast = _run(use_fast=True)
 
-        # Documents the current reality: no compiled kernel, so the fast path
-        # falls back to the interpreter. If this flips, the assertion below turns
-        # into a real cross-scheme comparison rather than an identity check.
-        assert compilable is False
+        # The fast path runs the compiled kernel, so the comparison below is
+        # a real cross-scheme one rather than an identity check.
+        assert compilable is True
 
         assert y_interp.shape[1] == y_fast.shape[1]
         # Compare at the interpreter's sample times (interpolate the fast trace

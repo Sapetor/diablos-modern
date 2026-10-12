@@ -307,6 +307,7 @@ def solve_with_events(
     solve_ivp=None,
     breakpoints=None,
     on_breakpoint=None,
+    on_segment_end=None,
 ) -> EventSolveResult:
     """Integrate ``model_func`` with terminal zero-crossing events.
 
@@ -365,7 +366,14 @@ def solve_with_events(
             with the same ``y`` -- no nudge, no root finding.
         on_breakpoint: ``(t, y) -> None``, also called once at ``t0`` (the
             k = 0 sample) before the first segment when given.  Exceptions
-            propagate: a failed sample must stop the run.
+            propagate: a failed sample must stop the run.  It may return
+            False to say nothing was due at ``t`` (a breakpoint that only
+            bounds a transport delay's segments); ``n_sample_hits`` counts
+            the rest.
+        on_segment_end: ``(sol) -> None`` after each successful segment and
+            before the updates at its end (transport-delay history,
+            ``lib.engine.compiled_delays``); ``sol`` carries dense output
+            (requested only when this hook is given).
 
     Returns:
         EventSolveResult
@@ -436,10 +444,13 @@ def solve_with_events(
             step_cap,
             event_callables,
             at_breakpoint,
+            dense_output=on_segment_end is not None,
         )
         if not sol.success:
             result.success = False
             break
+        if on_segment_end is not None:
+            on_segment_end(sol)
         if sol.status != 1:
             if at_breakpoint:
                 # Sample instant: same t, same y, discrete updates in between.
@@ -556,6 +567,7 @@ def _run_segment(
     step_cap: float,
     event_callables,
     at_breakpoint: bool = False,
+    dense_output: bool = False,
 ):
     """One ``solve_ivp`` call from ``loop.t_start`` towards ``seg_end``.
 
@@ -575,6 +587,7 @@ def _run_segment(
     n_grid = int(seg_eval.size)
     if at_breakpoint and (n_grid == 0 or seg_eval[-1] < seg_end):
         seg_eval = np.append(seg_eval, seg_end)
+    extra = {"dense_output": True} if dense_output else {}
     sol = solve_ivp(
         model_func,
         (loop.t_start, seg_end),
@@ -585,6 +598,7 @@ def _run_segment(
         atol=atol,
         max_step=step_cap if loop.events_active else np.inf,
         events=event_callables if loop.events_active else None,
+        **extra,
     )
     result.n_segments += 1
     result.nfev += int(getattr(sol, "nfev", 0) or 0)
@@ -859,10 +873,12 @@ def solve_fixed_step_with_breakpoints(
 def _apply_breakpoint(result, on_breakpoint, mode_states, cache, t, y) -> None:
     """Run the sample-instant updates at ``t`` and record the new outputs."""
     cache.invalidate()
+    fired = False
     if on_breakpoint is not None:
-        on_breakpoint(float(t), np.asarray(y, dtype=float).copy())
+        fired = on_breakpoint(float(t), np.asarray(y, dtype=float).copy())
     cache.invalidate()
-    result.n_sample_hits += 1
+    if fired is not False:
+        result.n_sample_hits += 1
     result.mode_history.append((float(t), _snapshot_modes(mode_states)))
 
 

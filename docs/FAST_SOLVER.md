@@ -46,6 +46,8 @@ The following blocks are fully supported in Fast Solver mode. If a diagram conta
 *   **ZeroOrderHold**, **DiscreteTranFn**, **DiscreteStateSpace**: sampled-data
     blocks with a resolved rate, on the `scipy+hybrid` backend (see
     Sampled-Data Blocks below).
+*   **TransportDelay**: `y(t) = u(t - tau)` by the method of steps, on the
+    `scipy+hybrid` backend (see Transport Delays below).
 
 ### Sources
 *   **Step**: Delayed step input.
@@ -206,6 +208,19 @@ their outputs are held. The samples match the interpreter's; the continuous
 plant in between gets the adaptive solver's accuracy instead of the
 interpreter's fixed step. Details: [SOLVER_SEMANTICS.md, section 3](SOLVER_SEMANTICS.md#3-sample-times-and-multirate).
 
+## Transport Delays
+
+`TransportDelay` makes the diagram a delay differential equation. The solver
+stops at every `k * tau`, so inside each segment the delayed input comes from
+a part of the trajectory that is already integrated; after each segment the
+delayed inputs are recorded from the solver's dense output as a cubic spline.
+The result has the adaptive solver's accuracy: on the PathSim platoon
+benchmark (`docs/BENCHMARK_PATHSIM.md`, S3) the 50-vehicle case went from
+1.8e-2 in 16 s on the interpreter to 2.4e-9 in 7.5 s. A delay of zero,
+`VariableTransportDelay` and the fixed-step `Euler`/`RK4` settings keep the
+interpreter; the linearizer and the Python exporter refuse a delay. Details:
+[SOLVER_SEMANTICS.md, section 6.2](SOLVER_SEMANTICS.md#62-what-compiles).
+
 ## Special Handling
 
 ### Zero-State Systems ("Pure Algebraic")
@@ -216,7 +231,7 @@ Systems without any states (e.g., `Ramp` -> `Gain` -> `Scope`) do not require an
 4.  Executing the **Replay Loop** to compute all algebraic signals at each time step.
 
 ### Mixed Mode / Fallback
-If a diagram contains unsupported blocks (e.g., custom scripted blocks, `PythonFunction`, or legacy blocks), the Engine automatically falls back to **Interpreter Mode**. The block that caused it is recorded and shown in the property panel — see [SOLVER_SEMANTICS.md](SOLVER_SEMANTICS.md#63-why-a-run-fell-back-and-where-to-see-it). This is slower but guarantees compatibility. `ZeroOrderHold`, `DiscreteTranFn` and `DiscreteStateSpace` compile on the hybrid backend (see Sampled-Data Blocks above); any other block with a discrete sample time (`sampling_time > 0`) still forces the fallback, as do sampled blocks under the fixed-step `Euler`/`RK4` settings.
+If a diagram contains unsupported blocks (e.g., custom scripted blocks, `PythonFunction`, or legacy blocks), the Engine automatically falls back to **Interpreter Mode**. The block that caused it is recorded and shown in the property panel — see [SOLVER_SEMANTICS.md](SOLVER_SEMANTICS.md#63-why-a-run-fell-back-and-where-to-see-it). This is slower but guarantees compatibility. `ZeroOrderHold`, `DiscreteTranFn`, `DiscreteStateSpace`, rated `TranFn`/`StateSpace`/`PID`/`Integrator`/`Derivative` and `TransportDelay` compile on the hybrid backend (see Sampled-Data Blocks and Transport Delays above); `FirstOrderHold` and `RateTransition` still force the fallback, as does `TransportDelay` under the fixed-step `Euler`/`RK4` settings.
 
 ## Troubleshooting
 

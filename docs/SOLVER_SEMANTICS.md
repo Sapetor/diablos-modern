@@ -414,7 +414,7 @@ The `backend` field of the diagnostics says which one ran:
 | `fixed_step+hybrid` | method is `RK4` or `Euler` and at least one sampled block | the same steps on the output grid plus every sample instant (section 3); no event location. `zero_crossing.n_sample_hits` counts the instants |
 | `scipy` | adaptive method, no events | one `solve_ivp` call, no `events=` argument |
 | `scipy+events` | adaptive method and at least one event, detection on | segmented solve (`zero_crossing.solve_with_events`) |
-| `scipy+hybrid` | adaptive method and at least one sampled block | the same segmented solve, split at every sample instant (section 3); events too when detection is on. `zero_crossing.n_sample_hits` counts the instants, t0 included |
+| `scipy+hybrid` | adaptive method and at least one sampled block or `TransportDelay` | the same segmented solve, split at every sample instant (section 3) and every `k * tau` of each delay (section 6.2); events too when detection is on. `zero_crossing.n_sample_hits` counts the sample instants only, t0 included |
 
 ### 6.2 What compiles
 
@@ -433,6 +433,8 @@ Deliberate exclusions, each with a reason in the code:
 | `StateVariable` | performs a discrete update inside the RHS, keyed on a monotonic-time assumption `solve_ivp` violates (repeated, rejected and out-of-order probe times). |
 | `Hysteresis` **with detection off** | its latch is path-dependent, so it can only be part of an RHS if the mode is frozen inside each segment and flipped at a located instant. |
 | `FirstOrderHold`, `RateTransition`, and any rated block outside `ZeroOrderHold` / `DiscreteTranFn` / `DiscreteStateSpace` / `TranFn` / `StateSpace` / `PID` / `Integrator` / `Derivative` | no held output to compile; section 3. |
+| `TransportDelay` with `delay_time <= 0`, or under `Euler` / `RK4` | a zero delay would read its own unrecorded input; the fixed-step settings keep the interpreter, whose buffer is already a fixed-step scheme. |
+| `VariableTransportDelay` | its delay is a signal, so the breakpoints below cannot be known in advance. |
 | anything with no `@kernel` builder | including user blocks. |
 
 **Rated `PID` and `Derivative`.** On the compiled path each runs its own
@@ -441,6 +443,23 @@ result from `t_k`; the interpreter gives the same values, except that it
 currently reports 0 for any PID at `t = 0` (logged in `tasks/todo.md`).
 `tests/regression/test_hybrid_rated_blocks.py` pins both against the
 interpreter and against an exact sampled oracle.
+
+**`TransportDelay`** compiles by the method of steps
+(`lib/engine/compiled_delays.py`). The diagram becomes a delay differential
+equation, and the RHS at `t` reads the delay's input at `t - tau`, so every
+`k * tau` is a breakpoint of the segmented solve: no segment is longer than
+the shortest delay, `t - tau` always falls into a finished segment, and each
+discontinuity a delay carries forward from `t0` lands on a segment boundary.
+After each segment, before the updates at its end, the diagram is evaluated on
+the solver's dense output (accepted steps only, nodes at most `dt / 3` apart)
+and the delayed inputs are stored as a cubic spline; the delay block is a
+source that reads it. Before `t0 + tau` the block reports `initial_value`, as
+the interpreted block does. On a boundary the read is right-continuous, except
+that a segment exactly `tau` long reads the left value of its own start at its
+last stage, so its RHS has no jump inside the step. The interpreter's buffer
+interpolates linearly between fixed steps, which is first order: on
+`x' = -x(t - 1)` it is 6e-3 off at `dt = 0.01`, the compiled path 1e-9
+(`tests/regression/test_compiled_transport_delay.py`).
 
 ### 6.3 Why a run fell back, and where to see it
 
@@ -704,7 +723,13 @@ the built-in defaults.)
 * **Sampled diagrams cannot be linearized**, even though they compile: the
   linearizer calls `check_compilability(..., allow_discrete=False)`, because a
   held output would linearize a sampled loop as open. The Python exporter keeps
-  refusing rated blocks too.
+  refusing rated blocks too. The same flag refuses `TransportDelay`, which has
+  no finite-dimensional linearization (a Pade approximation would be the
+  route), and the exporter refuses it as well.
+* **One segment per `tau`.** A compiled `TransportDelay` splits the solve at
+  every `k * tau`, so a 1 ms delay over 10 s is 10^4 `solve_ivp` calls, and a
+  zero-crossing guard trip in a diagram with delays ends the compiled run (the
+  fixed-step tail records no delay history) and the interpreter takes over.
 * **One `solve_ivp` call per sample interval.** A fast rate over a long span
   (`Ts = 1 ms` for 10 s is 10^4 segments) pays the call overhead each time, and
   implicit methods rebuild their Jacobian at every instant.
@@ -724,6 +749,7 @@ the built-in defaults.)
 | Diagram → ODE, allowlist, three-group order, event collection | `lib/engine/system_compiler.py` |
 | Per-block compiled kernels and their event declarations | `lib/engine/compiler_kernels/` |
 | Event solve, restart, chattering guard | `lib/engine/zero_crossing.py` |
+| Compiled transport delays (method of steps) | `lib/engine/compiled_delays.py` |
 | Diagnostics dict, log line, stiffness heuristic | `lib/engine/solver_diagnostics.py` |
 | Memory-block taxonomy | `lib/engine/memory_blocks.py` |
 | Subsystem flattening | `lib/engine/flattener.py` |

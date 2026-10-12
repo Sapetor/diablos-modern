@@ -10,6 +10,7 @@ from lib.engine.pde_helpers import (
 )
 from lib.engine.block_names import canonical_fn
 from lib.engine.compiler_kernels import BuildContext, build_events, get_kernel_builder
+from lib.engine.compiled_delays import DelayHistory, build_delay, delay_time, is_delay_block
 from lib.engine.compiled_loops import make_loop_executor, order_units
 from lib.engine.compiler_kernels.discrete import build_sampled, is_sampled_block
 from lib.engine.block_params import runtime_params
@@ -326,8 +327,9 @@ def _execution_groups(sorted_order, block_matrices, input_map=None):
     for b in sorted_order:
         fn = canonical_fn(b.block_fn)
         # A sampled block reads only its held output inside the RHS, so it is
-        # a source there; its inputs matter only at sample instants.
-        if fn in SOURCE_FNS or is_sampled_block(b):
+        # a source there; its inputs matter only at sample instants. A
+        # transport delay reads only recorded history (compiled_delays).
+        if fn in SOURCE_FNS or is_sampled_block(b) or is_delay_block(b):
             source_names.add(b.name)
         elif _is_d0_state_block(b, fn, block_matrices):
             d0_names.add(b.name)
@@ -360,7 +362,7 @@ def _sample_update_order(sampled_blocks, blocks, input_map, block_matrices):
 
     def passes_through(name):
         b = by_name.get(name)
-        if b is None or name in sampled_names:
+        if b is None or name in sampled_names or is_delay_block(b):
             return False
         return not _is_d0_state_block(b, canonical_fn(b.block_fn), block_matrices)
 
@@ -553,6 +555,9 @@ class SystemCompiler:
         self.last_incompatibility = None
         # Whether the last accepted diagram contains sampled blocks.
         self.last_has_discrete = False
+        # Whether it contains transport delays (the fixed-step gate needs it).
+        self.last_has_delay = False
+        self._delay_history = DelayHistory()
 
     def _not_compilable(self, block, reason: str) -> bool:
         """Record why ``block`` blocks compilation and return False."""
@@ -616,6 +621,7 @@ class SystemCompiler:
         if not _recursive:
             self.last_incompatibility = None
             self.last_has_discrete = False
+            self.last_has_delay = False
         allowed = self._compilable_names()
         for block in blocks:
             b_type = block.block_fn
@@ -641,6 +647,21 @@ class SystemCompiler:
                 return self._not_compilable(
                     block, "the 'impulse' step shape needs the fixed-step grid"
                 )
+
+            # A transport delay compiles by the method of steps
+            # (lib/engine/compiled_delays.py): every k*tau is a breakpoint.
+            if is_delay_block(block):
+                tau = delay_time(block)
+                if not tau > 0:
+                    return self._not_compilable(
+                        block, "its delay is not positive, so it would read its own input"
+                    )
+                if not allow_discrete:
+                    return self._not_compilable(
+                        block, "a transport delay has no finite-dimensional linearization"
+                    )
+                self.last_has_delay = True
+                continue
 
             # A block gated to a discrete rate (sampling_time > 0) is a
             # sampled-data element: it must hold its output between sample
@@ -760,6 +781,8 @@ class SystemCompiler:
         ctx = self._build_context(block, input_map, state_map, block_matrices)
         if is_sampled_block(block):  # before the fn registry: a rated TranFn is not a state block
             return build_sampled(ctx)
+        if is_delay_block(block):
+            return build_delay(ctx, self._delay_history)
         builder = get_kernel_builder(ctx.fn)
         if builder is not None:
             return builder(ctx)
@@ -832,6 +855,7 @@ class SystemCompiler:
         # Latch holders belong to this compile only: a stale registry would
         # hand the new closures the previous diagram's relay modes.
         self._mode_registry = {}
+        self._delay_history = DelayHistory()
 
         input_map = _build_input_map(blocks, lines)
         state_map, block_matrices, y0 = _allocate_states(blocks)
@@ -867,6 +891,9 @@ class SystemCompiler:
         model_func.source_names = [b.name for b in sources]
         model_func.state_map = state_map
         model_func.loops = loops
+        history = self._delay_history
+        history.model_func = model_func
+        model_func.delays = history if history.delays else None
 
         # Zero-crossing events are collected here (not in the runner) because
         # they need the same input_map / state_map / latch holders the kernels

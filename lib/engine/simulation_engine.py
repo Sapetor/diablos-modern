@@ -1410,7 +1410,18 @@ class SimulationEngine:
         # integrate between sample instants, the fixed-step ones (Euler/RK4)
         # on the output grid plus every instant (compiled_runner, hybrid
         # branches).
-        return self.compiler.check_compilability(blocks, allow_discrete=allow_discrete)
+        if not self.compiler.check_compilability(blocks, allow_discrete=allow_discrete):
+            return False
+        # Transport delays compile by the method of steps on the adaptive
+        # solvers only; a fixed-step run keeps the interpreter, whose delay
+        # buffer is already a fixed-step scheme.
+        method = compiled_runner.resolve_solver_method(getattr(self, "solver_method", "RK45"))
+        if self.compiler.last_has_delay and method in compiled_runner.FIXED_STEP_METHODS:
+            self.compiler.last_incompatibility = (
+                f"transport delay: the fixed-step {method} setting keeps the interpreter"
+            )
+            return False
+        return True
 
     def get_compile_fallback_reason(self) -> Optional[str]:
         """Why the last compilability check sent the run to the interpreter.
