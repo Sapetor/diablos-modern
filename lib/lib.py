@@ -951,6 +951,9 @@ class DSim:
             # Reset execution state
             self.execution_stop = False
             self.error_msg = ""
+            # As in execution_init: the interpreter path records no
+            # diagnostics, so a previous compiled run's must not survive it.
+            self.engine.last_solver_diagnostics = {}
             self.time_step = 0
             self._timeline_list = [self.time_step]
             self.timeline = np.array([self.time_step])

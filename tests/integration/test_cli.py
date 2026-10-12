@@ -207,6 +207,16 @@ class TestCliRun:
         rows = open(default_csv).read().strip().splitlines()
         assert len(rows) - 1 == 11  # header + 11 samples (t = 0.0 .. 1.0 step 0.1)
 
+    def test_interpreter_run_drops_compiled_diagnostics(self, qapp, diagram):
+        # The interpreter records no diagnostics, so a previous compiled run's
+        # must not survive into it.
+        dsim, _ = cli.load_diagram(diagram)
+        assert dsim.run_tuning_simulation(1.0, 0.1)[0]
+        assert dsim.engine.get_solver_diagnostics()["success"]
+        dsim.use_fast_solver = False
+        assert dsim.run_tuning_simulation(1.0, 0.1)[0]
+        assert dsim.engine.get_solver_diagnostics() == {}
+
     def test_interpreter_solver_runs(self, qapp, diagram, tmp_path):
         out = tmp_path / "interp.csv"
         rc = cli.main(
