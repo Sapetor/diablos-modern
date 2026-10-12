@@ -19,7 +19,7 @@ either tool, and the reference is evaluated at each tool's own output times.
 | S1a linear plant + digital PI | 1.6e-10 at 0.1 s, compiled (hybrid); exact (2e-14) on the interpreter | 6e-12 at 0.1 s (RKDP54) | Parity. A one-period control delay found here is fixed (`68e8289`) |
 | S1b nonlinear stiff plant + digital PI | 2.2e-13 at 1.4 s, compiled (hybrid); interpreter was 1st order, 2.4e-5 at 44 s | 1.7e-10 at 0.9 s; 1.9e-13 at 1.8 s | Parity since the hybrid path and the `Function` kernel |
 | S2 algebraic loop | solved to 1e-16, ~6 ms compiled (interpreter ~32 ms; rejected before `95f83ff`) | solved to 3e-13, 2 ms | Gap closed; DiaBloS ~3x slower |
-| S3 delayed platoon, N=50 | 1.8e-2 at 16 s | 2.0e-3 at 11 s; 2.4e-5 at 109 s | Mixed at N<=10; PathSim faster and more accurate at N>=20 |
+| S3 delayed platoon, N=50 | 2.4e-9 at 7.4 s, compiled (method of steps); interpreter was 1.8e-2 at 16 s | 2.0e-3 at 11 s; 2.4e-5 at 106 s | DiaBloS ahead at every N since the compiled TransportDelay |
 | S4 50-run seeded ensemble | 163 ms/run, bitwise reproducible | 164 ms/run (RK4, same dt), bitwise reproducible | Parity at matched settings |
 
 ## S1 - digital controller on a continuous plant
@@ -121,31 +121,35 @@ linearization and Python export both work through them.
 
 Predecessor-following double integrators,
 `a_i = 1 (p_{i-1}(t-0.1) - p_i) + 2 (v_{i-1}(t-0.1) - v_i)`, leader `p0 = t`,
-20 s. Reference: method of steps with DOP853 at rtol 1e-12. `TransportDelay`
-also forces the interpreter (`it has no compiled kernel`).
+20 s. Reference: method of steps with DOP853 at rtol 1e-12. Since `afaeb63`
+`TransportDelay` compiles by the method of steps (`lib/engine/compiled_delays.py`,
+`docs/SOLVER_SEMANTICS.md` 6.2); before that it forced the interpreter.
 
-| N (blocks) | DiaBloS dt=0.01 | DiaBloS dt=0.001 | PathSim rtol 1e-6 | PathSim rtol 1e-9 |
-|---|---|---|---|---|
-| 5 (48) | 1.5 s, 1.8e-2 | 14.9 s, 9.9e-4 | 0.8 s, 7.5e-2 | 3.2 s, 2.6e-5 |
-| 10 (93) | 2.8 s, 3.8e-2 | - | 1.7 s, 9.0e-2 | 10.4 s, 1.2e-4 |
-| 20 (183) | 5.6 s, 2.4e-1 | 56.5 s, 2.1e-2 | 3.7 s, 1.4e-2 | 35.0 s, 4.3e-4 |
-| 50 (453) | 16.3 s, 1.8e-2 | - | 10.7 s, 2.0e-3 | 108.6 s, 2.4e-5 |
+| N (blocks) | DiaBloS compiled, dt=0.01 | DiaBloS compiled, dt=0.001 | DiaBloS interpreter, dt=0.01 (before) | PathSim rtol 1e-6 | PathSim rtol 1e-9 |
+|---|---|---|---|---|---|
+| 5 (48) | 0.8 s, 1.9e-8 | 4.9 s, 1.9e-8 | 1.5 s, 1.8e-2 | 0.9 s, 7.5e-2 | 3.2 s, 2.6e-5 |
+| 10 (93) | 1.5 s, 2.7e-8 | - | 2.8 s, 3.8e-2 | 1.7 s, 9.0e-2 | 10.4 s, 1.2e-4 |
+| 20 (183) | 3.1 s, 7.5e-8 | 17.8 s, 7.5e-8 | 5.6 s, 2.4e-1 | 3.6 s, 1.4e-2 | 34.3 s, 4.3e-4 |
+| 50 (453) | 7.4 s, 2.4e-9 | - | 16.3 s, 1.8e-2 | 10.5 s, 2.0e-3 | 106.4 s, 2.4e-5 |
 
-(wall time, max error on the last vehicle's position)
+(median wall time of 3 runs, max error on the last vehicle's position; the
+interpreter column is the earlier run, kept for comparison)
 
-Both tools scale roughly linearly in N. The leader's velocity step reaches
-each follower as a delayed discontinuity that neither solver is told about,
-so adaptive stepping buys PathSim less here than in S1. For N <= 10 it is a
-trade-off: at rtol 1e-6 PathSim is faster but less accurate than DiaBloS at
-dt=0.01. At N >= 20 PathSim at rtol 1e-6 is both faster (3.7 vs 5.6 s,
-10.7 vs 16.3 s) and 9-17x more accurate. Tight tolerance gets expensive for
-PathSim (109 s at N=50).
+Both tools scale roughly linearly in N. The leader's velocity step at t=0
+reaches each follower as a discontinuity at `k * 0.1`. DiaBloS now stops at
+every `k * tau`, so each of those lands on a segment boundary, and the delayed
+inputs come from the solver's dense output. PathSim is not told about them, so
+its adaptive stepping crosses them, and tightening its tolerance from 1e-6 to
+1e-9 costs it 4-10x the time. At every N the
+compiled DiaBloS run is faster than PathSim at rtol 1e-6 and 3-4 orders more
+accurate than PathSim at rtol 1e-9. The output step `dt` no longer sets the
+accuracy (dt=0.001 gives the same error at 6x the cost: it only adds spline
+nodes and grid points).
 
 Errors are comparable across tools, not across N. The last vehicle's
 excursion by t=20 depends on how far the transient has propagated. At N=20
-its reference overshoots to 20.6 before settling at 15.0, and the DiaBloS
-peak error falls mid-transient (t~14.5 s). At N=50 the last vehicle has only
-moved 0.09, hence the small errors in that row.
+its reference overshoots to 20.6 before settling at 15.0. At N=50 the last
+vehicle has only moved 0.09, hence the small errors in that row.
 
 ## S4 - seeded Monte Carlo ensemble
 
@@ -177,8 +181,9 @@ gives it as a menu action with ensemble plots.
   cosmetic ones. S2 is now closed (`95f83ff`).
 - Two of its implicit worries do not: for linear plants the interpreter
   fallback is exact (S1a), and seeded ensembles are already on par in cost
-  and reproducibility (S4). Delayed multi-agent models (S3) trade off at
-  small N and favour PathSim at N >= 20, without the decisive gap of S1b.
+  and reproducibility (S4). Delayed multi-agent models (S3) traded off at
+  small N and favoured PathSim at N >= 20 until `TransportDelay` compiled
+  (`afaeb63`); DiaBloS now leads at every N, faster and more accurate.
 - New and more urgent than either: a **one-period sampling delay** behind
   every ZOH (S1), which silently changed digital-control results. It is
   fixed in `68e8289`, with a regression test against the S1a exact
@@ -187,8 +192,10 @@ gives it as a menu action with ensemble plots.
   2.4e-5 in 44 s on the interpreter and 1.9e-13 in 1.8 s for PathSim.
   Rated continuous blocks (TranFn/PID/Integrator with `sampling_time > 0`)
   and diagrams with algebraic loops compile too, and loops linearize.
-  Remaining engine gaps: FirstOrderHold, RateTransition and TransportDelay
-  still fall back to the interpreter (`tasks/hybrid_compiled_path.md`).
+  Remaining engine gaps: FirstOrderHold, RateTransition and
+  VariableTransportDelay still fall back to the interpreter, and
+  TransportDelay does under the fixed-step Euler/RK4 settings
+  (`tasks/hybrid_compiled_path.md`).
 
 ## Reproducing
 

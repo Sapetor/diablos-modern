@@ -216,7 +216,7 @@ a part of the trajectory that is already integrated; after each segment the
 delayed inputs are recorded from the solver's dense output as a cubic spline.
 The result has the adaptive solver's accuracy: on the PathSim platoon
 benchmark (`docs/BENCHMARK_PATHSIM.md`, S3) the 50-vehicle case went from
-1.8e-2 in 16 s on the interpreter to 2.4e-9 in 7.5 s. A delay of zero,
+1.8e-2 in 16 s on the interpreter to 2.4e-9 in 7.4 s. A delay of zero,
 `VariableTransportDelay` and the fixed-step `Euler`/`RK4` settings keep the
 interpreter; the linearizer and the Python exporter refuse a delay. Details:
 [SOLVER_SEMANTICS.md, section 6.2](SOLVER_SEMANTICS.md#62-what-compiles).

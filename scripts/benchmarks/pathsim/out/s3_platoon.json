@@ -1,7 +1,7 @@
 {
   "scenario": "s3_platoon",
   "env": {
-    "diablos_commit": "b21f236",
+    "diablos_commit": "afaeb63",
     "pathsim": "0.27.0",
     "numpy": "2.5.3",
     "scipy": "1.18.1",
@@ -25,38 +25,38 @@
       "n": 5,
       "knob": "sim_dt=0.01",
       "n_blocks": 48,
-      "path": "interpreter",
-      "fallback_reason": "transportdelay2 (TransportDelay): it has no compiled kernel",
+      "path": "compiled",
+      "fallback_reason": null,
       "error": null,
       "timing": {
-        "median_s": 1.4601357100036694,
-        "min_s": 1.45691978999821,
+        "median_s": 0.8212463359814137,
+        "min_s": 0.8058506269881036,
         "n": 3
       },
-      "max_err_last_pos": 0.018333333669665164
+      "max_err_last_pos": 1.8816155078482666e-08
     },
     {
       "tool": "diablos",
       "n": 5,
       "knob": "sim_dt=0.001",
       "n_blocks": 48,
-      "path": "interpreter",
-      "fallback_reason": "transportdelay2 (TransportDelay): it has no compiled kernel",
+      "path": "compiled",
+      "fallback_reason": null,
       "error": null,
       "timing": {
-        "median_s": 14.888051477006229,
-        "min_s": 14.755538186000194,
+        "median_s": 4.914012185996398,
+        "min_s": 4.852176495012827,
         "n": 3
       },
-      "max_err_last_pos": 0.000988959206404405
+      "max_err_last_pos": 1.881804334580295e-08
     },
     {
       "tool": "pathsim",
       "n": 5,
       "knob": "RKDP54 rtol=1e-06",
       "timing": {
-        "median_s": 0.8317679170068004,
-        "min_s": 0.8259589779991074,
+        "median_s": 0.8517307179863565,
+        "min_s": 0.8381882930116262,
         "n": 3
       },
       "max_err_last_pos": 0.07519383800657486
@@ -66,8 +66,8 @@
       "n": 5,
       "knob": "RKDP54 rtol=1e-09",
       "timing": {
-        "median_s": 3.2191187089993036,
-        "min_s": 3.216897903002973,
+        "median_s": 3.2156843330012634,
+        "min_s": 3.1871585859917104,
         "n": 3
       },
       "max_err_last_pos": 2.56837597598647e-05
@@ -77,23 +77,23 @@
       "n": 10,
       "knob": "sim_dt=0.01",
       "n_blocks": 93,
-      "path": "interpreter",
-      "fallback_reason": "transportdelay2 (TransportDelay): it has no compiled kernel",
+      "path": "compiled",
+      "fallback_reason": null,
       "error": null,
       "timing": {
-        "median_s": 2.8327692300008493,
-        "min_s": 2.8325161739994655,
+        "median_s": 1.5152936530066654,
+        "min_s": 1.5128448619798291,
         "n": 3
       },
-      "max_err_last_pos": 0.037947578812685734
+      "max_err_last_pos": 2.7007918568244804e-08
     },
     {
       "tool": "pathsim",
       "n": 10,
       "knob": "RKDP54 rtol=1e-06",
       "timing": {
-        "median_s": 1.709447775996523,
-        "min_s": 1.6985021210057312,
+        "median_s": 1.7224419080012012,
+        "min_s": 1.6961028229852673,
         "n": 3
       },
       "max_err_last_pos": 0.08974726358808027
@@ -103,8 +103,8 @@
       "n": 10,
       "knob": "RKDP54 rtol=1e-09",
       "timing": {
-        "median_s": 10.354252723001991,
-        "min_s": 10.327781849999155,
+        "median_s": 10.372395113983657,
+        "min_s": 10.312717728986172,
         "n": 3
       },
       "max_err_last_pos": 0.00012173314888386244
@@ -114,38 +114,38 @@
       "n": 20,
       "knob": "sim_dt=0.01",
       "n_blocks": 183,
-      "path": "interpreter",
-      "fallback_reason": "transportdelay2 (TransportDelay): it has no compiled kernel",
+      "path": "compiled",
+      "fallback_reason": null,
       "error": null,
       "timing": {
-        "median_s": 5.636369765998097,
-        "min_s": 5.617891993999365,
+        "median_s": 3.0590621620067395,
+        "min_s": 3.0556852460140362,
         "n": 3
       },
-      "max_err_last_pos": 0.24380871445899643
+      "max_err_last_pos": 7.490518783015432e-08
     },
     {
       "tool": "diablos",
       "n": 20,
       "knob": "sim_dt=0.001",
       "n_blocks": 183,
-      "path": "interpreter",
-      "fallback_reason": "transportdelay2 (TransportDelay): it has no compiled kernel",
+      "path": "compiled",
+      "fallback_reason": null,
       "error": null,
       "timing": {
-        "median_s": 56.522008100000676,
-        "min_s": 56.31590056200366,
+        "median_s": 17.819283115997678,
+        "min_s": 17.780200782988686,
         "n": 3
       },
-      "max_err_last_pos": 0.021166156611926112
+      "max_err_last_pos": 7.492205966741494e-08
     },
     {
       "tool": "pathsim",
       "n": 20,
       "knob": "RKDP54 rtol=1e-06",
       "timing": {
-        "median_s": 3.6602978679948137,
-        "min_s": 3.653092448003008,
+        "median_s": 3.5574090399895795,
+        "min_s": 3.539545937004732,
         "n": 3
       },
       "max_err_last_pos": 0.014428469408606759
@@ -155,8 +155,8 @@
       "n": 20,
       "knob": "RKDP54 rtol=1e-09",
       "timing": {
-        "median_s": 34.97357574600028,
-        "min_s": 34.92016516399599,
+        "median_s": 34.30430944598629,
+        "min_s": 34.26207197699114,
         "n": 3
       },
       "max_err_last_pos": 0.0004264946791927571
@@ -166,23 +166,23 @@
       "n": 50,
       "knob": "sim_dt=0.01",
       "n_blocks": 453,
-      "path": "interpreter",
-      "fallback_reason": "transportdelay2 (TransportDelay): it has no compiled kernel",
+      "path": "compiled",
+      "fallback_reason": null,
       "error": null,
       "timing": {
-        "median_s": 16.280742025002837,
-        "min_s": 16.26698152699828,
+        "median_s": 7.376919089001603,
+        "min_s": 7.347042706998764,
         "n": 3
       },
-      "max_err_last_pos": 0.01832798179690713
+      "max_err_last_pos": 2.436464502375557e-09
     },
     {
       "tool": "pathsim",
       "n": 50,
       "knob": "RKDP54 rtol=1e-06",
       "timing": {
-        "median_s": 10.689154160005273,
-        "min_s": 10.647815659001935,
+        "median_s": 10.506512724008644,
+        "min_s": 10.318603927997174,
         "n": 3
       },
       "max_err_last_pos": 0.001988318322813931
@@ -192,8 +192,8 @@
       "n": 50,
       "knob": "RKDP54 rtol=1e-09",
       "timing": {
-        "median_s": 108.60484483699838,
-        "min_s": 108.41639312999905,
+        "median_s": 106.3875714429887,
+        "min_s": 106.3632833409938,
         "n": 3
       },
       "max_err_last_pos": 2.4129311623696803e-05

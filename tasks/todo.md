@@ -36,6 +36,14 @@ checkable (2026-10-02 pass noted per item).
   solved inside the compiled RHS (`lib/engine/compiled_loops.py`), so
   diagrams with loops compile and linearize; Python export still refuses. The `Function`
   kernel landed (`19497e1`), so S1b runs compiled: 2.2e-13 in 1.4 s.
+- [x] **Compiled TransportDelay** (2026-10-12, `afaeb63`): method of steps,
+  every `k*tau` a breakpoint, delayed inputs recorded as a cubic spline from
+  the accepted steps (`lib/engine/compiled_delays.py`). PathSim S3 at N=50:
+  2.4e-9 in 7.4 s (was 1.8e-2 in 16 s on the interpreter). Tests:
+  `tests/regression/test_compiled_transport_delay.py`. Still open:
+  `VariableTransportDelay` (delay is a signal), the fixed-step Euler/RK4
+  settings (keep the interpreter), linearization through a delay (would need
+  a Pade approximation), Python export of a delay.
 - [x] **Compiled RateLimiter started at 0** (2026-10-10). The block latches
   its first input, `y(0) = u(0)`, unknown when `_alloc_rate_limiter` allocates
   the state. The kernel now exposes `seed_state` and
