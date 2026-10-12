@@ -186,3 +186,21 @@ class TestLinearizer:
         lin = Linearizer(dsim)
         with pytest.raises(ValueError, match="not compilable"):
             lin.linearize_at_point()
+
+    def test_linearizes_current_subsystem_params_after_a_run(self, qapp):
+        """A run leaves flattened copies of Subsystem contents in the engine;
+        linearizing afterwards must use the parameters set since, not those."""
+        import os
+
+        from lib import cli
+
+        path = os.path.join(
+            os.path.dirname(__file__), "..", "..", "examples", "library_block_demo.diablos"
+        )
+        dsim, _ = cli.load_diagram(path)
+        ok, err = dsim.run_tuning_simulation(5.0, 0.01)
+        assert ok, err
+        sub = next(b for b in dsim.blocks_list if b.block_fn == "Subsystem")
+        sub.params["b"] = 500.0  # masked plant 1/(m s + b), m = 1500, gain 800
+        res = Linearizer(dsim).linearize_at_point()
+        assert np.allclose(res["A"], [[-(500.0 + 800.0) / 1500.0]], rtol=1e-5)

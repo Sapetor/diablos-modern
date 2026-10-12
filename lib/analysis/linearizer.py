@@ -101,12 +101,14 @@ class Linearizer:
         blocks = self.dsim.blocks_list
         lines = getattr(self.dsim, "line_list", None)
 
-        # Flatten + resolve (mirrors SimulationEngine.run_compiled_simulation).
-        if not engine.active_blocks_list:
-            if not engine.initialize_execution(blocks, lines):
-                raise ValueError(
-                    f"Failed to initialize execution ({engine.error_msg}); cannot linearize."
-                )
+        # Flatten + resolve. Always flatten afresh: a previous run leaves its
+        # flattened copies of Subsystem contents in active_blocks_list, taken
+        # with the parameters of that run, so reusing them linearized a masked
+        # Subsystem at its old parameter values.
+        if not engine.initialize_execution(blocks, lines):
+            raise ValueError(
+                f"Failed to initialize execution ({engine.error_msg}); cannot linearize."
+            )
         current_blocks = engine.active_blocks_list
         current_lines = engine.active_line_list if engine.active_line_list else lines
 
