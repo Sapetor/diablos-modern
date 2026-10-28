@@ -6,9 +6,10 @@ Handles saving and loading diagram files.
 import json
 import os
 import logging
-from typing import Dict, Optional, Any
+from typing import Any, Dict, List, Optional, Tuple
 from PyQt6.QtCore import QRect
 
+from lib.atomic_io import atomic_write_json  # noqa: F401 - re-exported
 from lib.services.file_dialogs import prompt_open_path, prompt_save_path
 
 logger = logging.getLogger(__name__)
@@ -205,8 +206,7 @@ class FileService:
             if dirname:
                 os.makedirs(dirname, exist_ok=True)
 
-            with open(filename, "w", encoding="utf-8") as fp:
-                json.dump(data, fp, indent=4)
+            atomic_write_json(filename, data)
 
             self.filename = os.path.basename(filename)
             self.model.dirty = False
@@ -347,6 +347,10 @@ class FileService:
         """
         Apply loaded data to the model, reconstructing the diagram.
 
+        The new diagram is built off to the side first and only swapped into
+        the model once every step has succeeded, so a file that fails to load
+        leaves the diagram the user already had untouched.
+
         Args:
             data: Dictionary containing sim_data, blocks_data, lines_data from loaded file
 
@@ -355,12 +359,25 @@ class FileService:
                 - sim_time: Total simulation duration
                 - sim_dt: Simulation time step
                 - plot_trange: Plot time range for scope displays
-        """
-        # Clear existing data
-        self.model.clear_all()
 
-        # Extract simulation parameters
-        sim_data = data.get("sim_data", {})
+        Raises:
+            ValueError: ``data`` does not have the shape of a diagram.
+        """
+        sim_params, blocks, lines = self.build_loaded_data(data)
+        self.commit_loaded_data(blocks, lines)
+        return sim_params
+
+    def build_loaded_data(self, data: Any) -> Tuple[Dict[str, Any], List[Any], List[Any]]:
+        """Reconstruct ``(sim_params, blocks, lines)`` without touching the model.
+
+        Raises ``ValueError`` when ``data`` fails the structural check; any
+        other exception escapes as-is. Either way the model is unchanged.
+        """
+        if not self._is_valid_diagram_data(data):
+            raise ValueError("not a valid DiaBloS diagram (unexpected top-level structure)")
+
+        # ``or {}``/``or []``: a key that is present but null means "absent".
+        sim_data = data.get("sim_data") or {}
         sim_params = {
             "sim_time": sim_data.get("sim_time", 1.0),
             "sim_dt": sim_data.get("sim_dt", 0.01),
@@ -376,30 +393,30 @@ class FileService:
         # Recreate top-level blocks (recurses into Subsystems via _construct_block).
         # Each block is constructed defensively: a single malformed record
         # (e.g. missing required keys) is skipped and logged rather than
-        # aborting the whole load and leaving the model half-cleared.
-        blocks_data = data.get("blocks_data", [])
-        for block_data in blocks_data:
+        # aborting the whole load.
+        blocks: List[Any] = []
+        for block_data in data.get("blocks_data") or []:
             try:
                 block = self._construct_block(block_data)
             except Exception as e:
                 logger.warning(f"Skipping malformed block during load: {e}")
                 continue
             if block is not None:
-                self.model.blocks_list.append(block)
+                blocks.append(block)
 
         # Build username→name and name→name maps for flexible line references
-        block_name_map = self._build_name_map(self.model.blocks_list)
+        block_name_map = self._build_name_map(blocks)
 
         # Recreate top-level lines (defensively, as with blocks)
-        lines_data = data.get("lines_data", [])
-        for line_data in lines_data:
+        lines: List[Any] = []
+        for line_data in data.get("lines_data") or []:
             try:
                 line = self._construct_line(line_data, block_name_map)
             except Exception as e:
                 logger.warning(f"Skipping malformed line during load: {e}")
                 continue
             if line is not None:
-                self.model.line_list.append(line)
+                lines.append(line)
 
         # Legacy migration: pre-fix diagrams persisted virtual Goto/From
         # lines as ordinary visible lines.  Detect them by their unique
@@ -407,19 +424,22 @@ class FileService:
         # ports) and mark them hidden so link_goto_from cleans them up
         # on the next execution_init.  Without this, reopened files
         # accumulate ghost lines visible on the canvas.
-        from_block_names = {
-            b.name for b in self.model.blocks_list if getattr(b, "block_fn", "") == "From"
-        }
+        from_block_names = {b.name for b in blocks if getattr(b, "block_fn", "") == "From"}
         if from_block_names:
-            for line in self.model.line_list:
+            for line in lines:
                 if line.dstblock in from_block_names and not getattr(line, "hidden", False):
                     line.hidden = True
 
-        # Update line positions
+        return sim_params, blocks, lines
+
+    def commit_loaded_data(self, blocks: List[Any], lines: List[Any]) -> None:
+        """Replace the model's diagram with ``blocks``/``lines`` built by
+        :meth:`build_loaded_data`."""
+        # In place: DSim and the canvas alias these lists.
+        self.model.blocks_list[:] = blocks
+        self.model.line_list[:] = lines
         self.model.update_lines()
         self.model.dirty = False
-
-        return sim_params
 
     @staticmethod
     def _build_name_map(blocks: list) -> Dict[str, str]:

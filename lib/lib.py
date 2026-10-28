@@ -415,13 +415,19 @@ class DSim:
         """
         Deserialize diagram state from dict.
         Used by DiagramService.
+
+        Transactional: the incoming diagram is fully rebuilt before anything
+        about the current one changes, so a file that fails to load (raising
+        here) leaves the open diagram, its navigation and its held runs intact.
         """
+        sim_params, blocks, lines = self.file_service.build_loaded_data(data)
+
         # A different diagram is replacing the current one: drop the scope
         # data held for the "Previous run" overlay (see clear_all).
         while self.navigation_stack:
             self.exit_subsystem()
         self.scope_plotter.reset_held_runs()
-        sim_params = self.file_service.apply_loaded_data(data)
+        self.file_service.commit_loaded_data(blocks, lines)
 
         # Sync simulation parameters back to DSim
         self.sim_time = sim_params.get("sim_time", 1.0)

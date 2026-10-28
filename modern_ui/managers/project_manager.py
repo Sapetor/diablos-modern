@@ -1,5 +1,6 @@
 import os
 import logging
+import time
 from PyQt6.QtWidgets import QMessageBox
 from lib.app_paths import user_data_path
 from lib.i18n import tr
@@ -101,46 +102,64 @@ class ProjectManager:
             logger.error(f"Error checking auto-save recovery: {str(e)}")
 
     def recover_autosave(self):
-        """Recover diagram from auto-save file."""
+        """Recover diagram from auto-save file.
+
+        The auto-save is deleted only after it has actually loaded. A failed
+        recovery moves it aside instead (see :meth:`_preserve_failed_autosave`):
+        deleting it lost the user's only copy, and leaving it in place would let
+        the next periodic auto-save overwrite it with the empty diagram.
+        """
         try:
-            # Use diagram service to load
-            if self.diagram_service:
-                # DiagramService internally uses file_service.load
-                # We might need to bypass dialog if we just want to load a specific file
-                # DiagramService has load_diagram(filename) support
+            loaded = (
                 self.diagram_service.load_diagram(self.autosave_path)
-
-            # Remove autosave file after successful recovery
-            if os.path.exists(self.autosave_path):
-                os.remove(self.autosave_path)
-
-            self.window.canvas.update()
-            self.window.status_message.setText(tr("Diagram recovered from auto-save"))
-            logger.info("Diagram successfully recovered from auto-save")
-
-            QMessageBox.information(
-                self.window,
-                tr("Recovery Successful"),
-                tr("Your diagram has been successfully recovered from the auto-save file."),
+                if self.diagram_service
+                else None
             )
-
+            if loaded is None:
+                raise RuntimeError(tr("The auto-save file could not be loaded."))
         except Exception as e:
             logger.error(f"Error recovering from auto-save: {str(e)}")
-            try:
-                if os.path.exists(self.autosave_path):
-                    os.remove(self.autosave_path)
-            except OSError:
-                logger.debug(
-                    "Failed to remove corrupt auto-save file during recovery cleanup", exc_info=True
-                )
-            QMessageBox.warning(
-                self.window,
-                tr("Recovery Failed"),
-                tr(
-                    "Could not recover auto-save file. Starting fresh.\n\nError: {error}",
-                    error=str(e),
-                ),
+            kept = self._preserve_failed_autosave()
+            message = tr(
+                "Could not recover auto-save file. Starting fresh.\n\nError: {error}", error=str(e)
             )
+            if kept:
+                message += "\n\n" + tr("The auto-save file was kept as:\n{path}", path=kept)
+            QMessageBox.warning(self.window, tr("Recovery Failed"), message)
+            return
+
+        try:
+            os.remove(self.autosave_path)
+        except OSError:
+            logger.debug("Could not remove the recovered auto-save file", exc_info=True)
+
+        self.window.canvas.update()
+        self.window.status_message.setText(tr("Diagram recovered from auto-save"))
+        logger.info("Diagram successfully recovered from auto-save")
+
+        QMessageBox.information(
+            self.window,
+            tr("Recovery Successful"),
+            tr("Your diagram has been successfully recovered from the auto-save file."),
+        )
+
+    def _preserve_failed_autosave(self):
+        """Rename an unrecoverable auto-save to a timestamped sibling.
+
+        Returns the new path, or ``None`` if there was nothing to keep or the
+        rename failed.
+        """
+        if not os.path.exists(self.autosave_path):
+            return None
+        stem, ext = os.path.splitext(self.autosave_path)
+        kept = "{}.failed-{}{}".format(stem, time.strftime("%Y%m%d-%H%M%S"), ext)
+        try:
+            os.replace(self.autosave_path, kept)
+        except OSError:
+            logger.warning("Could not set the failed auto-save file aside", exc_info=True)
+            return None
+        logger.info("Kept the unrecoverable auto-save file as %s", kept)
+        return kept
 
     def cleanup_autosave(self):
         """Clean up auto-save file on normal shutdown."""
