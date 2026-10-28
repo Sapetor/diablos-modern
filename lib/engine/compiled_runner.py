@@ -39,6 +39,7 @@ from lib.engine.replay_handlers import (
     ReplayStep,
     finalize_recorders,
     replay_fallback,
+    truncate_recorders,
 )
 from lib.engine.zero_crossing import (
     DEFAULT_MAX_EVENTS,
@@ -64,6 +65,101 @@ FIXED_STEP_METHODS = ("Euler", "RK4")
 # points at. Matched case-insensitively; stored verbatim in the .diablos file.
 AUTO_SOLVER_METHOD = "auto"
 AUTO_RESOLVED_METHOD = "LSODA"
+
+
+class CompiledRunCancelled(BaseException):
+    """The caller's ``cancel_cb`` fired inside a compiled run.
+
+    Raised from the monitored RHS (so from inside ``solve_ivp`` or one of the
+    in-house segment loops) and from the replay loop, and caught only by
+    :func:`run_compiled_simulation`. A ``BaseException`` for the same reason
+    ``asyncio.CancelledError`` is one: the solver stack has several
+    ``except Exception`` guards (event callables, discrete updates) that must
+    not swallow a cancellation as if it were a block error.
+
+    ``n_done`` is how many output samples were fully replayed before the
+    cancel; 0 when the solve itself was interrupted.
+    """
+
+    def __init__(self, n_done: int = 0):
+        super().__init__("compiled run cancelled")
+        self.n_done = int(n_done)
+
+
+class _RunMonitor:
+    """Polls the caller's cancel / progress hooks from inside a compiled run.
+
+    The compiled path used to call neither hook: once ``solve_ivp`` started,
+    Stop had to wait for the whole integration and the replay to finish.
+    """
+
+    # RHS evaluations between polls. A cancel_cb is a flag read, but the RHS
+    # of a small diagram is only a few microseconds, so do not double it.
+    STRIDE = 16
+    # Replay steps between polls.
+    REPLAY_STRIDE = 256
+
+    def __init__(self, cancel_cb=None, progress_cb=None, t_end=0.0):
+        self.cancel_cb = cancel_cb
+        self.progress_cb = progress_cb
+        self.t_end = float(t_end)
+        self._t_reported = -np.inf
+
+    @property
+    def active(self) -> bool:
+        return self.cancel_cb is not None or self.progress_cb is not None
+
+    def check(self, n_done: int = 0) -> None:
+        if self.cancel_cb is not None and self.cancel_cb():
+            raise CompiledRunCancelled(n_done)
+
+    def poll(self, t) -> None:
+        """Cancel check plus progress at solver time ``t`` (from the RHS)."""
+        self.check()
+        if self.progress_cb is not None:
+            # Stages evaluate ahead of the accepted step and a rejected step
+            # goes back, so only report forward motion.
+            t = float(t)
+            if t > self._t_reported:
+                self._t_reported = t
+                self.progress_cb(min(t, self.t_end), self.t_end)
+
+    def wrap(self, rhs):
+        """``rhs`` with a poll every :attr:`STRIDE` calls (unchanged if idle)."""
+        return _MonitoredRHS(rhs, self) if self.active else rhs
+
+    def wrap_hook(self, hook):
+        """A breakpoint hook that polls before running (``None`` stays None)."""
+        if hook is None or not self.active:
+            return hook
+
+        def monitored(t, y):
+            self.poll(t)
+            return hook(t, y)
+
+        return monitored
+
+
+class _MonitoredRHS:
+    """Callable proxy for a compiled RHS that polls a :class:`_RunMonitor`.
+
+    Attribute reads (``evaluate``, ``event_specs``, ``mode_states``, ...) go
+    to the wrapped function, so the segment drivers see the same object API.
+    """
+
+    def __init__(self, rhs, monitor: _RunMonitor):
+        self._rhs = rhs
+        self._monitor = monitor
+        self._calls = 0
+
+    def __call__(self, t, y):
+        self._calls += 1
+        if self._calls % _RunMonitor.STRIDE == 0:
+            self._monitor.poll(t)
+        return self._rhs(t, y)
+
+    def __getattr__(self, name):
+        return getattr(self._rhs, name)
 
 
 def resolve_solver_method(method) -> str:
@@ -314,8 +410,13 @@ def replay_compiled_signals(engine, sol, current_blocks, current_lines, state_ma
     mode_replayer = ModeHistoryReplayer(
         getattr(getattr(engine, "compiler", None), "_mode_registry", {}).values(), sol
     )
+    # Set by run_compiled_simulation for the duration of one run (None for a
+    # direct call), so a long replay can be cancelled too.
+    monitor = getattr(engine, "_compiled_run_monitor", None)
 
     for i in range(num_steps):
+        if monitor is not None and i % _RunMonitor.REPLAY_STRIDE == 0:
+            monitor.check(n_done=i)
         t = sol.t[i]
         y_step = sol.y[:, i] if sol.y.ndim > 1 else sol.y
         mode_replayer.at(float(t))
@@ -498,15 +599,35 @@ class _StatelessRHS:
 
 
 def run_compiled_simulation(
-    engine, blocks: List[DBlock], lines: List[Any], t_span: Tuple[float, float], dt: float
+    engine,
+    blocks: List[DBlock],
+    lines: List[Any],
+    t_span: Tuple[float, float],
+    dt: float,
+    cancel_cb=None,
+    progress_cb=None,
 ) -> bool:
     """
     Run the simulation using the compiled fast solver.
+
+    Args:
+        cancel_cb: optional ``() -> bool`` polled from inside the integration
+            (every few RHS evaluations, in every backend) and the replay. When
+            it returns True the run stops, ``engine.compiled_run_cancelled`` is
+            set, Scope histories are cut back to the samples actually replayed
+            (none if the solve itself was interrupted), and False is returned.
+            Callers must check the flag before falling back to the interpreter.
+        progress_cb: optional ``(t_now, t_end)`` called with the solver's time
+            as the integration advances.
     """
     run_start = time_module.perf_counter()
+    engine.compiled_run_cancelled = False
+    monitor = _RunMonitor(cancel_cb, progress_cb, t_span[1])
+    engine._compiled_run_monitor = monitor if monitor.active else None
     compile_time = 0.0
     solve_time = 0.0
     replay_time = 0.0
+    solve_start = None
     compile_cache_hit = False
     method_requested = getattr(engine, "solver_method", "RK45") or "RK45"
     # "auto" is a stored setting, not a scheme; resolve it once here so every
@@ -626,6 +747,7 @@ def run_compiled_simulation(
             __slots__ = ("t", "y", "success", "message", "status", "nfev", "njev", "nlu")
 
         sampled = list(getattr(model_func, "sampled", None) or [])
+        monitor.check()
         solve_start = time_module.perf_counter()
         if len(y0) == 0 and not sampled and delays is None:
             # Purely algebraic system
@@ -669,14 +791,14 @@ def run_compiled_simulation(
                     f"instant(s) of {len(sampled)} sampled block(s)"
                 )
                 sol = solve_fixed_step_with_breakpoints(
-                    rhs,
+                    monitor.wrap(rhs),
                     t_span,
                     y0 if len(y0) else np.zeros(1),
                     t_eval,
                     scheme,
                     integrate_fixed_step,
                     breakpoints,
-                    make_sample_hook(rhs, sampled, t_span),
+                    monitor.wrap_hook(make_sample_hook(rhs, sampled, t_span)),
                     mode_states=getattr(model_func, "mode_states", None),
                 )
                 if not len(y0):
@@ -686,7 +808,7 @@ def run_compiled_simulation(
             elif method in FIXED_STEP_METHODS:
                 backend = "fixed_step"
                 scheme = "rk4" if method == "RK4" else "euler"
-                y_history = integrate_fixed_step(model_func, t_eval, y0, scheme)
+                y_history = integrate_fixed_step(monitor.wrap(model_func), t_eval, y0, scheme)
                 sol = _SolverResult()
                 sol.t = t_eval
                 sol.y = y_history
@@ -729,7 +851,7 @@ def run_compiled_simulation(
                         f"{len(taus)} transport delay(s)"
                     )
                     sol = solve_with_events(
-                        rhs,
+                        monitor.wrap(rhs),
                         t_span,
                         y0 if len(y0) else np.zeros(1),
                         t_eval,
@@ -743,7 +865,9 @@ def run_compiled_simulation(
                         max_step=dt,
                         fallback_integrator=fallback,
                         breakpoints=breakpoints,
-                        on_breakpoint=make_sample_hook(rhs, sampled, t_span) if sampled else None,
+                        on_breakpoint=monitor.wrap_hook(make_sample_hook(rhs, sampled, t_span))
+                        if sampled
+                        else None,
                         **delay_hooks,
                     )
                     if not len(y0):
@@ -757,7 +881,7 @@ def run_compiled_simulation(
                         f"{len(event_specs)} zero-crossing event(s)"
                     )
                     sol = solve_with_events(
-                        model_func,
+                        monitor.wrap(model_func),
                         t_span,
                         y0,
                         t_eval,
@@ -781,7 +905,7 @@ def run_compiled_simulation(
                     backend = "scipy"
                     logger.info(f"Solving with {method} (rtol={rtol}, atol={atol})")
                     sol = solve_ivp(
-                        model_func,
+                        monitor.wrap(model_func),
                         t_span,
                         y0,
                         t_eval=t_eval,
@@ -896,6 +1020,38 @@ def run_compiled_simulation(
 
         return True
 
+    except CompiledRunCancelled as cancel:
+        # Not an error and not a reason to fall back to the interpreter: the
+        # user asked to stop. Leave the Scopes holding exactly the samples that
+        # were replayed (none when the solve itself was interrupted) so a plot
+        # never shows a zero-padded tail or the previous run's trace.
+        n_done = cancel.n_done
+        logger.info("Compiled simulation cancelled (%d sample(s) replayed).", n_done)
+        engine.compiled_run_cancelled = True
+        truncate_recorders(engine.active_blocks_list or blocks, n_done)
+        if n_done:
+            # Cancelled in the replay: the solve set timeline / outs.
+            engine.timeline = np.asarray(engine.timeline)[:n_done]
+            engine.outs = np.asarray(engine.outs)[..., :n_done]
+        else:
+            engine.timeline = np.zeros(0)
+            engine.outs = []
+        if not solve_time and solve_start is not None:
+            solve_time = time_module.perf_counter() - solve_start
+        engine.last_solver_diagnostics = {
+            "success": False,
+            "failure_stage": "cancelled",
+            "message": "Cancelled",
+            "method_requested": method_requested,
+            "method_used": method_used,
+            "backend": backend,
+            "compile_cache_hit": bool(compile_cache_hit),
+            "compile_wall_time": float(compile_time),
+            "solve_wall_time": float(solve_time),
+            "total_wall_time": time_module.perf_counter() - run_start,
+        }
+        return False
+
     except Exception as e:
         logger.error(f"Compiled simulation failed: {e}", exc_info=True)
         # Surface the exception type/message so callers and the UI can tell
@@ -916,3 +1072,6 @@ def run_compiled_simulation(
             "total_wall_time": time_module.perf_counter() - run_start,
         }
         return False
+
+    finally:
+        engine._compiled_run_monitor = None

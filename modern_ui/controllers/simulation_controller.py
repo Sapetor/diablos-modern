@@ -9,7 +9,9 @@ Two signals face the UI, and the canvas re-emits both under its own names:
 
 * ``status_changed(str)`` -- a human-readable, translated status line.
 * ``state_changed(str, str)`` -- the run *state* (``idle`` / ``running`` /
-  ``paused`` / ``error``) plus the message that explains an error.  Widgets
+  ``paused`` / ``stopping`` / ``error``) plus the message that explains an
+  error.  ``stopping`` lasts from Stop until the batch worker has actually
+  returned; only then does the controller announce "stopped".  Widgets
   take their state from this signal only; a status line is never parsed for
   keywords (that broke in translated UIs and on any file name containing
   "run").  The state is emitted *before* the matching status line, so a pill
@@ -35,7 +37,7 @@ logger = logging.getLogger(__name__)
 _ACTIVE_BATCH_WORKERS = set()
 
 
-SIM_STATES = ("idle", "running", "paused", "error")
+SIM_STATES = ("idle", "running", "paused", "stopping", "error")
 
 
 def batch_simulation_active() -> bool:
@@ -64,6 +66,9 @@ class SimulationController(QObject):
         super().__init__(parent)
         self.dsim = dsim
         self._batch_worker = None
+        # Stop was pressed during the current batch run; its end is then
+        # announced as "stopped", not "finished".
+        self._stop_requested = False
 
     def _set_state(self, state, message=""):
         if state not in SIM_STATES:
@@ -84,6 +89,13 @@ class SimulationController(QObject):
         """Start simulation with validation."""
         try:
             logger.info("Starting simulation from canvas")
+
+            if self._batch_worker is not None:
+                # A batch run (possibly one that is stopping) still owns the
+                # DSim; execution_init() below would re-arm it under the worker.
+                logger.warning("Start ignored: the previous batch run has not finished.")
+                self.status_changed.emit(tr("The previous run is still stopping."))
+                return False
 
             # Run validation first
             is_valid, errors = validate_block_connections(
@@ -169,6 +181,7 @@ class SimulationController(QObject):
         self._set_state("running")
         self.status_changed.emit(tr("Running simulation..."))
 
+        self._stop_requested = False
         worker = BatchSimulationWorker(self.dsim, parent=self)
         # Bound methods of this QObject (GUI-thread affinity), so Qt queues the
         # calls onto the GUI thread -- results and plots are never touched from
@@ -210,19 +223,45 @@ class SimulationController(QObject):
 
     def _on_batch_ok(self):
         """Worker finished normally (or was cancelled). GUI thread."""
-        self._on_batch_done(True, "")
+        self._on_batch_done(True, "", self.sender())
 
     def _on_batch_failed(self, message):
         """Worker raised. GUI thread."""
-        self._on_batch_done(False, message)
+        self._on_batch_done(False, message, self.sender())
 
-    def _on_batch_done(self, ok, message):
-        """Worker-thread completion, delivered on the GUI thread by Qt."""
-        worker = self._batch_worker
-        self._batch_worker = None
-        if worker is not None:
+    def _on_batch_done(self, ok, message, worker=None):
+        """Worker-thread completion, delivered on the GUI thread by Qt.
+
+        ``worker`` is the signal's sender. A worker that ``cancel_batch`` has
+        already joined and dropped is stale: its queued signal arrives after
+        the fact and must not end (or plot over) a newer run.
+        """
+        current = self._batch_worker
+        if worker is not None and worker is not current:
             _ACTIVE_BATCH_WORKERS.discard(worker)
-        self._finish_batch(ok, message)
+            return
+        self._batch_worker = None
+        if current is not None:
+            _ACTIVE_BATCH_WORKERS.discard(current)
+        stopped = self._stop_requested
+        self._stop_requested = False
+        if stopped and ok and not getattr(self.dsim, "error_msg", ""):
+            self._finish_stopped()
+        else:
+            self._finish_batch(ok, message)
+
+    def _finish_stopped(self):
+        """The batch worker has returned after Stop. GUI thread only.
+
+        Whatever the run recorded before it stopped is plotted (the
+        interpreter keeps its partial traces; a compiled run cancelled inside
+        the solve has none, which closes a stale plot window).
+        """
+        self._set_state("idle")
+        self.status_changed.emit(tr("Simulation stopped"))
+        logger.info("Batch simulation stopped by the user.")
+        self.dsim.plot_again()
+        self.batch_finished.emit(False)
 
     def _finish_batch(self, ok, message):
         """Post-run work: status, plots, verification report. GUI thread only."""
@@ -307,7 +346,11 @@ class SimulationController(QObject):
         return self._batch_worker is not None
 
     def cancel_batch(self, wait_ms=5000):
-        """Cancel a threaded batch run and join it (bounded)."""
+        """Cancel a threaded batch run and join it (bounded). Blocks.
+
+        For teardown (window close, tests). Stop goes through :meth:`stop`,
+        which does not block the GUI thread.
+        """
         worker = self._batch_worker
         if worker is None:
             return False
@@ -345,11 +388,24 @@ class SimulationController(QObject):
             logger.info("Simulation completed - no verification data")
 
     def stop(self):
-        """Stop simulation safely."""
+        """Stop simulation safely.
+
+        A threaded batch run is only *asked* to stop: the state goes to
+        ``stopping`` and "Simulation stopped" is announced when the worker's
+        finished signal arrives (``_on_batch_done``), never before -- the GUI
+        thread is not blocked waiting for it.
+        """
         try:
-            # A threaded batch run owns the step loop; ask it to stop and join
-            # before clearing the flag, or it would keep stepping.
-            self.cancel_batch()
+            if self._batch_worker is not None:
+                # The worker owns the step loop and the DSim until it returns;
+                # it clears execution_initialized itself on the way out.
+                if not self._stop_requested:
+                    self._stop_requested = True
+                    self._batch_worker.cancel()
+                    self._set_state("stopping")
+                    self.status_changed.emit(tr("Stopping simulation..."))
+                    logger.info("Stop requested; waiting for the batch run to finish.")
+                return
 
             if hasattr(self.dsim, "execution_initialized"):
                 self.dsim.execution_initialized = False
@@ -360,6 +416,15 @@ class SimulationController(QObject):
 
         except Exception as e:
             logger.error(f"Error stopping simulation: {str(e)}")
+
+    def shutdown(self, wait_ms=5000):
+        """Stop and join any batch worker before the window is torn down.
+
+        Unlike :meth:`stop` this blocks (bounded): a QThread destroyed while
+        still running aborts the process.
+        """
+        self.stop()
+        return self.cancel_batch(wait_ms)
 
     def pause(self):
         """Pause the interactive step loop (Play resumes it via ``start``)."""

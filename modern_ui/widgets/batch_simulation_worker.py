@@ -8,8 +8,8 @@ repainting, the menu bar stopped responding, and there was no way to cancel.
 
 Signals:
   * ``progress(t_now, t_end)`` -- emitted at most every ``_MIN_EMIT_INTERVAL``
-    seconds while the interpreter loop advances (the compiled solver runs
-    inside SciPy and has no step hook, so it reports nothing until it returns).
+    seconds while the interpreter loop or the compiled integration advances
+    (the compiled solver reports the time its RHS is evaluated at).
   * ``finished_ok()``          -- the run completed (or was cancelled cleanly).
   * ``failed(message)``        -- the run raised; ``message`` is the error text.
 
@@ -53,7 +53,8 @@ class BatchSimulationWorker(QThread):
         self._last_emit = 0.0
 
     def cancel(self):
-        """Request cooperative cancellation (polled once per interpreter step)."""
+        """Request cooperative cancellation (polled once per interpreter step,
+        and every few RHS evaluations / replay steps of a compiled run)."""
         self._cancelled = True
 
     def is_cancelled(self):

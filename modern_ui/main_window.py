@@ -1032,6 +1032,9 @@ class ModernDiaBloSWindow(QMainWindow):
                     return
 
         self.stop_simulation()
+        if hasattr(self, "canvas"):
+            # Stop only requests a batch run to end; join it before teardown.
+            self.canvas.shutdown_simulation()
         self._cancel_experiment_workers()  # join MC/sweep threads before teardown
         self.experiment_controller.close_result_windows()  # plots torn down, not GC'd
         self._cleanup_autosave()  # Clean up auto-save file on normal exit
@@ -1095,8 +1098,11 @@ class ModernDiaBloSWindow(QMainWindow):
         the window-side transitions (interactive run ended, single-step). No
         message text is ever inspected to decide the state.
         """
-        running = state in ("running", "paused")
-        self.toolbar.set_simulation_state(running, state == "paused")
+        if state == "stopping":
+            self.toolbar.set_stopping_state()
+        else:
+            running = state in ("running", "paused")
+            self.toolbar.set_simulation_state(running, state == "paused")
         if state == "error":
             self.toolbar.set_error_state(message or None)
         pill = getattr(self, "status_pill", None)  # built after the toolbar
@@ -1246,7 +1252,12 @@ class ModernDiaBloSWindow(QMainWindow):
 
                 is_running = self.canvas.is_simulation_running()
 
-                if was_running and not is_running and getattr(self.dsim, "error_msg", ""):
+                # A batch worker's end (finished, stopped or failed) is
+                # announced by the controller when the worker has returned; the
+                # tick must not race it with its own "finished".
+                if batch_busy:
+                    pass
+                elif was_running and not is_running and getattr(self.dsim, "error_msg", ""):
                     # A block stopped the interactive run with an error.
                     self.canvas._sim_controller._report_error(
                         tr("Simulation failed: {error}", error=self.dsim.error_msg),

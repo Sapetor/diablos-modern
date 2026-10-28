@@ -190,6 +190,7 @@ class ModernStyles:
         QFrame#StatusPill[state="idle"]    { background-color: @surface_variant; }
         QFrame#StatusPill[state="running"] { background-color: @success_bg; border-color: @success; }
         QFrame#StatusPill[state="paused"]  { background-color: @warning_bg; border-color: @warning; }
+        QFrame#StatusPill[state="stopping"] { background-color: @warning_bg; border-color: @warning; }
         QFrame#StatusPill[state="error"]   { background-color: @error_bg;   border-color: @error;   }
 
         QFrame#StatusPill QLabel#StatusPillLabel {
@@ -199,6 +200,7 @@ class ModernStyles:
         QFrame#StatusPill[state="idle"]    QLabel#StatusPillLabel { color: @text_secondary; }
         QFrame#StatusPill[state="running"] QLabel#StatusPillLabel { color: @success; }
         QFrame#StatusPill[state="paused"]  QLabel#StatusPillLabel { color: @warning; }
+        QFrame#StatusPill[state="stopping"] QLabel#StatusPillLabel { color: @warning; }
         QFrame#StatusPill[state="error"]   QLabel#StatusPillLabel { color: @error;   }
 
         /* Zoom rocker */

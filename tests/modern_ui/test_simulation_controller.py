@@ -53,6 +53,9 @@ class _StubDSim:
         self.batch_calls = []
         self.plot_again_calls = 0
         self.batch_delay = 0.0
+        # Keep running this long after cancel_cb turns True (a worker that is
+        # slow to notice Stop).
+        self.cancel_latency = 0.0
         self.raise_in_batch = None
 
     def execution_init(self):
@@ -68,6 +71,7 @@ class _StubDSim:
         deadline = time.monotonic() + self.batch_delay
         while time.monotonic() < deadline:
             if cancel_cb is not None and cancel_cb():
+                time.sleep(self.cancel_latency)
                 break
             time.sleep(0.005)
         if progress_cb is not None:
@@ -254,7 +258,7 @@ class TestBatchOnAWorkerThread:
         ctrl.start()
 
         ctrl.stop()
-        assert ctrl.is_batch_running() is False
+        assert _pump(lambda: not ctrl.is_batch_running())
         assert dsim.execution_initialized is False
 
     def test_worker_failure_is_reported_not_raised(self, make_controller, statuses):
@@ -278,6 +282,131 @@ class TestBatchOnAWorkerThread:
         assert len(dsim.batch_calls) == 1
         assert dsim.batch_calls[0]["defer_plots"] is False
         assert dsim.plot_again_calls == 1
+
+
+@pytest.mark.qt
+class TestStopWaitsForTheWorker:
+    """Stop puts the UI in "stopping" and announces "stopped" only once the
+    worker has really returned -- without blocking the GUI thread for it."""
+
+    def test_stop_is_stopping_then_stopped(self, make_controller, states, statuses):
+        dsim = _StubDSim(real_time=False)
+        dsim.batch_delay = 30.0
+        dsim.cancel_latency = 0.3
+        ctrl = make_controller(dsim)
+        ctrl.start()
+
+        t0 = time.monotonic()
+        ctrl.stop()
+        assert time.monotonic() - t0 < 0.2, "stop() must not join the worker"
+        assert states[-1] == ("stopping", "")
+        assert ctrl.is_batch_running() is True
+        assert sc.batch_simulation_active() is True
+        assert "Simulation stopped" not in statuses
+
+        assert _pump(lambda: not ctrl.is_batch_running())
+        assert [s for s, _ in states] == ["running", "stopping", "idle"]
+        assert statuses[-1] == "Simulation stopped"
+        assert not any("Simulation finished" in s for s in statuses)
+        assert sc.batch_simulation_active() is False
+        # Whatever the run recorded before stopping is still plotted.
+        assert dsim.plot_again_calls == 1
+
+    def test_a_second_stop_while_stopping_is_a_no_op(self, make_controller, states):
+        dsim = _StubDSim(real_time=False)
+        dsim.batch_delay = 30.0
+        dsim.cancel_latency = 0.2
+        ctrl = make_controller(dsim)
+        ctrl.start()
+        ctrl.stop()
+        ctrl.stop()
+        assert _pump(lambda: not ctrl.is_batch_running())
+        assert [s for s, _ in states] == ["running", "stopping", "idle"]
+
+    def test_start_is_refused_while_stopping(self, make_controller, statuses):
+        dsim = _StubDSim(real_time=False)
+        dsim.batch_delay = 30.0
+        dsim.cancel_latency = 0.3
+        ctrl = make_controller(dsim)
+        ctrl.start()
+        assert _pump(lambda: len(dsim.batch_calls) == 1)  # worker entered the run
+        ctrl.stop()
+        assert ctrl.start() is False
+        assert len(dsim.batch_calls) == 1
+        assert _pump(lambda: not ctrl.is_batch_running())
+        dsim.batch_delay = 0.0
+        assert ctrl.start() is True
+        assert _pump(lambda: not ctrl.is_batch_running())
+        assert len(dsim.batch_calls) == 2
+
+    def test_batch_finished_reports_a_stopped_run_as_not_ok(self, make_controller):
+        dsim = _StubDSim(real_time=False)
+        dsim.batch_delay = 30.0
+        ctrl = make_controller(dsim)
+        finished = []
+        ctrl.batch_finished.connect(finished.append)
+        ctrl.start()
+        ctrl.stop()
+        assert _pump(lambda: not ctrl.is_batch_running())
+        assert finished == [False]
+
+    def test_late_signal_of_a_joined_worker_is_ignored(self, make_controller, states):
+        """cancel_batch() joins and drops the worker; its queued finished
+        signal must not end (or re-plot) anything afterwards."""
+        dsim = _StubDSim(real_time=False)
+        dsim.batch_delay = 30.0
+        ctrl = make_controller(dsim)
+        ctrl.start()
+        assert ctrl.cancel_batch(wait_ms=10000) is True
+        n_states = len(states)
+        _pump(lambda: False, timeout=0.2)
+        assert len(states) == n_states
+        assert dsim.plot_again_calls == 0
+
+
+@pytest.mark.qt
+class TestStopInterruptsACompiledRun:
+    """End to end: Stop on a real DSim running the compiled solver."""
+
+    def test_stop_ends_a_long_compiled_run_promptly(self, make_controller, states, statuses):
+        from PyQt6.QtCore import QPoint
+
+        from lib.lib import DSim
+
+        dsim = DSim()
+        menu = {b.fn_name: b for b in dsim.menu_blocks}
+        step = dsim.add_block(menu["step"], QPoint(100, 100))
+        tf = dsim.add_block(menu["transfer_function"], QPoint(300, 100))
+        scope = dsim.add_block(menu["scope"], QPoint(500, 100))
+        # Stiff for RK45: left alone this takes well over 10 s.
+        tf.params["numerator"] = [1e4]
+        tf.params["denominator"] = [1.0, 10001.0, 1e4]
+        dsim.add_line((step.name, 0, step.out_coords[0]), (tf.name, 0, tf.in_coords[0]))
+        dsim.add_line((tf.name, 0, tf.out_coords[0]), (scope.name, 0, scope.in_coords[0]))
+        dsim.sim_time = 100.0
+        dsim.sim_dt = 0.01
+        dsim.plot_trange = 100.0
+        dsim.use_fast_solver = True
+        dsim.solver_method = "RK45"
+        dsim.real_time = False
+        dsim.dynamic_plot = False
+        dsim.pyqtPlotScope = lambda: None
+
+        ctrl = make_controller(dsim)
+        assert ctrl.start() is True
+        _pump(lambda: False, timeout=0.5)  # let the solve get going
+        assert ctrl.is_batch_running() is True
+
+        t0 = time.monotonic()
+        ctrl.stop()
+        assert states[-1] == ("stopping", "")
+        assert _pump(lambda: not ctrl.is_batch_running(), timeout=5.0)
+        assert time.monotonic() - t0 < 3.0
+        assert states[-1] == ("idle", "")
+        assert statuses[-1] == "Simulation stopped"
+        assert dsim.engine.compiled_run_cancelled is True
+        assert dsim.last_solver_type == "Fast (Compiled)"
+        assert dsim.execution_initialized is False
 
 
 @pytest.mark.qt

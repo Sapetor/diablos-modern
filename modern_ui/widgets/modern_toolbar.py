@@ -299,7 +299,7 @@ class _StatusPill(QFrame):
         self._refresh_label()
 
     def set_state(self, state: str, label: str | None = None):
-        if state not in ("idle", "running", "paused", "error"):
+        if state not in ("idle", "running", "paused", "stopping", "error"):
             state = "idle"
         # Remembered so retranslate_ui() can rebuild the label in the new
         # language. A caller-supplied label is already translated text, so it
@@ -339,6 +339,7 @@ class _StatusPill(QFrame):
                 "idle": tr("Ready"),
                 "running": tr("Simulating…"),
                 "paused": tr("Paused"),
+                "stopping": tr("Stopping…"),
                 "error": tr("Error"),
             }[self._state]
         )
@@ -379,6 +380,7 @@ class _StateDot(QWidget):
         "idle": ("text_secondary", None),
         "running": ("success", "success"),
         "paused": ("warning", "warning"),
+        "stopping": ("warning", "warning"),
         "error": ("error", "error"),
     }
 
@@ -589,6 +591,11 @@ class _TransportGroup(QWidget):
         self.pause_btn.setEnabled(running and not paused)
         self.stop_btn.setEnabled(running)
         self.step_btn.setEnabled(not running or paused)
+
+    def set_stopping(self):
+        """Stop was requested and the run has not ended yet: nothing to press."""
+        for btn in (self.play_btn, self.pause_btn, self.stop_btn, self.step_btn):
+            btn.setEnabled(False)
 
     def set_time(self, t: float, t_end: float):
         self._last_time = (t, t_end)
@@ -829,6 +836,11 @@ class ModernToolBar(QToolBar):
             self.status_pill.set_state("paused")
         else:
             self.status_pill.set_state("idle")
+
+    def set_stopping_state(self):
+        """Between Stop and the run actually ending (SimulationController "stopping")."""
+        self.transport.set_stopping()
+        self.status_pill.set_state("stopping")
 
     def set_simulation_time(self, t: float, t_end: float = 10.0):
         """NEW — hook this up from your sim tick if you want live t-readout.

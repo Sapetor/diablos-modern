@@ -97,6 +97,11 @@ class SimulationEngine:
         # (SimulationController.start sends a real-time run down the paced
         # interpreter instead, where wall-clock time bounds the run).
         self.real_time: bool = False
+        # True after a compiled run stopped on its cancel_cb (see
+        # run_compiled_simulation); callers must not fall back to the
+        # interpreter then.
+        self.compiled_run_cancelled: bool = False
+        self._compiled_run_monitor = None
         self.execution_time: float = 1.0
         self.time_step: float = 0.0
 
@@ -1505,10 +1510,18 @@ class SimulationEngine:
         )
 
     def run_compiled_simulation(
-        self, blocks: List[DBlock], lines: List[Any], t_span: Tuple[float, float], dt: float
+        self,
+        blocks: List[DBlock],
+        lines: List[Any],
+        t_span: Tuple[float, float],
+        dt: float,
+        cancel_cb=None,
+        progress_cb=None,
     ) -> bool:
         """Run the simulation using the compiled fast solver.
 
         See :func:`lib.engine.compiled_runner.run_compiled_simulation`.
         """
-        return compiled_runner.run_compiled_simulation(self, blocks, lines, t_span, dt)
+        return compiled_runner.run_compiled_simulation(
+            self, blocks, lines, t_span, dt, cancel_cb=cancel_cb, progress_cb=progress_cb
+        )

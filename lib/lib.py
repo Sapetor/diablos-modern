@@ -851,10 +851,14 @@ class DSim:
 
         Args:
             progress_cb: optional callable(t_now, t_end), called once per
-                interpreter step (the compiled solver has no step hook).
+                interpreter step, and with the solver's time as the compiled
+                integration advances.
             cancel_cb: optional callable() -> bool, polled once per interpreter
-                step; when it returns True the run stops early and the blocks
-                are re-armed exactly as a completed run leaves them.
+                step and every few RHS evaluations / replay steps of a
+                compiled run; when it returns True the run stops early and the
+                blocks are re-armed exactly as a completed run leaves them. A
+                cancelled compiled run keeps only the samples it replayed
+                (usually none) and never falls back to the interpreter.
             defer_plots: when True, the interpreter path skips every Qt call
                 (dynamic scope updates and the end-of-run ``pyqtPlotScope``) so
                 the batch can be driven from a worker thread; the caller is then
@@ -879,9 +883,22 @@ class DSim:
             t_span = (0.0, self.execution_time)
             _tb2 = time.time()
             success = self.engine.run_compiled_simulation(
-                root_blocks, root_lines, t_span, self.sim_dt
+                root_blocks,
+                root_lines,
+                t_span,
+                self.sim_dt,
+                cancel_cb=cancel_cb,
+                progress_cb=progress_cb,
             )
             logger.debug(f"[TIMING] run_compiled_simulation: {time.time() - _tb2:.3f}s")
+            if self.engine.compiled_run_cancelled:
+                logger.info("Batch simulation (compiled) cancelled.")
+                self.timeline = self.engine.timeline
+                self.execution_initialized = False
+                if getattr(self, "pbar", None) is not None:
+                    self.pbar.close()
+                self.engine.reset_memblocks()
+                return
             if success:
                 logger.info("Fast simulation successful.")
 
@@ -937,8 +954,8 @@ class DSim:
             sim_time: Total simulation time in seconds
             sim_dt: Simulation time step in seconds
             cancel_cb: optional callable() -> bool.  Polled every
-                ``cancel_every`` interpreter steps (and once before the
-                compiled solver, which cannot be interrupted mid-solve); when it
+                ``cancel_every`` interpreter steps (and, in the compiled solver,
+                every few RHS evaluations and replay steps); when it
                 returns True the run aborts and ``(False, "cancelled")`` is
                 returned.  Without this a cancelled ensemble/sweep still had to
                 wait out a whole run.
@@ -1022,8 +1039,12 @@ class DSim:
             if use_fast and compilable:
                 t_span = (0.0, sim_time)
                 success = self.engine.run_compiled_simulation(
-                    root_blocks, root_lines, t_span, sim_dt
+                    root_blocks, root_lines, t_span, sim_dt, cancel_cb=cancel_cb
                 )
+                if self.engine.compiled_run_cancelled:
+                    self.execution_initialized = False
+                    self.engine.reset_memblocks()
+                    return (False, "cancelled")
                 if success:
                     self.timeline = self.engine.timeline
                     self.execution_initialized = False
