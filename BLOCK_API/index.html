@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -33,10 +33,10 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -2786,7 +2786,12 @@ language you like — or in English, so it reads consistently.</p>
 <li>every folder listed in the <code>DIABLOS_BLOCKS_PATH</code> environment variable
    (<code>os.pathsep</code>-separated: <code>:</code> on macOS/Linux, <code>;</code> on Windows);</li>
 <li>a <code>blocks/</code> folder next to the <code>.diablos</code> file you have open
-   (project-local — ship a model together with its blocks);</li>
+   (project-local — ship a model together with its blocks), <strong>once you have
+   trusted it</strong>: importing a module runs its code, so the first time a diagram
+   with such a folder is opened DiaBloS lists the modules and asks. Choosing
+   <em>Trust and Load</em> remembers that folder (by its real path, in
+   <code>&lt;user data dir&gt;/config/trusted_block_folders.json</code>); choosing <em>Open Without
+   Project Blocks</em> opens the diagram without them and asks again next time;</li>
 <li>the per-user folder <code>&lt;user data dir&gt;/blocks</code>:</li>
 <li>macOS <code>~/Library/Application Support/DiaBloS/blocks/</code></li>
 <li>Windows <code>%APPDATA%/DiaBloS/blocks/</code></li>
@@ -2960,10 +2965,10 @@ skip the block).</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.instant", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.instant", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>
