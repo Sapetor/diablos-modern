@@ -99,6 +99,8 @@ scripts/.examples_compiled_current.txt
 # Autosave files
 *_AUTOSAVE.dat
 config/.autosave.diablos
+config/.autosave.failed-*.diablos
+config/trusted_block_folders.json
 ghkey
 ghkey.pub
 .claude/

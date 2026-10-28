@@ -94,6 +94,28 @@ None/empty-input hardening and param docs. Still open:
   also scales the canvas and every pixel literal and stacks with Windows DPI) or
   font-ratio scaling in every TYPE consumer (as the welcome overlay now does).
 
+### Open items from the external review of 35e7ad2 (2026-10-28)
+Fixed on `fix/file-integrity-and-trust`: transactional load (`"sim_data": null`
+used to empty the canvas), atomic saves, failed autosave recovery keeps the
+file, project-local `blocks/` folders need explicit trust before import.
+Export pulse semantics and compiled-run cancellation were worked on separate
+branches (see git log). Still open, both architectural:
+- [ ] **Per-diagram workspace / Qt-free core.** `WorkspaceManager` is a
+  process-wide singleton (`lib/cli.py::new_headless_dsim` resets it), so with
+  two `lib.api` diagrams in one process the second's `K=9` changes the first's
+  result (documented in the `lib/api.py` module docstring). Headless runs also
+  build an offscreen QApplication because `DSim`/blocks use `QRect`/`QPoint`.
+  Needs: workspace + sim settings owned by the diagram, the remaining Qt value
+  types out of `lib/` (see the 2026-09-11 GUI framework decision), and an
+  installable package namespace.
+- [ ] **Scalable experiments.** `MonteCarloRunner.run` keeps every harvested
+  trace in `runs` before stacking, and `ParameterSweepRunner` 2-D mode builds
+  full `(n_points, L)` trace matrices although it returns only metrics
+  (`lib/analysis/parameter_sweep.py` aggregation). Wanted: metrics-only mode
+  with incremental statistics, optional on-disk traces, resumable runs, and
+  process-pool parallelism reusing `derive_seed` (runs are already independent
+  and seeded per run index).
+
 ### Open items from the Windows session (2026-10-09)
 All closed the same day (see the 2026-10-09 Change Log rows): resize,
 Windows style, cp1252 logging, toolbar/status/glyph test portability, saved

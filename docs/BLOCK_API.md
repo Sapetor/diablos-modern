@@ -346,7 +346,12 @@ DiaBloS scans these folders, **highest priority first**:
 1. every folder listed in the `DIABLOS_BLOCKS_PATH` environment variable
    (`os.pathsep`-separated: `:` on macOS/Linux, `;` on Windows);
 2. a `blocks/` folder next to the `.diablos` file you have open
-   (project-local — ship a model together with its blocks);
+   (project-local — ship a model together with its blocks), **once you have
+   trusted it**: importing a module runs its code, so the first time a diagram
+   with such a folder is opened DiaBloS lists the modules and asks. Choosing
+   *Trust and Load* remembers that folder (by its real path, in
+   `<user data dir>/config/trusted_block_folders.json`); choosing *Open Without
+   Project Blocks* opens the diagram without them and asks again next time;
 3. the per-user folder `<user data dir>/blocks`:
    - macOS `~/Library/Application Support/DiaBloS/blocks/`
    - Windows `%APPDATA%/DiaBloS/blocks/`

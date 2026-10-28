@@ -377,6 +377,7 @@ class ModernDiaBloSWindow(QMainWindow):
         if model is None or not hasattr(model, "reload_blocks"):
             logger.warning("This window's model does not support reloading user blocks")
             return 0
+        self._confirm_project_blocks_trust()
         try:
             count = model.reload_blocks(self._current_diagram_path())
         except Exception as exc:
@@ -399,6 +400,60 @@ class ModernDiaBloSWindow(QMainWindow):
         if not quiet:
             self._notify(tr("Reloaded user blocks: {count} available", count=count))
         return count
+
+    def _confirm_project_blocks_trust(self):
+        """Ask before importing an untrusted project-local ``blocks/`` folder.
+
+        Importing a block module runs its code, and the folder may have come
+        with a downloaded diagram, so it is only scanned once the user has
+        trusted it (see ``lib.user_blocks``). Declining opens the diagram
+        without those blocks; the question comes back on the next reload.
+        Returns True if the folder was trusted just now.
+        """
+        from lib.user_blocks import (
+            project_blocks_dir,
+            trust_project_blocks,
+            untrusted_project_block_files,
+        )
+
+        diagram_path = self._current_diagram_path()
+        files = untrusted_project_block_files(diagram_path)
+        if not files:
+            return False
+        folder = project_blocks_dir(diagram_path)
+
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setWindowTitle(tr("Trust project blocks?"))
+        box.setText(
+            tr(
+                "This diagram's folder contains Python block modules. Loading "
+                "them runs their code on this computer with your permissions."
+            )
+        )
+        box.setInformativeText(
+            tr(
+                "Only load them if you trust where this project came from.\n\n"
+                "Folder: {folder}\nModules: {modules}",
+                folder=folder,
+                modules=", ".join(os.path.basename(f) for f in files),
+            )
+        )
+        trust_button = box.addButton(tr("Trust and Load"), QMessageBox.ButtonRole.AcceptRole)
+        skip_button = box.addButton(
+            tr("Open Without Project Blocks"), QMessageBox.ButtonRole.RejectRole
+        )
+        box.setDefaultButton(skip_button)
+        box.exec()
+        if box.clickedButton() is not trust_button:
+            logger.info("Project blocks in %s left unloaded (not trusted)", folder)
+            return False
+        try:
+            trust_project_blocks(folder)
+        except OSError as exc:
+            logger.warning("Could not record %s as trusted: %s", folder, exc)
+            return False
+        return True
 
     def open_user_blocks_folder(self):
         """Open the per-user blocks folder in the system file manager."""

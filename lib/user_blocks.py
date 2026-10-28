@@ -17,7 +17,8 @@ first:
 
 1. every folder listed in the ``DIABLOS_BLOCKS_PATH`` environment variable
    (``os.pathsep``-separated);
-2. a ``blocks/`` folder next to the currently open diagram (project-local);
+2. a ``blocks/`` folder next to the currently open diagram (project-local),
+   **only once the user has trusted that folder** (see below);
 3. the per-user folder ``<user data dir>/blocks``
    (:func:`lib.app_paths.user_data_path`).
 
@@ -29,6 +30,17 @@ repository's own ``blocks/`` package; that folder is dropped from the search
 paths (it is already loaded as the built-in registry) so built-ins are never
 imported twice under a second module name.  Frozen builds have a real,
 separate per-user folder.
+
+Project trust
+-------------
+Importing a module runs its code, so a ``blocks/`` folder that arrived with a
+downloaded diagram must not run merely because the diagram was opened.  A
+project folder joins the search path only after :func:`trust_project_blocks`
+recorded it (the GUI asks, listing the files, before doing so); until then
+:func:`untrusted_project_block_files` reports what was held back.  Trust is
+kept per real folder path in ``<user data dir>/config/trusted_block_folders.json``.
+The environment variable and the per-user folder are the user's own and are
+always scanned.
 
 Isolation
 ---------
@@ -46,6 +58,7 @@ identically in a PyInstaller bundle, where the bundled ``blocks/`` package is
 *not* scanned (see ``lib/block_loader._BLOCK_MODULES``).
 """
 
+import json
 import logging
 import os
 import sys
@@ -58,6 +71,7 @@ from blocks.base_block import (
     block_contract_errors,
 )
 from lib.app_paths import get_user_data_dir
+from lib.atomic_io import atomic_write_json
 from lib.i18n import tr
 
 logger = logging.getLogger(__name__)
@@ -71,6 +85,9 @@ __all__ = [
     "user_blocks_dir",
     "project_blocks_dir",
     "user_block_search_paths",
+    "is_project_blocks_trusted",
+    "trust_project_blocks",
+    "untrusted_project_block_files",
     "discover_user_block_files",
     "load_user_blocks",
     "is_user_block",
@@ -84,6 +101,9 @@ BLOCKS_ENV_VAR = "DIABLOS_BLOCKS_PATH"
 
 #: Folder name looked for next to the open diagram and under the user data dir.
 BLOCKS_DIR_NAME = "blocks"
+
+#: Trusted project ``blocks/`` folders, relative to the user data dir.
+TRUST_STORE = os.path.join("config", "trusted_block_folders.json")
 
 #: Package name user modules are imported under, so they can never shadow a
 #: real import (``blocks.gain`` stays the built-in) and are easy to purge on a
@@ -193,11 +213,78 @@ def project_blocks_dir(diagram_path: Optional[str]) -> Optional[str]:
     return os.path.join(os.path.abspath(folder), BLOCKS_DIR_NAME)
 
 
+def _trust_store_path() -> str:
+    return os.path.join(get_user_data_dir(), TRUST_STORE)
+
+
+def _trusted_folders() -> Set[str]:
+    try:
+        with open(_trust_store_path(), "r", encoding="utf-8") as handle:
+            entries = json.load(handle)
+    except FileNotFoundError:
+        return set()
+    except (OSError, ValueError) as exc:
+        # An unreadable store trusts nothing: failing closed is the point.
+        logger.warning("Could not read the trusted block folders list: %s", exc)
+        return set()
+    if not isinstance(entries, list):
+        return set()
+    return {e for e in entries if isinstance(e, str)}
+
+
+def is_project_blocks_trusted(folder: Optional[str]) -> bool:
+    """Whether the project ``blocks/`` ``folder`` may be imported."""
+    return bool(folder) and os.path.realpath(folder) in _trusted_folders()
+
+
+def trust_project_blocks(folder: str) -> None:
+    """Record the project ``blocks/`` ``folder`` as trusted (by real path)."""
+    trusted = _trusted_folders()
+    trusted.add(os.path.realpath(folder))
+    path = _trust_store_path()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    atomic_write_json(path, sorted(trusted), indent=2)
+
+
+def _module_files_in(folder: str) -> List[str]:
+    """Top-level ``*.py`` files in ``folder`` that discovery would import."""
+    try:
+        entries = sorted(os.listdir(folder))
+    except OSError as exc:
+        logger.warning("Could not list user block folder %s: %s", folder, exc)
+        return []
+    return [
+        os.path.join(folder, entry)
+        for entry in entries
+        if entry.endswith(".py")
+        and not entry.startswith("_")
+        and os.path.isfile(os.path.join(folder, entry))
+    ]
+
+
+def untrusted_project_block_files(diagram_path: Optional[str]) -> List[str]:
+    """Module files in the diagram's ``blocks/`` folder held back for lack of trust.
+
+    Empty when there is no such folder, it has no modules, it is trusted, or
+    it is one of the folders scanned anyway (built-in package, per-user folder,
+    an environment-variable entry).
+    """
+    folder = project_blocks_dir(diagram_path)
+    if not folder or not os.path.isdir(folder) or is_project_blocks_trusted(folder):
+        return []
+    real = os.path.realpath(folder)
+    always = {os.path.realpath(p) for p in _env_block_paths() + [user_blocks_dir()]}
+    if real in always or real in _builtin_blocks_dirs():
+        return []
+    return _module_files_in(folder)
+
+
 def user_block_search_paths(diagram_path: Optional[str] = None) -> List[str]:
     """Folders scanned for user block modules, highest priority first.
 
     Order: ``DIABLOS_BLOCKS_PATH`` entries, then a ``blocks/`` folder beside the
-    open diagram, then the per-user blocks folder.  Duplicates are removed
+    open diagram (only if trusted, see :func:`trust_project_blocks`), then the
+    per-user blocks folder.  Duplicates are removed
     while preserving priority; non-existent folders are kept in the list (the
     caller skips them) so the order is easy to reason about and can be shown to
     the user verbatim.  The built-in ``blocks/`` package directory is filtered
@@ -219,7 +306,11 @@ def user_block_search_paths(diagram_path: Optional[str] = None) -> List[str]:
 
     for entry in _env_block_paths():
         _add(entry)
-    _add(project_blocks_dir(diagram_path))
+    project = project_blocks_dir(diagram_path)
+    if project and is_project_blocks_trusted(project):
+        _add(project)
+    elif project and os.path.isdir(project):
+        logger.info("Not loading block modules from %s: the folder is not trusted", project)
     _add(user_blocks_dir())
     return paths
 

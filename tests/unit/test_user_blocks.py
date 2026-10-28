@@ -165,6 +165,7 @@ class TestSearchPaths:
         env_b = tmp_path / "env_b"
         monkeypatch.setenv(ub.BLOCKS_ENV_VAR, os.pathsep.join([str(env_a), str(env_b)]))
         diagram = tmp_path / "project" / "model.diablos"
+        ub.trust_project_blocks(str(tmp_path / "project" / "blocks"))
 
         paths = ub.user_block_search_paths(str(diagram))
 
