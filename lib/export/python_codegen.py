@@ -32,6 +32,14 @@ difference equations, transcribed from their ``execute()``, feeders first and
 each on a fresh evaluation (``make_sample_hook``); the Scope replay shows the
 value held at every output time.
 
+Discontinuities follow the compiled path's zero-crossing events
+(``lib/engine/zero_crossing.py``): a Step edge or Ramp start is a time event
+the engine stops its adaptive solver on, so the script integrates piecewise
+between those known instants (``SWITCH_TIMES``) -- a pulse shorter than a free
+solver step is not skipped. State-dependent events (Abs, Saturation) cap the
+step at ``dt`` as the engine does; their roots are not located, which costs at
+most solver tolerance on a kink.
+
 Every emitted expression is a transcription of the corresponding kernel in
 ``lib/engine/compiler_kernels/`` (param keys, defaults and quirks included), so
 a generated script and a compiled run of the same diagram agree to solver
@@ -252,6 +260,8 @@ _RESERVED_NAMES = set(keyword.kwlist) | {
     "reset_sampled",
     "sample_instants",
     "sample_hook",
+    "SWITCH_TIMES",
+    "switch_times",
     "round",
     "X0",
     "T_END",
@@ -472,6 +482,12 @@ class PythonCodeGenerator:
         self._sampled: List[_Block] = []
         self._dstate_init: Dict[str, str] = {}
         self._sampled_src: List[str] = []
+        # Discontinuities the compiled path turns into zero-crossing events
+        # (compiler_kernels @events): the constant names of the time-driven
+        # sources' switching instants (Step edges, Ramp starts), and whether a
+        # state-dependent (non-monotonic) event caps the solver step at dt.
+        self._switch_consts: List[str] = []
+        self._cap_step = False
         # Non-fatal problems found while generating (currently: params whose
         # workspace variables could not be resolved). Populated by generate();
         # callers surface these to the user alongside the exported script.
@@ -1040,6 +1056,7 @@ class PythonCodeGenerator:
         # (and rejected above); every other type is a rising step at `delay`.
         delay = self._num_const(blk, "delay", blk.params.get("delay", 0.0))
         value = self._num_const(blk, "value", blk.params.get("value", 1.0))
+        self._add_switch_time(delay, blk.params.get("delay", 0.0))
         return ["    {} = {} if t >= {} else 0.0".format(blk.var, value, delay)]
 
     def _emit_sine(self, blk: _Block) -> List[str]:
@@ -1056,11 +1073,26 @@ class PythonCodeGenerator:
         slope_val = float(blk.params.get("slope", 1.0))
         slope = self._num_const(blk, "slope", slope_val)
         delay = self._num_const(blk, "delay", blk.params.get("delay", 0.0))
+        if slope_val != 0:
+            self._add_switch_time(delay, blk.params.get("delay", 0.0))
         if slope_val > 0:
             return ["    {} = max(0.0, {} * (t - {}))".format(blk.var, slope, delay)]
         if slope_val < 0:
             return ["    {} = min(0.0, {} * (t - {}))".format(blk.var, slope, delay)]
         return ["    {} = 0.0".format(blk.var)]
+
+    def _add_switch_time(self, const: str, value: Any) -> None:
+        """Record a source's switching instant (``const`` names its value).
+
+        Mirrors the monotonic time events ``t - delay`` of ``events_step`` /
+        ``events_ramp``: the compiled path stops the solver exactly there.
+        """
+        try:
+            finite = np.isfinite(float(value))
+        except (TypeError, ValueError):
+            finite = False
+        if finite and const not in self._switch_consts:
+            self._switch_consts.append(const)
 
     # algebraic -------------------------------------------------------------
 
@@ -1112,6 +1144,8 @@ class PythonCodeGenerator:
     _emit_sigproduct = _emit_sgprod
 
     def _emit_abs(self, blk: _Block) -> List[str]:
+        # events_abs: the input's zero crossing, a state-dependent event.
+        self._cap_step = self._cap_step or self._input_expr(blk, 0) is not None
         return ["    {} = abs({})".format(blk.var, self._input_or_zero(blk, 0))]
 
     _emit_absblock = _emit_abs
@@ -1119,6 +1153,11 @@ class PythonCodeGenerator:
     def _emit_saturation(self, blk: _Block) -> List[str]:
         lower = self._num_const(blk, "min", blk.params.get("min", -np.inf))
         upper = self._num_const(blk, "max", blk.params.get("max", np.inf))
+        # events_saturation: each finite clip level is a state-dependent event.
+        if self._input_expr(blk, 0) is not None and any(
+            np.isfinite(float(blk.params.get(k, d))) for k, d in (("min", -np.inf), ("max", np.inf))
+        ):
+            self._cap_step = True
         return [
             "    {} = np.clip({}, {}, {})".format(
                 blk.var, self._input_or_zero(blk, 0), lower, upper
@@ -1687,6 +1726,7 @@ class PythonCodeGenerator:
         add("# ==========================================================================")
         add("")
         add("")
+        out.extend(self._switch_source())
         out.extend(self._simulate_source())
         add("")
         add("")
@@ -1821,6 +1861,40 @@ class PythonCodeGenerator:
             ]
         return src
 
+    @property
+    def _segments_at_switches(self) -> bool:
+        """Whether the adaptive solve stops at the sources' switching times."""
+        return bool(self._switch_consts) and self.solver not in _FIXED_STEP_METHODS
+
+    def _ivp_options(self) -> str:
+        """Extra ``solve_ivp`` keywords: the compiled path's step cap."""
+        return ", max_step=dt" if self._cap_step else ""
+
+    def _switch_source(self) -> List[str]:
+        """``SWITCH_TIMES`` and ``switch_times()`` (adaptive methods only)."""
+        if not self._segments_at_switches:
+            return []
+        return [
+            "# Instants where a time-driven source jumps or kinks (Step edges, Ramp",
+            "# starts). DiaBloS stops its adaptive solver on each one (a zero-crossing",
+            "# event), so simulate() integrates piecewise between them: an adaptive",
+            "# step never straddles a switch, and a pulse shorter than the solver's",
+            "# stride is still seen.",
+            "SWITCH_TIMES = [{}]".format(", ".join(self._switch_consts)),
+            "",
+            "",
+            "def switch_times(t_end, also=()):",
+            '    """SWITCH_TIMES (and ``also``) inside (0, t_end], sorted, de-duplicated."""',
+            "    tol = 1e-9 * (abs(t_end) or 1.0)",
+            "    merged = []",
+            "    for t in sorted(float(v) for v in list(SWITCH_TIMES) + list(also)):",
+            "        if tol < t <= t_end and (not merged or t - merged[-1] > tol):",
+            "            merged.append(t)",
+            "    return np.asarray(merged)",
+            "",
+            "",
+        ]
+
     def _hybrid_simulate_source(self) -> List[str]:
         """simulate() for a diagram with sampled blocks (the compiled hybrid path).
 
@@ -1842,6 +1916,13 @@ class PythonCodeGenerator:
             "    t_grid[-1] = min(t_grid[-1], t_end)",
             "    tol = 1e-9 * (abs(t_end) or 1.0)",
             "    instants = sample_instants(t_end, t_grid)",
+        ]
+        if self._segments_at_switches:
+            src += [
+                "    # Also stop at the source switching times (no samples are due there).",
+                "    instants = switch_times(t_end, also=instants)",
+            ]
+        src += [
             "    reset_sampled()",
             "    x = X0.copy()",
             "    sample_hook(0.0, x, tol)",
@@ -1916,7 +1997,13 @@ class PythonCodeGenerator:
             "        if at_instant and (n_grid == 0 or seg_eval[-1] < seg_end):",
             "            seg_eval = np.append(seg_eval, seg_end)",
             "        sol = solve_ivp(",
-            "            rhs, (t_start, seg_end), x, t_eval=seg_eval, method=METHOD, rtol=RTOL, atol=ATOL",
+            "            rhs,",
+            "            (t_start, seg_end),",
+            "            x,",
+            "            t_eval=seg_eval,",
+            "            method=METHOD,",
+            "            rtol=RTOL,",
+            "            atol=ATOL{},".format(self._ivp_options()),
             "        )",
             "        if not sol.success:",
             '            raise RuntimeError("solve_ivp failed: " + str(sol.message))',
@@ -1975,10 +2062,46 @@ class PythonCodeGenerator:
                 "        x_hist[:, k] = xk",
                 "    return t_grid, x_hist",
             ]
+        elif self._segments_at_switches:
+            src += [
+                "    # One solve_ivp per interval between switching times; the state is",
+                "    # continuous across each switch, so a segment starts where the last ended.",
+                "    x_hist = np.zeros((X0.size, len(t_grid)))",
+                "    x, idx, t_start = X0.copy(), 0, 0.0",
+                "    for seg_end in list(switch_times(t_end)) + [t_end]:",
+                "        if seg_end <= t_start:",
+                "            continue",
+                '        hi = int(np.searchsorted(t_grid, seg_end, side="right"))',
+                "        seg_eval = t_grid[idx:hi]",
+                "        n_grid = seg_eval.size",
+                "        if n_grid == 0 or seg_eval[-1] < seg_end:",
+                "            seg_eval = np.append(seg_eval, seg_end)",
+                "        sol = solve_ivp(",
+                "            rhs,",
+                "            (t_start, seg_end),",
+                "            x,",
+                "            t_eval=seg_eval,",
+                "            method=METHOD,",
+                "            rtol=RTOL,",
+                "            atol=ATOL{},".format(self._ivp_options()),
+                "        )",
+                "        if not sol.success:",
+                '            raise RuntimeError("solve_ivp failed: " + str(sol.message))',
+                "        x_hist[:, idx : idx + n_grid] = sol.y[:, :n_grid]",
+                "        idx += n_grid",
+                "        x, t_start = sol.y[:, -1].copy(), seg_end",
+                "    return t_grid, x_hist",
+            ]
         else:
             src += [
                 "    sol = solve_ivp(",
-                "        rhs, (0.0, t_end), X0, t_eval=t_grid, method=METHOD, rtol=RTOL, atol=ATOL",
+                "        rhs,",
+                "        (0.0, t_end),",
+                "        X0,",
+                "        t_eval=t_grid,",
+                "        method=METHOD,",
+                "        rtol=RTOL,",
+                "        atol=ATOL{},".format(self._ivp_options()),
                 "    )",
                 "    if not sol.success:",
                 '        raise RuntimeError("solve_ivp failed: " + str(sol.message))',

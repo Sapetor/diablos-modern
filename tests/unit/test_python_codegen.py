@@ -705,3 +705,168 @@ class TestSampledExport:
         assert _max_diff(generated, reference) <= 1e-9
         # The PID saturates, so the anti-windup branch is exercised.
         assert np.max(np.abs(np.ravel(generated["u"]))) == pytest.approx(1.5)
+
+
+# ---------------------------------------------------------------------------
+# Time-driven discontinuities (the compiled path's zero-crossing events)
+# ---------------------------------------------------------------------------
+
+_PULSE_START, _PULSE_END = 0.5, 0.51
+
+
+def _add_pulse(b, amplitude=1.0):
+    """Step(start) - Step(end): a pulse far shorter than a free RK45 stride."""
+    on = b.add_block(
+        "Step", 0, 0, name="on", params={"value": amplitude, "delay": _PULSE_START, "type": "up"}
+    )
+    off = b.add_block(
+        "Step", 0, 0, name="off", params={"value": amplitude, "delay": _PULSE_END, "type": "up"}
+    )
+    p = b.add_block("Sum", 0, 0, name="p", params={"sign": "+-"}, in_ports=2)
+    b.connect(on, 0, p, 0)
+    b.connect(off, 0, p, 1)
+    return p
+
+
+def _integrator(b, name="x"):
+    return b.add_block(
+        "Integrator", 0, 0, name=name, params={"init_conds": 0.0, "method": "SOLVE_IVP"}
+    )
+
+
+def _scope(b, labels, sources):
+    sc = b.add_block(
+        "Scope",
+        0,
+        0,
+        name="sc",
+        params={"labels": ", ".join(labels)},
+        in_ports=len(sources),
+        out_ports=0,
+    )
+    for k, src in enumerate(sources):
+        b.connect(src, 0, sc, k)
+
+
+def _pulse_into_integrator():
+    from lib.diagram_builder import DiagramBuilder
+
+    b = DiagramBuilder(sim_time=10.0, sim_dt=0.01)
+    p = _add_pulse(b)
+    x = _integrator(b)
+    b.connect(p, 0, x, 0)
+    _scope(b, ["x"], [x])
+    return b, {"x": lambda t: np.clip(t - _PULSE_START, 0.0, _PULSE_END - _PULSE_START)}
+
+
+def _step_switch():
+    """Integrator input switches from +1 to -2 at t = 0.7 (Constant + Step)."""
+    from lib.diagram_builder import DiagramBuilder
+
+    b = DiagramBuilder(sim_time=20.0, sim_dt=0.01)
+    c = b.add_block("Constant", 0, 0, name="c", params={"value": 1.0})
+    s = b.add_block("Step", 0, 0, name="s", params={"value": -3.0, "delay": 0.7, "type": "up"})
+    u = b.add_block("Sum", 0, 0, name="u", params={"sign": "++"}, in_ports=2)
+    x = _integrator(b)
+    b.connect(c, 0, u, 0)
+    b.connect(s, 0, u, 1)
+    b.connect(u, 0, x, 0)
+    _scope(b, ["x"], [x])
+    return b, {"x": lambda t: np.where(t < 0.7, t, 0.7 - 2.0 * (t - 0.7))}
+
+
+def _pulse_feedback(k=2.0, amplitude=50.0):
+    """x' = k (r - x) driven by a short pulse r."""
+    from lib.diagram_builder import DiagramBuilder
+
+    b = DiagramBuilder(sim_time=10.0, sim_dt=0.01)
+    r = _add_pulse(b, amplitude)
+    e = b.add_block("Sum", 0, 0, name="e", params={"sign": "+-"}, in_ports=2)
+    g = b.add_block("Gain", 0, 0, name="g", params={"gain": k})
+    x = _integrator(b)
+    b.connect(r, 0, e, 0)
+    b.connect(x, 0, e, 1)
+    b.connect(e, 0, g, 0)
+    b.connect(g, 0, x, 0)
+    _scope(b, ["x"], [x])
+
+    def exact(t):
+        width = _PULSE_END - _PULSE_START
+        peak = amplitude * (1.0 - np.exp(-k * width))
+        rising = amplitude * (1.0 - np.exp(-k * (t - _PULSE_START)))
+        decaying = peak * np.exp(-k * (t - _PULSE_END))
+        return np.where(t < _PULSE_START, 0.0, np.where(t < _PULSE_END, rising, decaying))
+
+    return b, {"x": exact}
+
+
+def _pulse_sampled():
+    """The pulse integrated, and a ZOH(1 s) sampling it: the hybrid path."""
+    from lib.diagram_builder import DiagramBuilder
+
+    b = DiagramBuilder(sim_time=5.0, sim_dt=0.01)
+    p = _add_pulse(b)
+    x = _integrator(b)
+    z = b.add_block("ZeroOrderHold", 0, 0, name="z", params={"sampling_time": 1.0})
+    b.connect(p, 0, x, 0)
+    b.connect(x, 0, z, 0)
+    _scope(b, ["x", "z"], [x, z])
+    width = _PULSE_END - _PULSE_START
+    return b, {
+        "x": lambda t: np.clip(t - _PULSE_START, 0.0, width),
+        "z": lambda t: np.where(t >= 1.0 - 1e-9, width, 0.0),
+    }
+
+
+@pytest.mark.unit
+@pytest.mark.slow
+class TestSwitchingSources:
+    """A Step edge is a zero-crossing event on the compiled path, so the solver
+    stops on it; the exported script must stop there too, or an adaptive step
+    can stride over a short pulse entirely. App and script are both checked
+    against the closed-form response."""
+
+    @pytest.mark.parametrize(
+        "case", [_pulse_into_integrator, _step_switch, _pulse_feedback, _pulse_sampled]
+    )
+    @pytest.mark.parametrize("solver", ["RK45", "LSODA"])
+    def test_matches_analytical(self, qapp, tmp_path, case, solver):
+        builder, exact = case()
+        generated, reference = _export_and_reference(builder, tmp_path, solver=solver)
+        t_gen = np.ravel(generated["t"])
+        t_ref = np.ravel(reference["timeline"])
+        for label, fn in exact.items():
+            np.testing.assert_allclose(
+                np.ravel(generated[label]), fn(t_gen), atol=1e-6, err_msg="export " + label
+            )
+            np.testing.assert_allclose(
+                np.ravel(reference["signals"][label]), fn(t_ref), atol=1e-6, err_msg="app " + label
+            )
+        assert _max_diff(generated, reference) <= 1e-6
+
+    def test_switch_times_are_named_constants(self, qapp, tmp_path):
+        from lib import cli
+
+        builder, _ = _pulse_into_integrator()
+        path = str(tmp_path / "pulse.diablos")
+        builder.save(path)
+        script = str(tmp_path / "pulse.py")
+        cli.export_python(path, out_path=script)
+        with open(script) as fp:
+            source = fp.read()
+        assert "SWITCH_TIMES = [ON_DELAY, OFF_DELAY]" in source
+        assert "max_step" not in source  # Step edges are monotonic: no step cap
+
+    def test_fixed_step_ignores_switch_times(self):
+        # The compiled fixed-step path has no events: it steps the output grid.
+        blocks, lines = _first_order_loop()
+        source = PythonCodeGenerator(blocks, lines, solver="RK4").generate()
+        assert "SWITCH_TIMES" not in source
+
+    def test_state_event_caps_the_step(self):
+        # A Saturation's clip levels are non-monotonic events: max_step = dt.
+        blocks, lines = _first_order_loop()
+        blocks.append(FakeBlock("sat5", "Saturation", {"min": -1.0, "max": 1.0}, 1, 1))
+        lines.append(FakeLine("tranfn3", 0, "sat5", 0))
+        source = PythonCodeGenerator(blocks, lines).generate()
+        assert "max_step=dt" in source
