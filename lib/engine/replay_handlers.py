@@ -516,6 +516,30 @@ _HISTORY_KEYS = {
 }
 
 
+def truncate_recorders(blocks, n_steps: int) -> None:
+    """Cut every Scope / FieldScope history back to its first ``n_steps`` samples.
+
+    For a cancelled compiled run. A Scope's history is preallocated for the
+    whole grid, so its unreplayed tail is zeros; the FieldScope lists only hold
+    what was recorded, but with ``n_steps == 0`` they (like a Scope's) may still
+    be the previous run's, and are emptied. Ends with :func:`finalize_recorders`.
+    """
+    n_steps = max(0, int(n_steps))
+    for block in blocks:
+        keys = _HISTORY_KEYS.get(block.block_fn)
+        exec_params = getattr(block, "exec_params", None)
+        if not keys or exec_params is None:
+            continue
+        for key in keys:
+            if key not in exec_params:
+                continue
+            if block.block_fn == "Scope":
+                exec_params[key] = np.asarray(exec_params[key])[:n_steps]
+            elif n_steps == 0:
+                exec_params[key] = []
+    finalize_recorders(blocks)
+
+
 def finalize_recorders(blocks) -> None:
     """Convert every recorded Scope / FieldScope history to a numpy array.
 

@@ -276,6 +276,10 @@ class ModernCanvas(QWidget):
         """Stop simulation safely (delegates to SimulationController)."""
         return self._sim_controller.stop()
 
+    def shutdown_simulation(self):
+        """Stop and join a running batch worker (blocking; for window close)."""
+        return self._sim_controller.shutdown()
+
     def pause_simulation(self):
         """Pause the interactive run (delegates to SimulationController)."""
         return self._sim_controller.pause()

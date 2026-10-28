@@ -135,6 +135,26 @@ class TestStatusMessagePropagation:
         window.canvas._sim_controller.state_changed.emit("idle", "")
         assert window.status_pill.property("state") == "idle"
 
+    def test_stopping_state_disables_the_transport(self, window):
+        ctrl = window.canvas._sim_controller
+        ctrl.state_changed.emit("running", "")
+        ctrl.state_changed.emit("stopping", "")
+        assert window.status_pill.property("state") == "stopping"
+        assert window.toolbar.status_pill.property("state") == "stopping"
+        assert window.status_pill._label.text() == "Stopping…"
+        transport = window.toolbar.transport
+        for btn in (
+            transport.play_btn,
+            transport.pause_btn,
+            transport.stop_btn,
+            transport.step_btn,
+        ):
+            assert not btn.isEnabled()
+        ctrl.state_changed.emit("idle", "")
+        assert window.status_pill.property("state") == "idle"
+        assert transport.play_btn.isEnabled()
+        assert not transport.stop_btn.isEnabled()
+
     def test_progress_text_does_not_wipe_the_running_label(self, window):
         window._on_simulation_state_changed("running")
         window.status_message.setText("Running simulation... t = 3.5 / 20 s")
