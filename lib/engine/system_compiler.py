@@ -591,10 +591,17 @@ class SystemCompiler:
         module; the compiler allocates no ODE states for it, so the kernel must
         be algebraic (see docs/BLOCK_API.md, section 7).
         """
-        instance = getattr(block, "block_instance", None)
-        if instance is None or not is_user_block(type(instance)):
+        if not SystemCompiler._is_user_block(block):
             return False
-        return get_kernel_builder(canonical_fn(block.block_fn)) is not None
+        # Looked up through the block itself: a user kernel is bound to the
+        # module that defines the block class, so two projects' same-named
+        # blocks each compile with their own kernel.
+        return get_kernel_builder(canonical_fn(block.block_fn), block) is not None
+
+    @staticmethod
+    def _is_user_block(block) -> bool:
+        instance = getattr(block, "block_instance", None)
+        return instance is not None and is_user_block(type(instance))
 
     def check_compilability(
         self, blocks: List[DBlock], _recursive: bool = False, allow_discrete: bool = True
@@ -693,9 +700,14 @@ class SystemCompiler:
                     block, "it has a discrete sample time and no sampled kernel"
                 )
 
-            if fn not in allowed:
+            if self._is_user_block(block):
+                # A user block compiles only with a kernel of its own, even if
+                # its name canonicalizes onto an allowlisted built-in.
                 if self._has_user_kernel(block):
                     continue
+                return self._not_compilable(block, "it has no compiled kernel")
+
+            if fn not in allowed:
                 if canonical_fn(b_type) in {
                     canonical_fn(n) for n in self.ZERO_CROSSING_ONLY_BLOCKS
                 }:
@@ -783,7 +795,7 @@ class SystemCompiler:
             return build_sampled(ctx)
         if is_delay_block(block):
             return build_delay(ctx, self._delay_history)
-        builder = get_kernel_builder(ctx.fn)
+        builder = get_kernel_builder(ctx.fn, block)
         if builder is not None:
             return builder(ctx)
 

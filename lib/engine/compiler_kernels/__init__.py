@@ -15,10 +15,13 @@ Blocks not yet migrated fall through to the legacy if/elif in the compiler.
 """
 
 import logging
+import sys
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
 
+from blocks.base_block import BaseBlock
 from lib.engine.zero_crossing import EventSpec, signal_scalar  # noqa: F401 (re-export)
+from lib.user_blocks import USER_BLOCK_FLAG, USER_BLOCK_NAMESPACE, USER_MODULE_PREFIX
 
 logger = logging.getLogger(__name__)
 
@@ -73,8 +76,102 @@ class BuildContext:
         return holder
 
 
-# canonical fn-name -> builder(ctx) -> executor closure
+# canonical fn-name -> builder(ctx) -> executor closure, for the built-in
+# kernels (and any registered from an ordinary, non-user module). Kernels from
+# user block modules are *not* stored here: see "User block kernels" below.
 KERNEL_BUILDERS: Dict[str, Callable[[BuildContext], Callable]] = {}
+
+_KERNEL_KIND = "kernel"
+_EVENTS_KIND = "event builder"
+
+# --------------------------------------------------------------------------- #
+# User block kernels.
+#
+# A user block module (``lib.user_blocks``, imported as
+# ``diablos_user_blocks.<stem>``) registers through the same decorators, but
+# its builders are bound to *that module*, not to the bare canonical name: two
+# trusted projects may each define a ``ReviewTripler`` with its own kernel, and
+# a process-global name lookup would hand both diagrams whichever was imported
+# last. The builders are stored in the defining module's namespace (the
+# builder's ``__globals__``) and found again from the block's class, which the
+# loader stamps with the same namespace. Module names are no help here: both
+# projects' files are ``diablos_user_blocks.review_tripler``.
+# --------------------------------------------------------------------------- #
+
+#: Key, in a user module's globals, of its ``{kind: {name: builder}}`` registry.
+_SCOPED_REGISTRY = "__diablos_compiled_builders__"
+
+
+def _is_user_module(module_name) -> bool:
+    return str(module_name or "").startswith(USER_MODULE_PREFIX + ".")
+
+
+def _builder_namespace(builder) -> Optional[Dict[str, Any]]:
+    """The globals of the module that defined ``builder`` (None if unknown)."""
+    namespace = getattr(builder, "__globals__", None)
+    if isinstance(namespace, dict):
+        return namespace
+    module = sys.modules.get(getattr(builder, "__module__", "") or "")
+    return getattr(module, "__dict__", None)
+
+
+def _block_class(block) -> Optional[type]:
+    """Implementation class of a DBlock, block instance, or block class."""
+    if block is None:
+        return None
+    instance = getattr(block, "block_instance", None)
+    if instance is not None:
+        return type(instance)
+    if isinstance(block, type):
+        return block
+    if isinstance(block, BaseBlock):
+        return type(block)
+    return None
+
+
+def _is_user_class(cls) -> bool:
+    return bool(getattr(cls, USER_BLOCK_FLAG, False)) or _is_user_module(
+        getattr(cls, "__module__", "")
+    )
+
+
+def _class_namespace(cls) -> Optional[Dict[str, Any]]:
+    """Namespace of the module that defined block class ``cls``.
+
+    Prefers the loader's stamp; otherwise the globals of a function defined in
+    the class body (immune to ``sys.modules`` being rebound to a same-named
+    module from another project), and only last ``sys.modules``.
+    """
+    namespace = cls.__dict__.get(USER_BLOCK_NAMESPACE)
+    if isinstance(namespace, dict):
+        return namespace
+    for member in vars(cls).values():
+        func = getattr(member, "fget", None) or getattr(member, "__func__", None) or member
+        found = getattr(func, "__globals__", None)
+        if isinstance(found, dict) and found.get("__name__") == cls.__module__:
+            return found
+    module = sys.modules.get(getattr(cls, "__module__", "") or "")
+    return getattr(module, "__dict__", None)
+
+
+def _user_builder(cls, kind, name):
+    namespace = _class_namespace(cls)
+    if not namespace:
+        return None
+    return namespace.get(_SCOPED_REGISTRY, {}).get(kind, {}).get(name)
+
+
+def _lookup(registry, kind, name, block):
+    """Builder for ``name``: the block's own if it is a user block, else global.
+
+    A user block only ever gets a builder registered by its own module -- never
+    a built-in one that happens to share its canonical name, and never another
+    project's.
+    """
+    cls = _block_class(block)
+    if cls is not None and _is_user_class(cls):
+        return _user_builder(cls, kind, name)
+    return registry.get(name)
 
 
 def kernel(*names):
@@ -82,7 +179,7 @@ def kernel(*names):
 
     def deco(builder):
         for name in names:
-            _register(KERNEL_BUILDERS, name, builder, "kernel")
+            _register(KERNEL_BUILDERS, name, builder, _KERNEL_KIND)
         return builder
 
     return deco
@@ -99,8 +196,9 @@ def _register(registry, name, builder, kind):
 
     User block modules register through the same decorators, so a user file
     declaring ``@kernel("Gain")`` must not silently replace the engine's own
-    Gain kernel for every diagram. Re-registering a user builder (a palette
-    reload re-imports the module) is allowed.
+    Gain kernel for every diagram. A user module's builder goes into that
+    module's own registry (see "User block kernels" above); re-registering it
+    (a palette reload re-imports the module) simply replaces it there.
     """
     existing = registry.get(name)
     if existing is not None and _is_builtin(existing) and not _is_builtin(builder):
@@ -111,12 +209,22 @@ def _register(registry, name, builder, kind):
             getattr(builder, "__module__", "?"),
         )
         return
+    if _is_user_module(getattr(builder, "__module__", "")):
+        namespace = _builder_namespace(builder)
+        if namespace is not None:
+            namespace.setdefault(_SCOPED_REGISTRY, {}).setdefault(kind, {})[name] = builder
+            return
     registry[name] = builder
 
 
-def get_kernel_builder(fn):
-    """Return the registered builder for canonical name ``fn`` (or None)."""
-    return KERNEL_BUILDERS.get(fn)
+def get_kernel_builder(fn, block=None):
+    """Return the builder for canonical name ``fn`` (or None).
+
+    ``block`` (a DBlock, block instance or block class) selects the registry: a
+    user block resolves only kernels registered by its own module; anything
+    else -- or no ``block`` -- uses the global (built-in) registry.
+    """
+    return _lookup(KERNEL_BUILDERS, _KERNEL_KIND, fn, block)
 
 
 # --------------------------------------------------------------------------- #
@@ -140,20 +248,23 @@ def events(*names):
 
     def deco(builder):
         for name in names:
-            _register(EVENT_BUILDERS, name, builder, "event builder")
+            _register(EVENT_BUILDERS, name, builder, _EVENTS_KIND)
         return builder
 
     return deco
 
 
-def get_event_builder(fn):
-    """Return the registered event builder for canonical name ``fn`` (or None)."""
-    return EVENT_BUILDERS.get(fn)
+def get_event_builder(fn, block=None):
+    """Return the event builder for canonical name ``fn`` (or None).
+
+    ``block`` selects the registry exactly as in :func:`get_kernel_builder`.
+    """
+    return _lookup(EVENT_BUILDERS, _EVENTS_KIND, fn, block)
 
 
 def build_events(ctx):
     """Event specs contributed by one block, or ``[]`` when it has none."""
-    builder = EVENT_BUILDERS.get(ctx.fn)
+    builder = get_event_builder(ctx.fn, ctx.block)
     if builder is None:
         return []
     return list(builder(ctx) or [])

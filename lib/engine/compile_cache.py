@@ -149,6 +149,11 @@ def compiled_system_fingerprint(blocks, sorted_blocks, lines, dt):
                 float(getattr(block, "effective_sample_time", -1.0)),
                 compile_param_items(getattr(block, "params", {})),
                 compile_param_items(getattr(block, "exec_params", {}) or {}),
+                # The implementation class: a user block's kernel is bound to
+                # its class's module, so a reloaded (or different project's)
+                # class with the same name and params must not reuse the
+                # closures compiled for the old one.
+                type(getattr(block, "block_instance", None)),
             )
         )
 
