@@ -62,13 +62,63 @@ def test_overlay_hides_on_add_and_returns_on_new(window, qapp, monkeypatch):
     assert window.welcome_overlay.isVisible()
 
 
-def test_overlay_is_mouse_transparent_outside_buttons(window, qapp):
+def _window_click(window, widget, pos=None):
+    """Click through the top-level window, so Qt hit-tests like a real mouse
+    (QAbstractButton.click() and QTest on the widget itself skip that)."""
     from PyQt6.QtCore import Qt
 
+    pos = widget.rect().center() if pos is None else pos
+    QTest.mouseClick(
+        window.windowHandle(),
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.NoModifier,
+        widget.mapTo(window, pos),
+    )
+
+
+def test_overlay_buttons_receive_real_clicks(window, qapp):
+    """WA_TransparentForMouseEvents on a container hides its children from
+    hit-testing too, which once made every welcome button dead."""
+    _settle(qapp, window)
     ov = window.welcome_overlay
-    assert ov.testAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-    assert ov.panel.testAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-    assert not ov.example_buttons[0].testAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+    for btn in [*ov.example_buttons, ov.open_button, ov.browse_button]:
+        hit = window.childAt(btn.mapTo(window, btn.rect().center()))
+        assert hit is btn or btn.isAncestorOf(hit), (btn.objectName(), hit)
+
+
+def test_overlay_card_opens_example_on_window_click(window, qapp):
+    _settle(qapp, window)
+    _window_click(window, window.welcome_overlay.example_buttons[0])
+    _settle(qapp, window)
+    assert window.dsim.blocks_list
+    assert "first_order_step_response" in window.status_message.text()
+
+
+@pytest.mark.parametrize("where", ["outside_panel", "panel_margin", "hint_label"])
+def test_overlay_passes_other_clicks_to_canvas(window, qapp, where):
+    from PyQt6.QtCore import QEvent, QObject
+
+    _settle(qapp, window)
+    ov = window.welcome_overlay
+    target, pos = {
+        "outside_panel": (ov, QPoint(10, 10)),
+        "panel_margin": (ov.panel, QPoint(4, 4)),
+        "hint_label": (ov.hint_label, None),
+    }[where]
+
+    class Spy(QObject):
+        presses = 0
+
+        def eventFilter(self, obj, event):
+            if event.type() == QEvent.Type.MouseButtonPress:
+                Spy.presses += 1
+            return False
+
+    spy = Spy()
+    window.canvas.installEventFilter(spy)
+    _window_click(window, target, pos)
+    window.canvas.removeEventFilter(spy)
+    assert Spy.presses == 1
 
 
 def test_example_card_loads_example(window, qapp):

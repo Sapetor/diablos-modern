@@ -3,8 +3,11 @@
 A child widget of the canvas that is shown only while the diagram being edited
 has no blocks. At the top level it offers a short welcome, the basic gestures
 and a few curated example diagrams; inside an empty subsystem it shows a lighter
-hint instead. Everything outside the real buttons is transparent to the mouse,
-so double-click-to-add and palette drops on the canvas keep working.
+hint instead. Everything outside the real buttons ignores the mouse, so Qt
+passes those events on to the canvas and double-click-to-add, rubber-band
+selection and palette drops keep working. (Not WA_TransparentForMouseEvents on
+the containers: that flag also hides every child from hit-testing, so the
+buttons could never be clicked.)
 """
 
 import logging
@@ -63,7 +66,6 @@ class WelcomeOverlay(QWidget):
         self.canvas = canvas
         self.window_ref = window
         self.mode = MODE_HIDDEN
-        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.setObjectName("welcomeOverlay")
 
         outer = QVBoxLayout(self)
@@ -71,7 +73,6 @@ class WelcomeOverlay(QWidget):
 
         self.panel = QFrame()
         self.panel.setObjectName("welcomePanel")
-        self.panel.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         outer.addWidget(self.panel, 0, Qt.AlignmentFlag.AlignCenter)
         lay = QVBoxLayout(self.panel)
         lay.setContentsMargins(SPACE["2xl"], SPACE["2xl"], SPACE["2xl"], SPACE["2xl"])
@@ -84,13 +85,14 @@ class WelcomeOverlay(QWidget):
         self.hint_label.setObjectName("welcomeHint")
         self.hint_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.hint_label.setWordWrap(True)
+        for lbl in (self.title_label, self.hint_label):
+            lbl.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         lay.addWidget(self.title_label)
         lay.addWidget(self.hint_label)
 
         # Example cards + actions live in one container so the subsystem hint
         # can hide them together.
         self.actions_box = QWidget()
-        self.actions_box.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         box = QVBoxLayout(self.actions_box)
         box.setContentsMargins(0, SPACE["lg"], 0, 0)
         box.setSpacing(SPACE["md"])
