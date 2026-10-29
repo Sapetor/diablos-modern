@@ -461,6 +461,21 @@ class DSim:
         self._reset_document_history()
         return sim_params
 
+    def serialize_root(self, modern_ui_data: Optional[Dict] = None) -> Dict[str, Any]:
+        """Serialize the *whole* diagram, even while navigated into a subsystem.
+
+        ``serialize()`` reads the model's current lists, which are a subsystem's
+        internals while the user is inside one; swap the root context in for
+        the duration of the call.
+        """
+        root_blocks, root_lines = self.get_root_context()
+        live = (self.model.blocks_list, self.model.line_list)
+        self.model.blocks_list, self.model.line_list = root_blocks, root_lines
+        try:
+            return self.serialize(modern_ui_data)
+        finally:
+            self.model.blocks_list, self.model.line_list = live
+
     def clone_for_analysis(self) -> "DSim":
         """Return an independent ``DSim`` holding a copy of this diagram.
 
@@ -480,16 +495,7 @@ class DSim:
         # an experiment that edits the clone's variables (e.g. a sweep over a
         # workspace variable) never touches the source diagram's.
         clone = DSim(workspace=self.workspace.copy())
-        # serialize() reads the model's *current* lists, which are a subsystem's
-        # internals while the user is navigated inside one.  Always clone the
-        # whole diagram.
-        root_blocks, root_lines = self.get_root_context()
-        live = (self.model.blocks_list, self.model.line_list)
-        self.model.blocks_list, self.model.line_list = root_blocks, root_lines
-        try:
-            data = self.serialize()
-        finally:
-            self.model.blocks_list, self.model.line_list = live
+        data = self.serialize_root()
         clone.deserialize(data)
         clone.use_fast_solver = getattr(self, "use_fast_solver", True)
         # Never let a cloned run touch the GUI: no dynamic plotting, no scope

@@ -111,7 +111,10 @@ lin["A"], lin["B"], lin["C"], lin["D"]             # [[0.]], [[3.]], [[1.]], [[0
 Monte Carlo gives every block with a `seed` parameter its own per-run seed, so
 the same `seed` reproduces the ensemble; `samplers={("k", "gain"): (1.0, 3.0)}`
 also draws a parameter per run. Both runners restore the diagram's parameters
-when they finish. The result dictionaries are the ones the Analysis windows show;
+when they finish. For large studies, `workers=4` runs in four processes (results
+are identical to `workers=1`) and `keep_traces=False` keeps only the streamed
+statistics -- mean, std, min/max and per-run metrics, without the percentile
+bands, which need every trace. The result dictionaries are the ones the Analysis windows show;
 [Analysis & Experiments](analysis.md) describes them.
 
 ## Errors

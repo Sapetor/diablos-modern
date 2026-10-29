@@ -262,6 +262,8 @@ class Diagram:
         samplers: Optional[Dict[Any, Any]] = None,
         t: Optional[float] = None,
         dt: Optional[float] = None,
+        keep_traces: Any = True,
+        workers: int = 1,
     ) -> Dict[str, Any]:
         """Run a seeded Monte-Carlo ensemble; see ``MonteCarloRunner.run``.
 
@@ -271,12 +273,22 @@ class Diagram:
         Returns the ensemble dict: ``timeline`` plus, per signal, ``runs``,
         ``mean``, ``std``, ``p5``/``p50``/``p95``, ``min``/``max`` and per-run
         ``metrics``. The diagram's parameters are restored afterwards.
+
+        ``keep_traces=False`` keeps only the streamed statistics (``p5``/``p50``
+        /``p95`` are then ``None``); an int K keeps a sample of K runs.
+        ``workers > 1`` runs in that many processes, with identical results.
         """
         from lib.analysis.monte_carlo import MonteCarloRunner
 
         t, dt = self._prepare_batch(t, dt)
         return MonteCarloRunner(self._dsim).run(
-            int(n_runs), master_seed=seed, sim_time=t, sim_dt=dt, samplers=samplers
+            int(n_runs),
+            master_seed=seed,
+            sim_time=t,
+            sim_dt=dt,
+            samplers=samplers,
+            keep_traces=keep_traces,
+            workers=workers,
         )
 
     def sweep(
@@ -284,18 +296,24 @@ class Diagram:
         axes: Iterable[Dict[str, Any]],
         t: Optional[float] = None,
         dt: Optional[float] = None,
+        keep_traces: bool = True,
+        workers: int = 1,
     ) -> Dict[str, Any]:
         """Run a 1-D or 2-D parameter sweep; see ``ParameterSweepRunner.run``.
 
         ``axes`` is one or two ``{"block": name, "param": pname, "values": [...]}``
         dicts. Returns the sweep dict (1-D: a response family per signal plus
         per-value ``metrics``; 2-D: a metric grid). The diagram's parameters
-        are restored afterwards.
+        are restored afterwards. ``keep_traces=False`` drops the 1-D response
+        family (2-D sweeps never keep traces); ``workers > 1`` runs in that
+        many processes, with identical results.
         """
         from lib.analysis.parameter_sweep import ParameterSweepRunner
 
         t, dt = self._prepare_batch(t, dt)
-        return ParameterSweepRunner(self._dsim).run(list(axes), sim_time=t, sim_dt=dt)
+        return ParameterSweepRunner(self._dsim).run(
+            list(axes), sim_time=t, sim_dt=dt, keep_traces=keep_traces, workers=workers
+        )
 
     def find_operating_point(
         self, t: float = 0.0, input_overrides: Optional[Dict[str, Any]] = None

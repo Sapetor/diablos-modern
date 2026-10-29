@@ -322,16 +322,10 @@ class TestProcessPool:
         assert calls == [3, 1]
 
     def test_workspace_variables_reach_workers(self, qapp, tmp_path):
-        from lib.workspace import WorkspaceManager
-
+        """Workers see the *diagram's* variables (per-DSim workspace)."""
         dsim = _gain_scope(tmp_path, const_value="K", name="ws.diablos")
-        ws = WorkspaceManager()
-        saved = dict(ws.variables)
-        ws.variables = {"K": 4.0}
-        try:
-            axes = [{"block": _name_of(dsim, "Gain"), "param": "gain", "values": [1.0, 2.0]}]
-            res = ParameterSweepRunner(dsim).run(axes=axes, sim_time=0.2, sim_dt=0.05, workers=2)
-        finally:
-            ws.variables = saved
+        dsim.workspace.variables = {"K": 4.0}
+        axes = [{"block": _name_of(dsim, "Gain"), "param": "gain", "values": [1.0, 2.0]}]
+        res = ParameterSweepRunner(dsim).run(axes=axes, sim_time=0.2, sim_dt=0.05, workers=2)
         (sig,) = res["signals"].values()
         np.testing.assert_allclose(sig["metrics"]["final"], [4.0, 8.0])

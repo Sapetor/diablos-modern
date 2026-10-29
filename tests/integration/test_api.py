@@ -206,6 +206,13 @@ class TestAnalysis:
         assert not np.allclose(runs[0], runs[1])
         assert sim.get_param("n", "seed") == 7
 
+    def test_monte_carlo_lean_and_parallel_match(self):
+        sim = from_builder(_noisy(sim_time=0.5))
+        full = sim.monte_carlo(4, seed=1)
+        lean = sim.monte_carlo(4, seed=1, keep_traces=False, workers=2)
+        assert lean["signals"]["y"]["p50"] is None
+        assert np.array_equal(lean["signals"]["y"]["mean"], full["signals"]["y"]["mean"])
+
     def test_sweep_1d(self):
         sim = from_builder(_ramp())
         res = sim.sweep([{"block": "k", "param": "gain", "values": [1.0, 2.0, 4.0]}])

@@ -55,43 +55,22 @@ def default_workers():
 
 
 # --------------------------------------------------------------- workspace
-def workspace_variables_snapshot(dsim=None):
-    """Workspace variables the worker processes must see (a plain dict copy).
-
-    Single integration point for per-diagram workspaces: today the variables are
-    process-wide (``WorkspaceManager`` singleton); once a ``DSim`` carries its
-    own workspace, read it from ``dsim`` here.
-    """
-    from lib.workspace import WorkspaceManager
-
-    return dict(getattr(WorkspaceManager(), "variables", {}) or {})
+def workspace_variables_snapshot(dsim):
+    """``dsim``'s workspace as a picklable dict (see ``Workspace.to_dict``)."""
+    return dsim.workspace.to_dict()
 
 
-def apply_workspace_variables(variables, dsim=None):
-    """Install ``variables`` as the worker process's workspace (see snapshot)."""
-    from lib.workspace import WorkspaceManager
+def apply_workspace_variables(snapshot, dsim):
+    """Give the worker's ``dsim`` the parent diagram's workspace."""
+    from lib.workspace import Workspace
 
-    WorkspaceManager().variables = dict(variables or {})
+    dsim.workspace = Workspace.from_dict(snapshot)
 
 
 # --------------------------------------------------------------- diagram
 def serialize_root(dsim):
-    """Serialize the *whole* diagram even while navigated inside a subsystem.
-
-    Mirrors ``DSim.clone_for_analysis``: ``serialize()`` reads the model's
-    current lists, so swap the root context in for the duration of the call.
-    """
-    get_root = getattr(dsim, "get_root_context", None)
-    model = getattr(dsim, "model", None)
-    if get_root is None or model is None:
-        return dsim.serialize()
-    root_blocks, root_lines = get_root()
-    live = (model.blocks_list, model.line_list)
-    model.blocks_list, model.line_list = root_blocks, root_lines
-    try:
-        return dsim.serialize()
-    finally:
-        model.blocks_list, model.line_list = live
+    """Serialize the whole diagram, even while navigated inside a subsystem."""
+    return dsim.serialize_root()
 
 
 def set_block_param(block, name, value):
@@ -131,7 +110,7 @@ def _worker_init(data, use_fast_solver, workspace_vars, cancel_event):
     """Build this worker process's private headless DSim (once per process)."""
     from lib.cli import new_headless_dsim
 
-    dsim = new_headless_dsim()  # resets the workspace singleton
+    dsim = new_headless_dsim()
     apply_workspace_variables(workspace_vars, dsim)
     dsim.deserialize(data)
     dsim.use_fast_solver = use_fast_solver
