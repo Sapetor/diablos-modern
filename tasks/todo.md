@@ -114,6 +114,21 @@ branches (see git log). Still open, both architectural:
   the process pool inside a PyInstaller bundle (GUI defaults to parallel;
   falls back in-process on `BrokenProcessPool`).
 
+### Open items from the second external review (2026-10-29)
+All six findings at 4dcd717 were fixed (save from a subsystem, rate
+inheritance order, workspace sample periods, stale analysis cache, project
+blocks on open / in clones and workers). Gaps found while fixing them:
+- [ ] **Bode / Nyquist / root locus ignore workspace variables.**
+  `lib/analysis/analyzers/base_analyzer.py` reads raw `block.params`, so a
+  Gain `"K"` is not resolved there (the Linearizer path is correct).
+- [ ] **Validator rate warnings treat a variable period as continuous.**
+  `lib/diagram_validator.py::_check_rate_mismatches` still does
+  `float(params[...])`; use `lib/engine/sample_times.declared_sample_time`.
+- [ ] **Subsystem ports resync only on exit.** Saving from inside a
+  subsystem writes the whole document now, but a port added inside is
+  reflected in the parent's external port layout only after
+  `exit_subsystem` runs.
+
 ### Open items from the Windows session (2026-10-09)
 All closed the same day (see the 2026-10-09 Change Log rows): resize,
 Windows style, cp1252 logging, toolbar/status/glyph test portability, saved

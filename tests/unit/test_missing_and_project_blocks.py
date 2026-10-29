@@ -254,3 +254,32 @@ class TestUntrustedProjectAnalysis:
         names = missing_block_types(dsim.blocks_list)
         assert names == ["ReviewTripler"]
         assert "ReviewTripler" in ub.missing_blocks_message(names, untrusted_project)
+
+
+@pytest.mark.unit
+def test_analysis_refuses_a_diagram_with_a_missing_block(qapp, tmp_path):
+    """Linearize/trim go straight to the engine, not through DSim's run check;
+    they must still fail explicitly instead of analysing a reduced diagram."""
+    from lib import api
+    from lib.diagram_builder import DiagramBuilder
+
+    b = DiagramBuilder(sim_time=1.0, sim_dt=0.01)
+    u = b.add_block("Step", 0, 0, name="u", params={"value": 1.0, "delay": 0.0})
+    k = b.add_block("Gain", 100, 0, name="k", params={"gain": 2.0})
+    x = b.add_block("Integrator", 200, 0, name="x", params={"init_conds": 0.0})
+    y = b.add_block("Scope", 300, 0, name="y", params={"labels": "x"})
+    b.connect(u, 0, k, 0)
+    b.connect(k, 0, x, 0)
+    b.connect(x, 0, y, 0)
+    path = tmp_path / "m.diablos"
+    b.save(str(path))
+    data = json.loads(path.read_text(encoding="utf-8"))
+    for rec in data["blocks_data"]:
+        if rec["block_fn"] == "Gain":
+            rec["block_fn"] = "NoSuchBlock"
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    sim = api.load(str(path))
+    for analyse in (sim.linearize, sim.find_operating_point):
+        with pytest.raises(Exception, match="NoSuchBlock"):
+            analyse()
