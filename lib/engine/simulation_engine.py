@@ -14,8 +14,13 @@ from lib.engine.system_compiler import SystemCompiler
 from lib.engine.flattener import Flattener
 from lib.engine.solver_diagnostics import build_diagnostics, format_diagnostics_for_log
 from lib.engine.zero_crossing import DEFAULT_MAX_EVENTS
-from lib.engine.compile_cache import source_params_fingerprint, compiled_system_fingerprint
+from lib.engine.compile_cache import (
+    compiled_system_fingerprint,
+    source_params_fingerprint,
+    workspace_fingerprint,
+)
 from lib.engine.block_params import push_down_internal_params
+from lib.engine.sample_times import SampleTimeError, propagate_sample_times
 from lib.engine import graph_analysis
 from lib.engine.algebraic_loop import AlgebraicLoop, AlgebraicLoopError
 from lib.engine.topo import cyclic_components
@@ -230,9 +235,10 @@ class SimulationEngine:
             # in the normal execution path while keeping the resolve as a
             # fallback for direct callers (tests, alternate init paths).
             workspace_manager = self._get_workspace()
+            ws_fp = workspace_fingerprint(workspace_manager)
             current_dt = self.sim_dt
             for block in self.active_blocks_list:
-                self._resolve_block_params(block, current_dt, workspace_manager)
+                self._resolve_block_params(block, current_dt, workspace_manager, ws_fp)
 
             # Identify memory blocks (on ACTIVE list, after param resolution)
             self.identify_memory_blocks()
@@ -296,6 +302,11 @@ class SimulationEngine:
             self.execution_initialized = True
             return True
 
+        except SampleTimeError as e:
+            # A user-facing validation error (error_block is already set).
+            logger.error(f"Engine: {e}")
+            self.error_msg = str(e)
+            return False
         except Exception as e:
             import traceback
 
@@ -670,16 +681,27 @@ class SimulationEngine:
         return self.workspace
 
     def _resolve_block_params(
-        self, block: DBlock, dt: float, workspace_manager: Optional[Workspace] = None
+        self,
+        block: DBlock,
+        dt: float,
+        workspace_manager: Optional[Workspace] = None,
+        workspace_fp: Optional[str] = None,
     ) -> None:
         """Resolve a block's exec_params for the given simulation step.
 
         Skips the (potentially expensive) workspace resolution when exec_params
-        is already populated for this dt, then resolves params, copies internal
-        ('_'-prefixed) parameters, and stamps the current dtime. Shared by
-        initialize_execution and run_compiled_simulation so the cache-skip logic
-        stays consistent.
+        is already current: same step, same raw params and same workspace
+        content (``workspace_fp``, see ``compile_cache.workspace_fingerprint``;
+        computed here when not given -- callers resolving many blocks pass it
+        once).  Otherwise resolves params, copies internal ('_'-prefixed)
+        parameters, and stamps the current dtime. Shared by
+        initialize_execution, run_compiled_simulation and the linearizer so the
+        cache-skip logic stays consistent.
         """
+        if workspace_manager is None:
+            workspace_manager = self._get_workspace()
+        if workspace_fp is None:
+            workspace_fp = workspace_fingerprint(workspace_manager)
         # Blocks gated to a discrete rate integrate over their own sample
         # period, not the base step (see DBlock.execution_step).  Before
         # propagate_sample_times() has run this is still dt, so the stamp is
@@ -687,8 +709,12 @@ class SimulationEngine:
         step = block.execution_step(dt)
         cached = getattr(block, "exec_params", None)
         params_fp = source_params_fingerprint(block.params)
-        cached_fp = cached.get("_source_params_fingerprint") if cached else None
-        if cached and cached.get("dtime") == step and cached_fp == params_fp:
+        if (
+            cached
+            and cached.get("dtime") == step
+            and cached.get("_source_params_fingerprint") == params_fp
+            and cached.get("_workspace_fingerprint") == workspace_fp
+        ):
             # The cache hit skips the '_'-prefixed copy below, and '_' keys are
             # excluded from the fingerprint, so a mid-run write to params would
             # otherwise never reach the block.  Refresh the narrow set that the
@@ -696,13 +722,12 @@ class SimulationEngine:
             # a blanket copy here would clobber the state the block owns.
             push_down_internal_params(block)
             return
-        if workspace_manager is None:
-            workspace_manager = self._get_workspace()
         block.exec_params = workspace_manager.resolve_params(block.params)
         # Copy internal parameters (those starting with '_')
         block.exec_params.update({k: v for k, v in block.params.items() if k.startswith("_")})
         block.exec_params["dtime"] = step
         block.exec_params["_source_params_fingerprint"] = params_fp
+        block.exec_params["_workspace_fingerprint"] = workspace_fp
 
     def execute_block(
         self, block: DBlock, output_only: bool = False
@@ -1202,42 +1227,27 @@ class SimulationEngine:
             if line.dstblock in input_sources:
                 input_sources[line.dstblock].append(line.srcblock)
 
-        # Create block lookup
         block_map = {b.name: b for b in self.active_blocks_list}
 
-        # Phase 1: Resolve explicit sample times from parameters
+        # Phase 1: each block's declared rate, read from its resolved
+        # parameters so a workspace variable or expression schedules exactly
+        # like the literal it stands for.  An unresolvable period is an error
+        # (SampleTimeError), not a silent fallback to continuous.
+        declared: Dict[str, float] = {}
         for block in self.active_blocks_list:
-            declared_rate = block.resolve_sample_time()
-            block.effective_sample_time = declared_rate
+            try:
+                declared[block.name] = block.resolve_sample_time()
+            except SampleTimeError as e:
+                self.error_block = e.block or block.name
+                raise
             # Reset execution state for new simulation
             block.reset_sample_time_state()
 
-        # Phase 2: Propagate inherited rates (sample_time = 0)
-        # Use iterative propagation until no changes occur
-        max_iterations = len(self.active_blocks_list) + 1
-        for iteration in range(max_iterations):
-            changed = False
-
-            for block in self.active_blocks_list:
-                # Only process blocks that inherit (sample_time = 0)
-                if block.effective_sample_time != 0.0:
-                    continue
-
-                # Find fastest (smallest positive) sample time from inputs
-                fastest_rate = -1.0  # Default to continuous if no discrete inputs
-                for src_name in input_sources.get(block.name, []):
-                    src_block = block_map.get(src_name)
-                    if src_block and src_block.effective_sample_time > 0:
-                        if fastest_rate < 0 or src_block.effective_sample_time < fastest_rate:
-                            fastest_rate = src_block.effective_sample_time
-
-                # Apply inherited rate
-                if fastest_rate != block.effective_sample_time:
-                    block.effective_sample_time = fastest_rate
-                    changed = True
-
-            if not changed:
-                break
+        # Phase 2: inherited rates (0) -> effective rates, as a fixed point
+        # over the graph (order-independent; see lib/engine/sample_times.py).
+        effective = propagate_sample_times(declared, input_sources)
+        for block in self.active_blocks_list:
+            block.effective_sample_time = effective[block.name]
 
         # Phase 3: Mark connections as discrete based on source block sample time
         for line in self.active_line_list:

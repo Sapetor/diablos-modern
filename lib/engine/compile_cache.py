@@ -22,6 +22,7 @@ _COMPILE_CACHE_ALLOWED_INTERNAL_KEYS = frozenset({"_inputs_", "_outputs_"})
 _COMPILE_CACHE_IGNORED_PARAM_KEYS = frozenset(
     {
         "_source_params_fingerprint",
+        "_workspace_fingerprint",
         "_init_start_",
         "_rng",
         "_prev",
@@ -113,6 +114,23 @@ def compile_param_items(params):
 def source_params_fingerprint(params):
     """Fingerprint raw block params for exec_params stale-cache detection."""
     return compile_param_items(params)
+
+
+def workspace_fingerprint(workspace):
+    """Content fingerprint of a workspace's variables (``None`` = no workspace).
+
+    Part of the exec_params cache key: a parameter written as a variable name
+    or expression resolves to a different value when the variable changes, so
+    a cache keyed only on the raw parameters served the old value (a second
+    linearization after editing ``K`` still saw the first ``K``).  It hashes the
+    *content* rather than counting edits, so ``set_variable``, a direct
+    ``ws.variables[name] = value`` and an in-place change to an array value are
+    all caught.  Cheap for a workspace of scalars and small arrays (arrays are
+    digested, not expanded); callers that resolve many blocks compute it once.
+    """
+    variables = getattr(workspace, "variables", None) or {}
+    key = repr(normalize_cache_value(dict(variables)))
+    return hashlib.blake2b(key.encode("utf-8", "backslashreplace"), digest_size=16).hexdigest()
 
 
 def compiled_system_fingerprint(blocks, sorted_blocks, lines, dt):

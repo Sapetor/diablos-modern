@@ -291,24 +291,26 @@ class DBlock:
         self._last_execution_time = -1.0
         self._held_outputs = {}
 
-    def resolve_sample_time(self) -> float:
+    def resolve_sample_time(self, resolved: Optional[Dict[str, Any]] = None) -> float:
         """
-        Resolve the effective sample time from block parameters.
+        Resolve the declared sample time from block parameters.
 
         Checks params for 'sampling_time' or 'sample_time' keys.
-        Returns -1.0 for continuous, 0.0 for inherited, >0 for fixed rate.
+        Returns -1.0 for continuous (any negative value), 0.0 for inherited,
+        >0 for a fixed rate.  A literal is read directly; a workspace variable
+        name or expression is read from ``resolved`` (default: this block's
+        ``exec_params``, which the engine refreshes before scheduling), so all
+        three spellings give the same rate.
+
+        Raises:
+            SampleTimeError (a ValueError): the period does not resolve to a
+                finite real number.
         """
-        # Check for explicit sample time in params
-        sample_time = self.params.get("sampling_time", self.params.get("sample_time", -1.0))
+        from lib.engine.sample_times import declared_sample_time
 
-        # Handle string values
-        if isinstance(sample_time, str):
-            try:
-                sample_time = float(sample_time)
-            except ValueError:
-                sample_time = -1.0
-
-        return float(sample_time)
+        if resolved is None:
+            resolved = getattr(self, "exec_params", None)
+        return declared_sample_time(self.params, resolved, self.name)
 
     def get_port_names(self) -> tuple:
         """

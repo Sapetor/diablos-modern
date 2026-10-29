@@ -68,6 +68,7 @@ from lib.engine.block_names import canonical_fn
 from lib.engine.compiled_runner import resolve_solver_method
 from lib.engine.compiled_loops import order_units
 from lib.engine.compiler_kernels.discrete import DISCRETE_FNS, RATED_FNS
+from lib.engine.sample_times import SampleTimeError, declared_sample_time, propagate_sample_times
 from lib.engine.topo import kahn_topological_order
 
 logger = logging.getLogger(__name__)
@@ -361,14 +362,36 @@ class _Block:
         return "{} ({})".format(self.raw_fn, self.name)
 
 
+def _exec_params_stale(exec_params: Dict[str, Any], params: Dict[str, Any], workspace) -> bool:
+    """True when engine-stamped exec_params no longer match params/workspace.
+
+    The engine stamps the raw-params and workspace fingerprints it resolved
+    with; when either changed since (a variable edited after the last run),
+    the exported value must come from a fresh resolution, not the old run.
+    Unstamped exec_params (flattener clones, test doubles) are trusted as-is.
+    """
+    if "_source_params_fingerprint" not in exec_params:
+        return False
+    from lib.engine.compile_cache import source_params_fingerprint, workspace_fingerprint
+
+    if exec_params.get("_source_params_fingerprint") != source_params_fingerprint(params):
+        return True
+    # With no workspace given there is nothing to compare against: keep what
+    # the run resolved rather than re-resolving against an empty workspace.
+    return workspace is not None and exec_params.get(
+        "_workspace_fingerprint"
+    ) != workspace_fingerprint(workspace)
+
+
 def _resolved_params(
     block: Any, warnings: Optional[List[str]] = None, workspace: Any = None
 ) -> Dict[str, Any]:
     """Params with workspace variables resolved, the way the engine reads them.
 
     Prefers ``exec_params`` when the diagram has been run (that is what
-    ``SystemCompiler`` compiles from); otherwise resolves ``params`` against the
-    diagram's workspace so ``gain = "Kp"`` exports as its numeric value.
+    ``SystemCompiler`` compiles from) and they are still current; otherwise
+    resolves ``params`` against the diagram's workspace so ``gain = "Kp"``
+    exports as its numeric value.
 
     Args:
         block: the diagram block whose params are being read.
@@ -379,9 +402,9 @@ def _resolved_params(
             (``dsim.workspace``); ``None`` resolves with no variables.
     """
     exec_params = getattr(block, "exec_params", None)
-    if exec_params:
-        return dict(exec_params)
     params = dict(getattr(block, "params", None) or {})
+    if exec_params and not _exec_params_stale(exec_params, params, workspace):
+        return dict(exec_params)
     try:
         if workspace is None:
             from lib.workspace import Workspace
@@ -412,19 +435,20 @@ def _resolved_params(
         return params
 
 
-def _declared_sample_time(block: Any) -> float:
-    """Sample time declared on a block (>0 means a discrete rate)."""
+def _declared_sample_time(block: Any, resolved: Optional[Dict[str, Any]] = None) -> float:
+    """Sample time declared on a block (>0 means a discrete rate).
+
+    Read the way the engine reads it (``lib.engine.sample_times``): a literal
+    directly, a workspace name or expression from ``resolved`` -- the params
+    this exporter resolved. Raises ``SampleTimeError`` when it does not resolve.
+    """
+    params = getattr(block, "params", None)
+    if isinstance(params, dict):
+        return declared_sample_time(params, resolved, getattr(block, "name", ""))
     resolver = getattr(block, "resolve_sample_time", None)
     if callable(resolver):
-        try:
-            return float(resolver())
-        except (TypeError, ValueError):
-            return -1.0
-    params = getattr(block, "params", None) or {}
-    try:
-        return float(params.get("sampling_time", params.get("sample_time", -1.0)))
-    except (TypeError, ValueError):
-        return -1.0
+        return float(resolver())
+    return -1.0
 
 
 # --------------------------------------------------------------------------
@@ -603,29 +627,26 @@ class PythonCodeGenerator:
         """Each block's sample time, as ``SimulationEngine.propagate_sample_times``.
 
         The declared rate (``sampling_time``; -1 continuous, 0 inherit, > 0
-        discrete), then inherited rates: a block with 0 takes the fastest
-        discrete rate among its inputs, iterated until nothing changes.
+        discrete), then inherited rates through the same order-independent
+        fixed point the engine uses (``lib.engine.sample_times``). A period
+        that does not resolve to a number is reported as unsupported rather
+        than exported as continuous.
         """
         sources: Dict[str, List[str]] = {b.name: [] for b in self._blocks}
         for line in self._lines:
             sources[line.dstblock].append(line.srcblock)
+        declared: Dict[str, float] = {}
+        bad: List[Tuple[str, str, str]] = []
         for blk in self._blocks:
-            blk.rate = _declared_sample_time(blk.obj)
-        for _ in range(len(self._blocks) + 1):
-            changed = False
-            for blk in self._blocks:
-                if blk.rate != 0.0:
-                    continue
-                fastest = -1.0
-                for src in sources[blk.name]:
-                    rate = self._by_name[src].rate
-                    if rate > 0 and (fastest < 0 or rate < fastest):
-                        fastest = rate
-                if fastest != blk.rate:
-                    blk.rate = fastest
-                    changed = True
-            if not changed:
-                break
+            try:
+                declared[blk.name] = _declared_sample_time(blk.obj, blk.params)
+            except SampleTimeError as exc:
+                bad.append((blk.name, blk.raw_fn, str(exc)))
+        if bad:
+            raise CodegenUnsupportedError(bad)
+        rates = propagate_sample_times(declared, sources)
+        for blk in self._blocks:
+            blk.rate = rates[blk.name]
 
     def _check_supported(self):
         bad: List[Tuple[str, str, str]] = []

@@ -25,6 +25,7 @@ import numpy as np
 
 from lib.engine.block_names import canonical_fn
 from lib.engine.block_params import runtime_params
+from lib.engine.compile_cache import workspace_fingerprint
 from lib.engine.compiled_delays import CompiledDelayError, is_delay_block
 from lib.engine.compiler_kernels.discrete import DISCRETE_FNS, is_sampled_block, sample_update
 from lib.engine.solver_diagnostics import (
@@ -698,8 +699,9 @@ def run_compiled_simulation(
         # already resolves with the same sim_dt, so we skip the per-block
         # pass when exec_params['dtime'] is already current.
         workspace_manager = engine._get_workspace()
+        ws_fp = workspace_fingerprint(workspace_manager)
         for block in current_blocks:
-            engine._resolve_block_params(block, dt, workspace_manager)
+            engine._resolve_block_params(block, dt, workspace_manager, ws_fp)
 
         # Final check on flattened system
         # engine.check_compilability, not the compiler's: it also refuses a
