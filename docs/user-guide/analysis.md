@@ -118,6 +118,15 @@ The setup dialog (**Monte-Carlo Ensemble**) takes:
 - **Master seed**
 - **Simulation time**
 - **Step size (dt)**
+- **Parallel workers** — how many separate processes run the simulations
+  (default: up to 4, one fewer than your CPU count). Results are identical for
+  any value. Each extra process takes about a second to start, so use 1 for
+  small, quick ensembles.
+- **Keep all run traces (exact percentile bands)** — on by default. Turn it off
+  for very large ensembles: memory then no longer grows with runs × samples,
+  mean, std, min/max and the histograms stay exact, the band becomes
+  mean ± std (percentiles have no exact streaming form), and only a sample of
+  about 30 runs is drawn.
 
 ### Reproducibility from one number
 
@@ -160,6 +169,7 @@ dialog offers:
 - For each axis (**Parameter X**, **Parameter Y**): **Block**, **Parameter**,
   **Min**, **Max**, **Points**
 - **Simulation time** and **Step size (dt)**
+- **Parallel workers** — as for Monte Carlo
 
 Only numeric scalar parameters can be swept; if no block exposes one, the dialog
 says so.
@@ -170,7 +180,9 @@ Results, in a window also titled **Parameter Sweep**:
   you see the shape change as the parameter moves. **Metric vs parameter** plots
   one outcome metric against the swept value — the usual way to find where
   overshoot or settling time turns over.
-- **2-D** draws a heatmap of one outcome metric over the two parameters.
+- **2-D** draws a heatmap of one outcome metric over the two parameters. Each
+  grid point is reduced to its metrics as soon as it finishes, so a 2-D sweep
+  never holds the traces of the whole grid.
 
 A 1-D sweep of a controller gain against `max` overshoot, or a 2-D sweep of
 `Kp` × `Ki` against `rms` error, is the fast way to see a design trade-off
@@ -201,12 +213,18 @@ All of this is in `lib/analysis/`:
 | `resim.py` | Shared headless re-simulation: `harvest_scope_signals`, `OUTCOME_METRICS` |
 | `monte_carlo.py` | `MonteCarloRunner`, `derive_seed` |
 | `parameter_sweep.py` | `ParameterSweepRunner` |
+| `streaming.py` | Per-run reduction and streaming accumulators (Welford mean/std, min/max, metrics) |
+| `parallel.py` | In-process loop or spawn process pool (`workers`), results released in run order |
 | `linearizer.py` | Numeric Jacobian linearization producing A/B/C/D |
 | `control_system_analyzer.py`, `analyzers/` | Bode, Nyquist, root locus, LQR |
 
 The two experiment runners snapshot the original block parameters and restore
 them afterwards, and they run off the GUI thread, so a long ensemble never
-freezes the window or leaves the diagram modified.
+freezes the window or leaves the diagram modified. With `workers > 1` each
+worker process rebuilds the diagram once from its serialized form and runs only
+the per-run seeds and parameter values the parent computed, and results are
+folded in run-index order, so the experiment is bit-identical whatever the
+worker count.
 
 See the [Developer Guide](../DEVELOPER_GUIDE.md) and
 [Architecture](../ARCHITECTURE.md) for the internals.

@@ -90,7 +90,7 @@ class TestParameterSweepDialog:
         assert isinstance(dialog, QDialog)
 
         sel = dialog.get_selection()
-        assert set(sel) == {"axes", "sim_time", "sim_dt"}
+        assert set(sel) == {"axes", "sim_time", "sim_dt", "workers"}
         assert len(sel["axes"]) == 1  # 1-D by default
         ax = sel["axes"][0]
         assert set(ax) == {"block", "param", "values"}

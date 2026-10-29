@@ -70,7 +70,7 @@ class TestMonteCarloDialog:
         assert isinstance(dialog, QDialog)
 
         sel = dialog.get_selection()
-        assert set(sel) == {"n_runs", "master_seed", "sim_time", "sim_dt"}
+        assert set(sel) == {"n_runs", "master_seed", "sim_time", "sim_dt", "workers", "keep_traces"}
 
         # Defaults from the spec.
         assert sel["n_runs"] == 100

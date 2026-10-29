@@ -130,6 +130,21 @@ class TestEnsembleResultWindow:
         assert win.view_combo is None
         assert "0/4" in win.header_label.text()
 
+    def test_lean_result_draws_mean_std_band(self, qapp, make_window):
+        """keep_traces off: no runs / percentiles -> a mean +/- std band instead."""
+        import pyqtgraph as pg
+
+        res = _sample_result(n_signals=1)
+        sig = res["signals"]["Scope_A"]
+        sig["runs"] = sig["p5"] = sig["p50"] = sig["p95"] = None
+        sig["metrics"] = {"final": np.arange(5.0)}
+        res["traces"] = "none"
+        win = make_window(res)
+        items = win.plot.getPlotItem().items
+        assert any(isinstance(it, pg.FillBetweenItem) for it in items)
+        legend = [lbl.text for _s, lbl in win.plot.getPlotItem().legend.items]
+        assert "mean ± std" in legend
+
     def test_none_result_builds(self, qapp, make_window):
         """A defensive None should not crash construction."""
         win = make_window(None)

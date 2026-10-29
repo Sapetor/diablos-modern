@@ -29,6 +29,8 @@ from lib.analysis.resim import (
     iter_blocks_qualified,
     root_blocks_of,
 )
+from lib.analysis.parallel import run_indexed
+from lib.analysis.streaming import EnsembleAccumulator, reduce_run
 
 logger = logging.getLogger(__name__)
 
@@ -69,8 +71,15 @@ class MonteCarloRunner:
         samplers=None,
         progress_cb=None,
         cancel_cb=None,
+        keep_traces=True,
+        workers=1,
     ):
         """Run ``n_runs`` simulations and aggregate ensemble statistics.
+
+        Each run is reduced as soon as it finishes (see
+        :mod:`lib.analysis.streaming`): mean/std (Welford) and min/max envelopes
+        are accumulated incrementally and the per-run outcome metrics are kept
+        as scalars, so memory no longer has to grow with ``n_runs * L``.
 
         Args:
             n_runs: number of Monte-Carlo runs.
@@ -78,12 +87,24 @@ class MonteCarloRunner:
             sim_time, sim_dt: overrides (default: the diagram's current values).
             samplers: optional {(block_name, param_name): (low, high) | callable(rng)->value}
                 for per-run parameter Monte-Carlo (uniform draw when a (low, high) tuple).
-            progress_cb: optional callable(done, total).
+                Values are drawn in this process, so callables need not be picklable.
+            progress_cb: optional callable(done, total), called as runs complete.
             cancel_cb: optional callable() -> bool, polled before each run *and*
                 periodically inside each run (it is forwarded to
                 ``run_tuning_simulation``); when it returns True the loop stops
                 early and the partial ensemble gathered so far is aggregated and
                 returned (the diagram is still restored).
+            keep_traces: ``True`` (default) keeps every run's trace -- ``runs``
+                is the full ``(n_ok, L)`` matrix and the p5/p50/p95 bands are
+                exact. ``False`` keeps none (``runs`` and the percentile bands
+                are ``None``); an int ``K`` keeps an evenly spaced sample of at
+                most ``K`` runs in ``runs`` (percentiles still ``None``: they
+                have no exact streaming form). mean/std/min/max and ``metrics``
+                are exact in every mode.
+            workers: ``1`` (default) runs in this process on ``self.dsim``;
+                ``> 1`` runs on a spawn-based process pool (see
+                :mod:`lib.analysis.parallel`). Results are bit-identical for the
+                same master seed whatever the worker count.
 
         Returns:
             An ensemble-result dict (see :meth:`_aggregate`).
@@ -92,64 +113,54 @@ class MonteCarloRunner:
         sim_time = float(sim_time if sim_time is not None else getattr(dsim, "sim_time", 1.0))
         sim_dt = float(sim_dt if sim_dt is not None else getattr(dsim, "sim_dt", 0.01))
         samplers = samplers or {}
+        n_runs = int(n_runs)
 
         # Every block, including those nested in Subsystems, keyed by its
         # qualified (flattened) name.
         blocks_by_name = dict(iter_blocks_qualified(root_blocks_of(dsim)))
         seed_blocks = [
-            (qn, b)
+            qn
             for qn, b in blocks_by_name.items()
             if isinstance(getattr(b, "params", None), dict) and "seed" in b.params
         ]
 
+        def assignments_for(i):
+            """Per-run seeds + parameter samples, reproducible from master_seed."""
+            out = {(qn, "seed"): derive_seed(master_seed, i, qn) for qn in seed_blocks}
+            if samplers:
+                prng = np.random.default_rng(derive_seed(master_seed, i, "__params__"))
+                for (bn, pn), spec in samplers.items():
+                    if bn not in blocks_by_name:
+                        continue
+                    out[(bn, pn)] = (
+                        spec(prng) if callable(spec) else float(prng.uniform(spec[0], spec[1]))
+                    )
+            return out
+
         # Snapshot originals so we restore the diagram exactly (never mutate it).
         original = {}
-        for qn, b in seed_blocks:
-            original[(qn, "seed")] = b.params.get("seed")
+        for qn in seed_blocks:
+            original[(qn, "seed")] = blocks_by_name[qn].params.get("seed")
         for bn, pn in samplers:
             b = blocks_by_name.get(bn)
             if b is not None:
                 original[(bn, pn)] = b.params.get(pn)
 
-        def _set(block, name, value):
-            block.params[name] = value
-            if getattr(block, "exec_params", None):
-                block.exec_params[name] = value
-
-        runs = []
+        acc = EnsembleAccumulator(n_runs, keep_traces=keep_traces)
         try:
-            for i in range(n_runs):
-                if cancel_cb is not None and cancel_cb():
-                    logger.info("Monte-Carlo cancelled after %d/%d runs", i, n_runs)
-                    break
-                # Per-run seed injection for every stochastic block.
-                for qn, b in seed_blocks:
-                    _set(b, "seed", derive_seed(master_seed, i, qn))
-                # Per-run parameter samples (reproducible from the master seed).
-                if samplers:
-                    prng = np.random.default_rng(derive_seed(master_seed, i, "__params__"))
-                    for (bn, pn), spec in samplers.items():
-                        b = blocks_by_name.get(bn)
-                        if b is None:
-                            continue
-                        val = (
-                            spec(prng) if callable(spec) else float(prng.uniform(spec[0], spec[1]))
-                        )
-                        _set(b, pn, val)
-
-                # cancel_cb is forwarded so a cancel lands mid-run rather than
-                # only between runs (a single long run used to have to finish).
-                ok, err = dsim.run_tuning_simulation(sim_time, sim_dt, cancel_cb=cancel_cb)
-                if cancel_cb is not None and cancel_cb():
-                    logger.info("Monte-Carlo cancelled during run %d/%d", i + 1, n_runs)
-                    break
-                if ok:
-                    runs.append(self._harvest())
-                else:
-                    runs.append(None)
-                    logger.warning("Monte-Carlo run %d failed: %s", i, err)
-                if progress_cb:
-                    progress_cb(i + 1, n_runs)
+            run_indexed(
+                dsim,
+                n_runs,
+                assignments_for,
+                acc.add,
+                sim_time,
+                sim_dt,
+                keep_signals=True,  # per-timestep statistics need every trace once
+                workers=workers,
+                progress_cb=progress_cb,
+                cancel_cb=cancel_cb,
+                label="Monte-Carlo run",
+            )
         finally:
             for (bn, pn), val in original.items():
                 b = blocks_by_name.get(bn)
@@ -167,55 +178,30 @@ class MonteCarloRunner:
                     else:
                         b.exec_params[pn] = val
 
-        return self._aggregate(runs)
+        return acc.result()
 
     def _harvest(self):
         """Read each Scope's trace(s) into {signal_name: 1-D ndarray} + timeline."""
         return harvest_scope_signals(self.dsim)
 
     @staticmethod
-    def _aggregate(runs):
+    def _aggregate(runs, keep_traces=True):
         """Aggregate per-run harvests into ensemble statistics.
 
-        Returns {n_runs, n_ok, timeline, signals: {name: {runs, mean, std, p5,
-        p50, p95, min, max, metrics}}}. The per-timestep series (mean/std/
-        percentiles/min/max) are length-L arrays over the timeline; ``metrics``
-        is {metric_name: length-n_ok vector} of per-run scalar outcomes (see
-        :data:`OUTCOME_METRICS`). Signals are restricted to those present in
-        every successful run and truncated to a common length so all series align.
+        Returns {n_runs, n_ok, timeline, traces, signals: {name: {runs, mean,
+        std, p5, p50, p95, min, max, metrics}}}. The per-timestep series
+        (mean/std/percentiles/min/max) are length-L arrays over the timeline;
+        ``metrics`` is {metric_name: length-n_ok vector} of per-run scalar
+        outcomes (see :data:`OUTCOME_METRICS`). Signals are restricted to those
+        present in every successful run and truncated to a common length so all
+        series align. ``runs`` / ``p5`` / ``p50`` / ``p95`` are ``None`` unless
+        every trace is kept (``traces`` is ``"all"``, ``"sample"`` or
+        ``"none"``; see ``run(keep_traces=...)``).
+
+        ``run`` streams records into an :class:`EnsembleAccumulator` directly;
+        this batch entry point folds a list of harvests the same way.
         """
-        ok = [r for r in runs if r is not None and r["signals"]]
-        result = {"n_runs": len(runs), "n_ok": len(ok), "timeline": None, "signals": {}}
-        if not ok:
-            return result
-
-        names = set(ok[0]["signals"])
-        for r in ok[1:]:
-            names &= set(r["signals"])
-        if not names:
-            return result
-
-        lengths = [len(r["timeline"]) for r in ok]
-        for r in ok:
-            for nm in names:
-                lengths.append(len(r["signals"][nm]))
-        L = min(lengths)
-        if L == 0:
-            return result
-
-        result["timeline"] = np.asarray(ok[0]["timeline"][:L], dtype=float)
-        for nm in sorted(names):
-            M = np.vstack([r["signals"][nm][:L] for r in ok])
-            result["signals"][nm] = {
-                "runs": M,
-                "mean": M.mean(axis=0),
-                "std": M.std(axis=0),
-                "p5": np.percentile(M, 5, axis=0),
-                "p50": np.percentile(M, 50, axis=0),
-                "p95": np.percentile(M, 95, axis=0),
-                "min": M.min(axis=0),
-                "max": M.max(axis=0),
-                # Per-run scalar outcomes: {metric_name: length-n_ok vector}.
-                "metrics": {k: fn(M) for k, fn in OUTCOME_METRICS.items()},
-            }
-        return result
+        acc = EnsembleAccumulator(len(runs), keep_traces=keep_traces)
+        for i, h in enumerate(runs):
+            acc.add(i, reduce_run(h, keep_signals=True))
+        return acc.result()

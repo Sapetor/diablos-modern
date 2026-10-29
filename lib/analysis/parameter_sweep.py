@@ -26,7 +26,7 @@ Result-dict contract::
       "axis_y": {"block": str, "param": str, "values": ndarray(Ny)},
       "signals": {
         signal_name: {
-          "traces":  ndarray(Nx, L),                 # 1-D only (response family)
+          "traces":  ndarray(Nx, L),                 # 1-D with keep_traces only
           "metrics": {name: ndarray(Nx)},            # 1-D
                    | {name: ndarray(Nx, Ny)},        # 2-D
         }
@@ -40,12 +40,9 @@ run succeeded.
 import logging
 import numpy as np
 
-from lib.analysis.resim import (
-    OUTCOME_METRICS,
-    harvest_scope_signals,
-    iter_blocks_qualified,
-    root_blocks_of,
-)
+from lib.analysis.parallel import run_indexed
+from lib.analysis.resim import iter_blocks_qualified, root_blocks_of
+from lib.analysis.streaming import SweepAccumulator
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +53,16 @@ class ParameterSweepRunner:
     def __init__(self, dsim):
         self.dsim = dsim
 
-    def run(self, axes, sim_time=None, sim_dt=None, progress_cb=None, cancel_cb=None):
+    def run(
+        self,
+        axes,
+        sim_time=None,
+        sim_dt=None,
+        progress_cb=None,
+        cancel_cb=None,
+        keep_traces=True,
+        workers=1,
+    ):
         """Sweep one or two parameters across their value grids.
 
         Args:
@@ -69,6 +75,14 @@ class ParameterSweepRunner:
                 ``run_tuning_simulation``); when it returns True the sweep stops
                 early and the partial grid gathered so far is aggregated and
                 returned (diagram still restored).
+            keep_traces: 1-D only -- keep each point's trace for the response
+                family (``traces``; default True). ``False`` drops ``traces``
+                and keeps only the per-point metrics. 2-D sweeps never keep
+                traces: each grid point is reduced to its metrics as soon as it
+                finishes, so memory does not scale with the trace length.
+            workers: ``1`` (default) runs in this process; ``> 1`` runs on a
+                spawn-based process pool (see :mod:`lib.analysis.parallel`),
+                with results identical to ``workers=1``.
 
         Returns:
             A sweep-result dict (see module docstring).
@@ -97,11 +111,6 @@ class ParameterSweepRunner:
             resolved.append((b, bn, pn, values))
             original[(bn, pn)] = b.params.get(pn)
 
-        def _set(block, name, value):
-            block.params[name] = value
-            if getattr(block, "exec_params", None):
-                block.exec_params[name] = value
-
         mode = "1d" if len(resolved) == 1 else "2d"
         if mode == "1d":
             nx = resolved[0][3].size
@@ -113,26 +122,28 @@ class ParameterSweepRunner:
             shape = (nx, ny)
         n_points = len(grid)
 
-        harvests = [None] * n_points
+        def assignments_for(k):
+            idx = grid[k]
+            return {
+                (bn, pn): float(values[idx[axi]])
+                for axi, (_b, bn, pn, values) in enumerate(resolved)
+            }
+
+        acc = SweepAccumulator(mode, shape, keep_traces=keep_traces)
         try:
-            for k, idx in enumerate(grid):
-                if cancel_cb is not None and cancel_cb():
-                    logger.info("Parameter sweep cancelled after %d/%d points", k, n_points)
-                    break
-                for axi, (b, _bn, pn, values) in enumerate(resolved):
-                    _set(b, pn, float(values[idx[axi]]))
-                # cancel_cb is forwarded so a cancel lands mid-run rather than
-                # only between grid points.
-                ok, err = dsim.run_tuning_simulation(sim_time, sim_dt, cancel_cb=cancel_cb)
-                if cancel_cb is not None and cancel_cb():
-                    logger.info("Parameter sweep cancelled during point %s", idx)
-                    break
-                if ok:
-                    harvests[k] = harvest_scope_signals(dsim)
-                else:
-                    logger.warning("Sweep point %s failed: %s", idx, err)
-                if progress_cb:
-                    progress_cb(k + 1, n_points)
+            run_indexed(
+                dsim,
+                n_points,
+                assignments_for,
+                acc.add,
+                sim_time,
+                sim_dt,
+                keep_signals=acc.keep_traces,
+                workers=workers,
+                progress_cb=progress_cb,
+                cancel_cb=cancel_cb,
+                label="sweep point",
+            )
         finally:
             for (bn, pn), val in original.items():
                 b = blocks_by_name.get(bn)
@@ -150,16 +161,17 @@ class ParameterSweepRunner:
                     else:
                         b.exec_params[pn] = val
 
-        return self._aggregate(mode, resolved, shape, harvests)
+        result = self._result_skeleton(mode, resolved, n_points)
+        result["n_ok"] = acc.n_ok
+        return acc.fill(result)
 
     @staticmethod
-    def _aggregate(mode, resolved, shape, harvests):
-        """Reduce per-point harvests into the sweep-result dict (see module doc)."""
-        n_points = len(harvests)
+    def _result_skeleton(mode, resolved, n_points):
+        """Sweep-result dict with the axes filled in and no signals yet."""
         result = {
             "mode": mode,
             "n_points": n_points,
-            "n_ok": sum(1 for h in harvests if h and h.get("signals")),
+            "n_ok": 0,
             "timeline": None,
             "signals": {},
         }
@@ -177,34 +189,4 @@ class ParameterSweepRunner:
                 "param": resolved[1][2],
                 "values": resolved[1][3],
             }
-
-        ok = [(k, h) for k, h in enumerate(harvests) if h and h.get("signals")]
-        if not ok:
-            return result
-
-        # Signals present in every successful run, truncated to a common length.
-        names = set(ok[0][1]["signals"])
-        for _k, h in ok[1:]:
-            names &= set(h["signals"])
-        if not names:
-            return result
-        lengths = [len(h["timeline"]) for _k, h in ok]
-        lengths += [len(h["signals"][nm]) for _k, h in ok for nm in names]
-        L = min(lengths)
-        if L == 0:
-            return result
-
-        result["timeline"] = np.asarray(ok[0][1]["timeline"][:L], dtype=float)
-        for nm in sorted(names):
-            M = np.full((n_points, L), np.nan)
-            for k, h in ok:
-                M[k] = h["signals"][nm][:L]
-            with np.errstate(all="ignore"):
-                metrics = {m: fn(M) for m, fn in OUTCOME_METRICS.items()}
-            if mode == "2d":
-                result["signals"][nm] = {
-                    "metrics": {m: v.reshape(shape) for m, v in metrics.items()},
-                }
-            else:
-                result["signals"][nm] = {"traces": M, "metrics": metrics}
         return result
