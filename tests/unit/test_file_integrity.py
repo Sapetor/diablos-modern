@@ -98,6 +98,7 @@ class TestAtomicSave:
         assert target.read_text(encoding="utf-8") == original
         assert os.listdir(tmp_path) == ["d.diablos"]
 
+    @pytest.mark.skipif(os.name == "nt", reason="Windows has no POSIX permission bits")
     def test_the_replacement_keeps_the_file_mode(self, tmp_path):
         from lib.services.file_service import atomic_write_json
 
