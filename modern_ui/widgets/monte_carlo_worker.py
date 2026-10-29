@@ -19,12 +19,30 @@ the diagram mid-experiment.
 """
 
 import logging
+from concurrent.futures.process import BrokenProcessPool
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from lib.analysis.monte_carlo import MonteCarloRunner
 
 logger = logging.getLogger(__name__)
+
+
+def run_with_pool_fallback(run, workers):
+    """``run(workers)``; if the process pool cannot work here, rerun in-process.
+
+    A pool that breaks (``BrokenProcessPool``: a worker failed to start or
+    died) falls back to ``workers=1``. Results do not depend on the worker
+    count, so the rerun yields the same experiment. Shared with the sweep worker.
+    """
+    workers = int(workers or 1)
+    if workers <= 1:
+        return run(1)
+    try:
+        return run(workers)
+    except BrokenProcessPool:
+        logger.warning("Experiment process pool failed; rerunning in-process", exc_info=True)
+        return run(1)
 
 
 class MonteCarloWorker(QThread):
@@ -41,8 +59,9 @@ class MonteCarloWorker(QThread):
                 private copy (``DSim.clone_for_analysis``) so the worker never
                 touches the diagram the GUI is painting.
             selection: dict from ``MonteCarloDialog.get_selection()`` -- keys
-                ``n_runs``, ``master_seed``, ``sim_time``, ``sim_dt`` and an
-                optional ``samplers``.
+                ``n_runs``, ``master_seed``, ``sim_time``, ``sim_dt`` and the
+                optional ``samplers``, ``workers`` (default 1) and
+                ``keep_traces`` (default True).
             parent: optional QObject parent.
         """
         super().__init__(parent)
@@ -57,8 +76,9 @@ class MonteCarloWorker(QThread):
     def run(self):
         """Execute the ensemble; emit ``finished`` or ``failed``."""
         sel = self.selection
-        try:
-            result = MonteCarloRunner(self.dsim).run(
+
+        def _run(workers):
+            return MonteCarloRunner(self.dsim).run(
                 n_runs=sel.get("n_runs", 100),
                 master_seed=sel.get("master_seed", 12345),
                 sim_time=sel.get("sim_time"),
@@ -66,7 +86,12 @@ class MonteCarloWorker(QThread):
                 samplers=sel.get("samplers"),
                 progress_cb=lambda done, total: self.progress.emit(done, total),
                 cancel_cb=lambda: self._cancelled,
+                keep_traces=sel.get("keep_traces", True),
+                workers=workers,
             )
+
+        try:
+            result = run_with_pool_fallback(_run, sel.get("workers", 1))
             self.finished.emit(result)
         except Exception as e:  # noqa: BLE001 - report any failure to the UI
             logger.exception("Monte-Carlo worker failed")

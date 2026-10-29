@@ -10,7 +10,7 @@ Collects what :class:`lib.analysis.parameter_sweep.ParameterSweepRunner` needs:
 The dialog performs no simulation; ``get_selection()`` returns::
 
     {"axes": [{"block": str, "param": str, "values": ndarray}, ...],
-     "sim_time": float, "sim_dt": float}
+     "sim_time": float, "sim_dt": float, "workers": int}
 
 with one axis entry for 1-D and two for 2-D.
 """
@@ -32,6 +32,7 @@ from PyQt6.QtWidgets import (
 
 from lib.analysis.resim import iter_blocks_qualified, root_blocks_of
 from modern_ui.themes.theme_manager import theme_manager
+from modern_ui.widgets.monte_carlo_dialog import make_workers_spin
 from lib.i18n import tr
 
 logger = logging.getLogger(__name__)
@@ -140,6 +141,8 @@ class ParameterSweepDialog(QDialog):
         sim_form = QFormLayout()
         sim_form.addRow(tr("Simulation time:"), self.sim_time_spin)
         sim_form.addRow(tr("Step size (dt):"), self.sim_dt_spin)
+        self.workers_spin = make_workers_spin()
+        sim_form.addRow(tr("Parallel workers:"), self.workers_spin)
         layout.addLayout(sim_form)
 
         if not self._blocks:
@@ -248,4 +251,5 @@ class ParameterSweepDialog(QDialog):
             "axes": axes,
             "sim_time": float(self.sim_time_spin.value()),
             "sim_dt": float(self.sim_dt_spin.value()),
+            "workers": int(self.workers_spin.value()),
         }

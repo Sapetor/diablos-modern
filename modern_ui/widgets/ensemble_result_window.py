@@ -24,6 +24,8 @@ Monte-Carlo result-dict contract::
     }
 
 When ``n_ok == 0`` the ``signals`` dict is ``{}`` and ``timeline`` is ``None``.
+A run with ``keep_traces`` off has ``runs`` = a sample of runs or ``None`` and
+``p5``/``p50``/``p95`` = ``None``; the band then shows mean +/- std.
 """
 
 import numpy as np
@@ -233,6 +235,15 @@ class EnsembleResultWindow(QWidget):
                     xr = t if t.size == row.size else np.arange(row.size, dtype=float)
                     self.plot.plot(xr, row, pen=pen)
 
+        # Without every trace (keep_traces off) there are no exact percentiles;
+        # band the mean +/- one standard deviation instead.
+        band_name = None
+        if not (p5.size and p95.size):
+            std = self._as_1d(sig.get("std"))
+            if mean.size and std.size == mean.size:
+                p5, p95 = mean - std, mean + std
+                band_name = tr("mean ± std")
+
         # Shaded p5-p95 uncertainty band.
         if p5.size and p95.size and p5.size == p95.size and t.size == p5.size:
             lower = pg.PlotDataItem(t, p5, pen=pg.mkPen((30, 90, 200, 120), width=1))
@@ -241,6 +252,8 @@ class EnsembleResultWindow(QWidget):
             self.plot.addItem(lower)
             self.plot.addItem(upper)
             self.plot.addItem(band)
+            if band_name is not None and self.plot.plotItem.legend is not None:
+                self.plot.plotItem.legend.addItem(band, band_name)
 
         # Bold mean line on top.
         if mean.size and t.size == mean.size:

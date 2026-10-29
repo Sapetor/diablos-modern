@@ -17,6 +17,7 @@ import logging
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from lib.analysis.parameter_sweep import ParameterSweepRunner
+from modern_ui.widgets.monte_carlo_worker import run_with_pool_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,8 @@ class ParameterSweepWorker(QThread):
                 copy (``DSim.clone_for_analysis``), so the worker never touches
                 the diagram the GUI is painting.
             selection: dict from ``ParameterSweepDialog.get_selection()`` -- keys
-                ``axes`` (list of {block, param, values}), ``sim_time``, ``sim_dt``.
+                ``axes`` (list of {block, param, values}), ``sim_time``, ``sim_dt``
+                and optional ``workers`` (default 1).
             parent: optional QObject parent.
         """
         super().__init__(parent)
@@ -50,14 +52,19 @@ class ParameterSweepWorker(QThread):
     def run(self):
         """Execute the sweep; emit ``finished`` or ``failed``."""
         sel = self.selection
-        try:
-            result = ParameterSweepRunner(self.dsim).run(
+
+        def _run(workers):
+            return ParameterSweepRunner(self.dsim).run(
                 axes=sel.get("axes"),
                 sim_time=sel.get("sim_time"),
                 sim_dt=sel.get("sim_dt"),
                 progress_cb=lambda done, total: self.progress.emit(done, total),
                 cancel_cb=lambda: self._cancelled,
+                workers=workers,
             )
+
+        try:
+            result = run_with_pool_fallback(_run, sel.get("workers", 1))
             self.finished.emit(result)
         except Exception as e:  # noqa: BLE001 - report any failure to the UI
             logger.exception("Parameter-sweep worker failed")

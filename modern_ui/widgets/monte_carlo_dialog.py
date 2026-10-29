@@ -12,16 +12,23 @@ diagram (see :class:`lib.analysis.monte_carlo.MonteCarloRunner`):
                    ensemble (derive_seed maps it to a concrete sub-seed).
   * sim_time    -- ensemble simulation horizon (defaults to the diagram's).
   * sim_dt      -- fixed step size (defaults to the diagram's).
+  * workers     -- parallel worker processes (1 = run in the app's process).
+  * keep_traces -- keep every run's trace (exact percentile bands). When off,
+                   only a small sample of traces is kept for display and the
+                   band is mean +/- std; mean/std/metrics stay exact.
 
 The dialog performs no simulation; it only gathers a selection.
 ``get_selection()`` returns:
 
-    {"n_runs": int, "master_seed": int, "sim_time": float, "sim_dt": float}
+    {"n_runs": int, "master_seed": int, "sim_time": float, "sim_dt": float,
+     "workers": int, "keep_traces": True | int}
 """
 
 import logging
+import os
 
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QDialog,
     QVBoxLayout,
     QFormLayout,
@@ -31,9 +38,14 @@ from PyQt6.QtWidgets import (
     QDialogButtonBox,
 )
 
+from lib.analysis.parallel import default_workers
 from lib.i18n import tr
 
 logger = logging.getLogger(__name__)
+
+# Traces kept for display when "keep all run traces" is off -- the ensemble
+# window draws at most this many faint member runs anyway.
+DISPLAY_SAMPLE_RUNS = 30
 
 
 class MonteCarloDialog(QDialog):
@@ -81,6 +93,21 @@ class MonteCarloDialog(QDialog):
         self.sim_dt_spin.setSuffix(" s")
         self.sim_dt_spin.setValue(default_sim_dt)
 
+        # Parallel worker processes (1 = in-process, the historical behaviour).
+        self.workers_spin = make_workers_spin()
+
+        # Keeping every trace gives exact percentile bands but costs
+        # n_runs x samples memory; off keeps a display sample only.
+        self.keep_traces_check = QCheckBox(tr("Keep all run traces (exact percentile bands)"))
+        self.keep_traces_check.setChecked(True)
+        self.keep_traces_check.setToolTip(
+            tr(
+                "Turn off for very large ensembles: mean, std, min/max and the "
+                "histograms stay exact, the band becomes mean ± std and only a "
+                "sample of runs is drawn."
+            )
+        )
+
         self._setup_ui()
 
     # ------------------------------------------------------------------ UI ---
@@ -93,6 +120,8 @@ class MonteCarloDialog(QDialog):
         form.addRow(tr("Master seed:"), self.master_seed_spin)
         form.addRow(tr("Simulation time:"), self.sim_time_spin)
         form.addRow(tr("Step size (dt):"), self.sim_dt_spin)
+        form.addRow(tr("Parallel workers:"), self.workers_spin)
+        form.addRow("", self.keep_traces_check)
         layout.addLayout(form)
 
         helper = QLabel(
@@ -124,10 +153,29 @@ class MonteCarloDialog(QDialog):
                 "master_seed": int, experiment seed (ensemble reproducible from it)
                 "sim_time":    float, simulation horizon
                 "sim_dt":      float, fixed step size
+                "workers":     int, worker processes (1 = in-process)
+                "keep_traces": True (all traces) or an int (display-sample size)
         """
         return {
             "n_runs": int(self.n_runs_spin.value()),
             "master_seed": int(self.master_seed_spin.value()),
             "sim_time": float(self.sim_time_spin.value()),
             "sim_dt": float(self.sim_dt_spin.value()),
+            "workers": int(self.workers_spin.value()),
+            "keep_traces": True if self.keep_traces_check.isChecked() else DISPLAY_SAMPLE_RUNS,
         }
+
+
+def make_workers_spin():
+    """Spin box for the experiment worker-process count (shared with the sweep dialog)."""
+    spin = QSpinBox()
+    spin.setRange(1, max(1, os.cpu_count() or 1))
+    spin.setValue(default_workers())
+    spin.setToolTip(
+        tr(
+            "Simulations run in this many separate processes. Results are identical "
+            "for any value; each extra process takes about a second to start, so 1 "
+            "is fastest for small experiments."
+        )
+    )
+    return spin

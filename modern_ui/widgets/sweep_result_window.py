@@ -180,8 +180,8 @@ class SweepResultWindow(QWidget):
         self.plot.addLegend(offset=(10, 10))
         name = self.combo.currentText()
         sig = (self.result.get("signals") or {}).get(name)
-        if not sig:
-            return
+        if not sig or sig.get("traces") is None:
+            return  # run with keep_traces=False: metrics only
         traces = np.atleast_2d(np.asarray(sig.get("traces"), dtype=float))
         axis = self.result.get("axis", {})
         vals = np.asarray(axis.get("values"), dtype=float).ravel()
