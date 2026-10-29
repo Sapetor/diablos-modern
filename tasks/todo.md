@@ -110,9 +110,10 @@ branches (see git log). Still open, both architectural:
   statistics, `keep_traces` and process-pool `workers` are done (2026-10-29,
   `lib/analysis/streaming.py`, `parallel.py`). Still open: write kept traces to
   memmap/`.npz` (exact chunked percentiles), and checkpoint the accumulator +
-  next run index keyed by a hash of diagram/seed/settings. Also unverified:
-  the process pool inside a PyInstaller bundle (GUI defaults to parallel;
-  falls back in-process on `BrokenProcessPool`).
+  next run index keyed by a hash of diagram/seed/settings. (The process pool
+  inside a PyInstaller bundle is now checked: `DiaBloS self-test` runs a
+  2-worker ensemble, verified on a local macOS arm64 build 2026-10-29 and run
+  on every release build by `tools/smoke_test_bundle.sh`.)
 
 ### Open items from the Windows session (2026-10-09)
 All closed the same day (see the 2026-10-09 Change Log rows): resize,

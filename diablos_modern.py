@@ -313,9 +313,14 @@ def entry(argv=None):
 
     Headless subcommands (``run``, ``export-python``, ``diff``) dispatch to the CLI before
     any GUI is built, so agents/CI can simulate or export a diagram without a
-    display.
+    display. ``self-test`` checks the installation itself (the release
+    workflow runs it through every packaged build; see ``lib/self_test.py``).
     """
     argv = sys.argv if argv is None else argv
+    if len(argv) > 1 and argv[1] == "self-test":
+        from lib.self_test import main as self_test_main
+
+        return self_test_main(argv[2:])
     if len(argv) > 1 and argv[1] in ("run", "export-python", "diff"):
         from lib.cli import main as cli_main
 

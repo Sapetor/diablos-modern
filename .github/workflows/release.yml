@@ -61,6 +61,19 @@ jobs:
       - name: List build output
         run: ls -lh dist
 
+      # Run the built app before publishing it: source tests cannot see a
+      # file, import or Qt plugin the bundle is missing (tools/smoke_test_bundle.sh).
+      - name: Smoke-test the app bundle
+        run: tools/smoke_test_bundle.sh dist/DiaBloS-arm64.app/Contents/MacOS/DiaBloS smoke-macos
+
+      - name: Upload smoke-test report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: smoke-macos
+          path: smoke-macos
+          if-no-files-found: ignore
+
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v7
         with:
@@ -108,6 +121,17 @@ jobs:
         run: |
           python tools/sync_block_registry.py
           pyinstaller --noconfirm diablos.spec
+
+      - name: Smoke-test the app folder
+        run: tools/smoke_test_bundle.sh dist/DiaBloS/DiaBloS.exe smoke-windows
+
+      - name: Upload smoke-test report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: smoke-windows
+          path: smoke-windows
+          if-no-files-found: ignore
 
       # PyInstaller emits the one-folder layout dist/DiaBloS/ (DiaBloS.exe plus
       # its runtime); ship the whole folder zipped. 7z ships on the runner image.
@@ -168,6 +192,17 @@ jobs:
         run: |
           python tools/sync_block_registry.py
           pyinstaller --noconfirm diablos.spec
+
+      - name: Smoke-test the app folder
+        run: tools/smoke_test_bundle.sh dist/DiaBloS/DiaBloS smoke-linux
+
+      - name: Upload smoke-test report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: smoke-linux
+          path: smoke-linux
+          if-no-files-found: ignore
 
       # diablos.spec's non-darwin branch emits the one-folder layout
       # dist/DiaBloS/ (the DiaBloS binary plus its runtime); ship it as a

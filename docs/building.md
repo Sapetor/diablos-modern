@@ -26,6 +26,10 @@ rm -rf dist/DiaBloS-*.app build/
 
 `tools/build.sh` runs three steps: sync block registry, PyInstaller build, DMG creation. App names include the architecture (`DiaBloS-arm64.app`, `DiaBloS-x86_64.app`) so both can coexist in `/Applications`.
 
+To check a local build the way the release workflow does, run
+`tools/smoke_test_bundle.sh dist/DiaBloS-arm64.app/Contents/MacOS/DiaBloS`
+(any installed copy also answers `DiaBloS self-test`).
+
 Both `tools/build.sh` and `diablos.spec` read the version from `[project] version` in `pyproject.toml` -- the single source of truth. `modern_ui.__version__` reads it back at runtime from, in order: `_version.txt` (written into the bundle by `diablos.spec`, since a frozen app ships no `.dist-info`), `pyproject.toml` itself (dev checkout), installed distribution metadata, then a literal fallback. A frozen build therefore reports the real version rather than a hard-coded one. The DMG is named `DiaBloS-<version>-<arch>.dmg` and the bundle's `CFBundleShortVersionString` matches it, so bumping one number in `pyproject.toml` updates the window title, the About/bundle version, and the installer filename together.
 
 > **macOS cursor bug — FIXED.** The native macOS style fails to draw the blinking text caret in any QLineEdit that has a stylesheet `background-color` (QTBUG-109450) — which is every input field in this app. It first bit the PyQt5 5.15 arm64 builds and is not fixed in Qt 6 either. The app therefore switches to the Fusion style on macOS (`_maybe_use_fusion_style` in `modern_ui/styles/qss_styles.py`); Fusion is stylesheet-aware and draws the caret itself. arm64 is also ~10x faster to start than the Rosetta x86_64 build, so it is the preferred release.
@@ -209,7 +213,13 @@ Releases are cut from a tag; `.github/workflows/release.yml` does the building.
    test matrix must be green), and only then builds on `macos-latest` (arm64,
    via `tools/build.sh`), `windows-latest` (PyInstaller + a zipped
    `dist/DiaBloS` folder) and `ubuntu-latest` (PyInstaller + a `dist/DiaBloS`
-   tarball). It publishes a GitHub release with `DiaBloS-<version>-arm64.dmg`,
+   tarball). Each job then runs the **built executable** through
+   `tools/smoke_test_bundle.sh` before uploading it: `DiaBloS self-test`
+   (bundled resources, both solvers against a closed form, a 2-process
+   Monte-Carlo ensemble, the main window built offscreen; see
+   `lib/self_test.py`) and a headless `DiaBloS run` whose CSV is checked
+   against the analytic step response. The JSON report is uploaded as the
+   `smoke-<os>` artifact, pass or fail. It publishes a GitHub release with `DiaBloS-<version>-arm64.dmg`,
    `DiaBloS-<version>-windows-x64.zip` and
    `DiaBloS-<version>-linux-x86_64.tar.gz` attached.
 
