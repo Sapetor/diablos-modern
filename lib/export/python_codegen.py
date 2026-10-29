@@ -362,14 +362,36 @@ class _Block:
         return "{} ({})".format(self.raw_fn, self.name)
 
 
+def _exec_params_stale(exec_params: Dict[str, Any], params: Dict[str, Any], workspace) -> bool:
+    """True when engine-stamped exec_params no longer match params/workspace.
+
+    The engine stamps the raw-params and workspace fingerprints it resolved
+    with; when either changed since (a variable edited after the last run),
+    the exported value must come from a fresh resolution, not the old run.
+    Unstamped exec_params (flattener clones, test doubles) are trusted as-is.
+    """
+    if "_source_params_fingerprint" not in exec_params:
+        return False
+    from lib.engine.compile_cache import source_params_fingerprint, workspace_fingerprint
+
+    if exec_params.get("_source_params_fingerprint") != source_params_fingerprint(params):
+        return True
+    # With no workspace given there is nothing to compare against: keep what
+    # the run resolved rather than re-resolving against an empty workspace.
+    return workspace is not None and exec_params.get(
+        "_workspace_fingerprint"
+    ) != workspace_fingerprint(workspace)
+
+
 def _resolved_params(
     block: Any, warnings: Optional[List[str]] = None, workspace: Any = None
 ) -> Dict[str, Any]:
     """Params with workspace variables resolved, the way the engine reads them.
 
     Prefers ``exec_params`` when the diagram has been run (that is what
-    ``SystemCompiler`` compiles from); otherwise resolves ``params`` against the
-    diagram's workspace so ``gain = "Kp"`` exports as its numeric value.
+    ``SystemCompiler`` compiles from) and they are still current; otherwise
+    resolves ``params`` against the diagram's workspace so ``gain = "Kp"``
+    exports as its numeric value.
 
     Args:
         block: the diagram block whose params are being read.
@@ -380,9 +402,9 @@ def _resolved_params(
             (``dsim.workspace``); ``None`` resolves with no variables.
     """
     exec_params = getattr(block, "exec_params", None)
-    if exec_params:
-        return dict(exec_params)
     params = dict(getattr(block, "params", None) or {})
+    if exec_params and not _exec_params_stale(exec_params, params, workspace):
+        return dict(exec_params)
     try:
         if workspace is None:
             from lib.workspace import Workspace

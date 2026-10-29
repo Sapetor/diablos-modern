@@ -14,7 +14,11 @@ from lib.engine.system_compiler import SystemCompiler
 from lib.engine.flattener import Flattener
 from lib.engine.solver_diagnostics import build_diagnostics, format_diagnostics_for_log
 from lib.engine.zero_crossing import DEFAULT_MAX_EVENTS
-from lib.engine.compile_cache import source_params_fingerprint, compiled_system_fingerprint
+from lib.engine.compile_cache import (
+    compiled_system_fingerprint,
+    source_params_fingerprint,
+    workspace_fingerprint,
+)
 from lib.engine.block_params import push_down_internal_params
 from lib.engine.sample_times import SampleTimeError, propagate_sample_times
 from lib.engine import graph_analysis
@@ -231,9 +235,10 @@ class SimulationEngine:
             # in the normal execution path while keeping the resolve as a
             # fallback for direct callers (tests, alternate init paths).
             workspace_manager = self._get_workspace()
+            ws_fp = workspace_fingerprint(workspace_manager)
             current_dt = self.sim_dt
             for block in self.active_blocks_list:
-                self._resolve_block_params(block, current_dt, workspace_manager)
+                self._resolve_block_params(block, current_dt, workspace_manager, ws_fp)
 
             # Identify memory blocks (on ACTIVE list, after param resolution)
             self.identify_memory_blocks()
@@ -676,16 +681,27 @@ class SimulationEngine:
         return self.workspace
 
     def _resolve_block_params(
-        self, block: DBlock, dt: float, workspace_manager: Optional[Workspace] = None
+        self,
+        block: DBlock,
+        dt: float,
+        workspace_manager: Optional[Workspace] = None,
+        workspace_fp: Optional[str] = None,
     ) -> None:
         """Resolve a block's exec_params for the given simulation step.
 
         Skips the (potentially expensive) workspace resolution when exec_params
-        is already populated for this dt, then resolves params, copies internal
-        ('_'-prefixed) parameters, and stamps the current dtime. Shared by
-        initialize_execution and run_compiled_simulation so the cache-skip logic
-        stays consistent.
+        is already current: same step, same raw params and same workspace
+        content (``workspace_fp``, see ``compile_cache.workspace_fingerprint``;
+        computed here when not given -- callers resolving many blocks pass it
+        once).  Otherwise resolves params, copies internal ('_'-prefixed)
+        parameters, and stamps the current dtime. Shared by
+        initialize_execution, run_compiled_simulation and the linearizer so the
+        cache-skip logic stays consistent.
         """
+        if workspace_manager is None:
+            workspace_manager = self._get_workspace()
+        if workspace_fp is None:
+            workspace_fp = workspace_fingerprint(workspace_manager)
         # Blocks gated to a discrete rate integrate over their own sample
         # period, not the base step (see DBlock.execution_step).  Before
         # propagate_sample_times() has run this is still dt, so the stamp is
@@ -693,8 +709,12 @@ class SimulationEngine:
         step = block.execution_step(dt)
         cached = getattr(block, "exec_params", None)
         params_fp = source_params_fingerprint(block.params)
-        cached_fp = cached.get("_source_params_fingerprint") if cached else None
-        if cached and cached.get("dtime") == step and cached_fp == params_fp:
+        if (
+            cached
+            and cached.get("dtime") == step
+            and cached.get("_source_params_fingerprint") == params_fp
+            and cached.get("_workspace_fingerprint") == workspace_fp
+        ):
             # The cache hit skips the '_'-prefixed copy below, and '_' keys are
             # excluded from the fingerprint, so a mid-run write to params would
             # otherwise never reach the block.  Refresh the narrow set that the
@@ -702,13 +722,12 @@ class SimulationEngine:
             # a blanket copy here would clobber the state the block owns.
             push_down_internal_params(block)
             return
-        if workspace_manager is None:
-            workspace_manager = self._get_workspace()
         block.exec_params = workspace_manager.resolve_params(block.params)
         # Copy internal parameters (those starting with '_')
         block.exec_params.update({k: v for k, v in block.params.items() if k.startswith("_")})
         block.exec_params["dtime"] = step
         block.exec_params["_source_params_fingerprint"] = params_fp
+        block.exec_params["_workspace_fingerprint"] = workspace_fp
 
     def execute_block(
         self, block: DBlock, output_only: bool = False

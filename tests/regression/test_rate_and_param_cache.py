@@ -272,3 +272,84 @@ class TestWorkspaceSamplePeriods:
             declared_sample_time({"sampling_time": "Ts"}, {"sampling_time": "Ts"})
         with pytest.raises(SampleTimeError):
             declared_sample_time({"sampling_time": float("inf")})
+
+
+# ---------------------------------------------------------------------------
+# 3. Workspace changes reach analysis without a run
+# ---------------------------------------------------------------------------
+
+
+def _gain_integrator(K):
+    specs = {
+        "c": ("Constant", {"value": 1.0}),
+        "g": ("Gain", {"gain": "K"}),
+        "i": ("Integrator", {}),
+        "sc": ("Scope", {}),
+    }
+    conns = [("c", 0, "g", 0), ("g", 0, "i", 0), ("i", 0, "sc", 0)]
+    return _diagram(specs, conns, list(specs), {"K": K})
+
+
+def _B(diagram):
+    return np.asarray(diagram.linearize(inputs=["c"], outputs=["i"])["B"], dtype=float)
+
+
+@pytest.mark.regression
+class TestAnalysisSeesWorkspaceChanges:
+    def test_linearize_after_set_variable_matches_fresh_diagram(self, qapp):
+        diagram = _gain_integrator(2.0)
+        diagram.run(t=1.0, dt=0.01)
+        np.testing.assert_allclose(_B(diagram), [[2.0]], rtol=1e-6)
+        diagram.set_variable("K", 9.0)
+        np.testing.assert_allclose(_B(diagram), _B(_gain_integrator(9.0)), rtol=1e-9)
+        np.testing.assert_allclose(_B(diagram), [[9.0]], rtol=1e-6)
+
+    def test_direct_dict_mutation_is_seen(self, qapp):
+        diagram = _gain_integrator(2.0)
+        diagram.run(t=1.0, dt=0.01)
+        _B(diagram)
+        diagram.workspace.variables["K"] = 5.0
+        np.testing.assert_allclose(_B(diagram), [[5.0]], rtol=1e-6)
+
+    def test_in_place_array_mutation_is_seen(self, qapp):
+        """A numerator array edited in place (no assignment at all)."""
+
+        def build(num):
+            specs = {
+                "c": ("Constant", {"value": 1.0}),
+                "tf": ("TranFn", {"numerator": "N", "denominator": [1.0, 1.0]}),
+                "sc": ("Scope", {}),
+            }
+            conns = [("c", 0, "tf", 0), ("tf", 0, "sc", 0)]
+            return _diagram(specs, conns, list(specs), {"N": num})
+
+        def gain(diagram):
+            res = diagram.linearize(inputs=["c"], outputs=["tf"])
+            return float(np.ravel(np.asarray(res["C"]) @ np.asarray(res["B"]))[0])
+
+        diagram = build(np.array([2.0]))
+        diagram.run(t=1.0, dt=0.01)
+        assert gain(diagram) == pytest.approx(2.0, rel=1e-6)
+        diagram.workspace.variables["N"][0] = 7.0
+        assert gain(diagram) == pytest.approx(gain(build(np.array([7.0]))), rel=1e-9)
+        assert gain(diagram) == pytest.approx(7.0, rel=1e-6)
+
+    def test_operating_point_sees_the_change(self, qapp):
+        diagram = _gain_integrator(2.0)
+        diagram.run(t=1.0, dt=0.01)
+        diagram.find_operating_point()
+        diagram.set_variable("K", 5.0)
+        # dx/dt = K never vanishes; the residual reports the current K.
+        res = diagram.find_operating_point()
+        assert np.ravel(res["residual"])[0] == pytest.approx(5.0)
+
+    def test_exporter_sees_the_change_after_a_run(self, qapp):
+        from lib.export.python_codegen import PythonCodeGenerator
+
+        diagram = _gain_integrator(2.0)
+        diagram.run(t=1.0, dt=0.01)
+        diagram.set_variable("K", 9.0)
+        gen = PythonCodeGenerator.from_dsim(diagram.dsim)
+        gen.generate()
+        gain = next(b for b in gen._blocks if b.name == "g")
+        assert float(np.ravel(gain.params["gain"])[0]) == pytest.approx(9.0)

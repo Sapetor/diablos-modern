@@ -12,6 +12,8 @@ import logging
 import numpy as np
 from typing import Dict, List, Tuple, Optional, Any
 
+from lib.engine.compile_cache import workspace_fingerprint
+
 logger = logging.getLogger(__name__)
 
 
@@ -121,8 +123,9 @@ class Linearizer:
         # The diagram's own workspace (the engine shares DSim.workspace).
         wm = engine._get_workspace()
         dt = getattr(self.dsim, "sim_dt", 0.01) or 0.01
+        ws_fp = workspace_fingerprint(wm)
         for b in current_blocks:
-            engine._resolve_block_params(b, dt, wm)
+            engine._resolve_block_params(b, dt, wm, ws_fp)
 
         if not engine.check_compilability(current_blocks, allow_discrete=False):
             raise ValueError(
