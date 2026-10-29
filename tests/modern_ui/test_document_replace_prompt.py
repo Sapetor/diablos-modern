@@ -34,6 +34,8 @@ def doc(window, tmp_path, monkeypatch):
     path = str(tmp_path / "doc.diablos")
     shutil.copy(EXAMPLE, path)
     monkeypatch.setattr(window, "_warn_about_missing_block_types", lambda: None)
+    # Opening records a recent file; keep the real config/recent_files.json out of it.
+    monkeypatch.setattr(window.recent_files_manager, "add", lambda *_: None)
     window.dsim.dirty = False
     assert window.open_diagram(path) is not None
     window.canvas.history_manager.push_undo("edit gain")
