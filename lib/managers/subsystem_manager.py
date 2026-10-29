@@ -5,6 +5,7 @@ Extracted from lib.py to reduce file size and improve modularity.
 """
 
 import logging
+import re
 from PyQt6.QtCore import QPoint, QRect
 from blocks.subsystem import Subsystem
 from blocks.inport import Inport
@@ -115,7 +116,9 @@ class SubsystemManager:
 
         if parent_block:
             logger.info(f"Syncing ports for subsystem {current_subsystem_name}")
-            self._sync_subsystem_ports(parent_block, internal_blocks)
+            self._sync_subsystem_ports(
+                parent_block, internal_blocks, self.dsim.blocks_list, self.dsim.line_list
+            )
 
             # Mark dirty to ensure save
             self.dsim.dirty = True
@@ -132,18 +135,44 @@ class SubsystemManager:
 
         logger.info("Exited subsystem, returned to parent scope")
 
-    def _sync_subsystem_ports(self, parent_block, internal_blocks):
-        """Rebuild ``parent_block``'s external ports from its Inport/Outport blocks."""
+    def _sync_subsystem_ports(
+        self, parent_block, internal_blocks, parent_blocks=None, parent_lines=None
+    ):
+        """Rebuild ``parent_block``'s external ports from its Inport/Outport blocks.
+
+        External input ``k`` is the ``k``-th Inport from the top (likewise for
+        outputs), and ``parent_block.ports_map`` records exactly that --
+        ``{"input": {k: inport_name}, "output": {k: outport_name}}`` -- so the
+        flattener never has to guess a port from a boundary block's name (an
+        added ``inport99`` used to resolve to input 98).
+
+        Wires in ``parent_lines`` (the scope holding ``parent_block``, whose
+        blocks are ``parent_blocks``) follow their boundary block: a wire that
+        fed ``inport1`` still feeds ``inport1`` after the ports are renumbered
+        or reordered, and a wire whose boundary block was deleted is removed
+        instead of being left on a missing or unrelated port.
+        """
         # Find all internal ports
         inports = [b for b in internal_blocks if getattr(b, "block_fn", "") == "Inport"]
         outports = [b for b in internal_blocks if getattr(b, "block_fn", "") == "Outport"]
 
         # Sort by Y position to allow user to reorder ports by moving blocks
+        # (stable: blocks at the same height keep their list order).
         inports.sort(key=lambda b: b.top)
         outports.sort(key=lambda b: b.top)
 
+        # Which boundary block each *current* external port leads to, captured
+        # before the ports are rebuilt so the parent's wires can follow them.
+        old_map = getattr(parent_block, "ports_map", None) or {}
+        old_in = _previous_port_owners(
+            old_map.get("input"), inports, _port_count(parent_block, "in"), _INPORT_NAME
+        )
+        old_out = _previous_port_owners(
+            old_map.get("output"), outports, _port_count(parent_block, "out"), _OUTPORT_NAME
+        )
+
         # Update parent block ports definition
-        if not hasattr(parent_block, "ports"):
+        if getattr(parent_block, "ports", None) is None:
             parent_block.ports = {}
 
         # Input Ports
@@ -162,6 +191,17 @@ class SubsystemManager:
                 {"pos": (parent_block.width, rel_y), "type": "output", "name": str(idx + 1)}
             )
 
+        parent_block.ports_map = {
+            "input": {idx: b.name for idx, b in enumerate(inports)},
+            "output": {idx: b.name for idx, b in enumerate(outports)},
+        }
+
+        # Subsystem.update_Block only recounts a direction that still has
+        # ports, so set the counts here: deleting the last Inport must leave
+        # the parent with zero inputs, not the stale count.
+        parent_block.in_ports = len(inports)
+        parent_block.out_ports = len(outports)
+
         # Update geometry (port coordinates)
         if hasattr(parent_block, "update_Block"):
             parent_block.update_Block()
@@ -175,6 +215,9 @@ class SubsystemManager:
             parent_block.params["_outputs_"] = parent_block.out_ports
             logger.debug(f"Synced subsystem '_outputs_' param to {parent_block.out_ports}")
 
+        if parent_lines is not None:
+            _remap_external_lines(parent_block, parent_blocks or [], parent_lines, old_in, old_out)
+
     def sync_open_subsystem_ports(self):
         """Resync the external ports of every subsystem currently open.
 
@@ -183,10 +226,12 @@ class SubsystemManager:
         stale port layout. Idempotent, and leaves the dirty flag alone.
         """
         entered = [entry[2] for entry in self.navigation_stack[1:]] + [self.current_subsystem]
-        for (parent_scope, _lines, _prev), name in zip(self.navigation_stack, entered):
+        for (parent_scope, parent_lines, _prev), name in zip(self.navigation_stack, entered):
             parent_block = next((b for b in parent_scope if b.name == name), None)
             if parent_block is not None:
-                self._sync_subsystem_ports(parent_block, parent_block.sub_blocks)
+                self._sync_subsystem_ports(
+                    parent_block, parent_block.sub_blocks, parent_scope, parent_lines
+                )
 
     def get_current_path(self):
         """
@@ -375,6 +420,7 @@ class SubsystemManager:
                 "name": str(index),
             }
         )
+        _ports_map_of(subsys).setdefault("input", {})[len(ports) - 1] = inport.name
         return len(ports) - 1
 
     def _add_outport(
@@ -415,12 +461,95 @@ class SubsystemManager:
                 "name": str(index),
             }
         )
+        _ports_map_of(subsys).setdefault("output", {})[len(ports) - 1] = outport.name
         return len(ports) - 1
 
 
 # ----------------------------------------------------------------------
 # Subsystem-creation helpers (pure functions over blocks and lines)
 # ----------------------------------------------------------------------
+
+
+#: Boundary-block names the flattener resolves without a ``ports_map``
+#: (``inport3`` / ``In3`` -> port 2), mirrored here so a legacy subsystem's
+#: wires can be attributed to their block the first time it is synced.
+_INPORT_NAME = re.compile(r"(?:in|inport)(\d+)$", re.IGNORECASE)
+_OUTPORT_NAME = re.compile(r"(?:out|outport)(\d+)$", re.IGNORECASE)
+
+
+def _ports_map_of(subsys):
+    """``subsys.ports_map``, created if missing."""
+    if getattr(subsys, "ports_map", None) is None:
+        subsys.ports_map = {}
+    return subsys.ports_map
+
+
+def _port_count(block, direction):
+    """How many ``direction`` ("in"/"out") external ports ``block`` has now."""
+    declared = (getattr(block, "ports", None) or {}).get(direction)
+    if declared:
+        return len(declared)
+    return getattr(block, "in_ports" if direction == "in" else "out_ports", 0) or 0
+
+
+def _previous_port_owners(mapping, boundary_blocks, count, convention):
+    """``{port_idx: boundary_block_name}`` for the parent's current ports.
+
+    Resolves the way the flattener does: the stored ``ports_map`` entry
+    first, then -- for a port it does not cover (a subsystem saved before
+    ports were mapped) -- the naming convention applied to the boundary
+    blocks that exist now. A port no block can be attributed to is absent:
+    its block was deleted, or it never resolved to one and so never carried
+    a signal.
+    """
+    owners = {int(idx): name for idx, name in (mapping or {}).items() if 0 <= int(idx) < count}
+    claimed = set(owners.values())
+    for block in boundary_blocks:
+        match = convention.match(block.name)
+        if match and block.name not in claimed:
+            idx = int(match.group(1)) - 1
+            if 0 <= idx < count and idx not in owners:
+                owners[idx] = block.name
+                claimed.add(block.name)
+    return owners
+
+
+def _remap_external_lines(parent_block, scope_blocks, scope_lines, old_in, old_out):
+    """Make ``parent_block``'s wires in ``scope_lines`` follow their boundary block.
+
+    ``old_in``/``old_out`` say which boundary block each previous external
+    port led to; ``parent_block.ports_map`` says where that block is now. A
+    wire moves to its block's new port; a wire whose block is gone (or whose
+    port never led to one) is removed, in place, since it would otherwise sit
+    on a missing port or silently drive a different Inport.
+    """
+    new_in = {name: idx for idx, name in parent_block.ports_map["input"].items()}
+    new_out = {name: idx for idx, name in parent_block.ports_map["output"].items()}
+
+    keep = []
+    for line in scope_lines:
+        port_moves = []
+        if line.dstblock == parent_block.name:
+            port_moves.append(("dstport", new_in.get(old_in.get(line.dstport))))
+        if line.srcblock == parent_block.name:
+            port_moves.append(("srcport", new_out.get(old_out.get(line.srcport))))
+        if any(idx is None for _, idx in port_moves):
+            logger.info(
+                f"Removed line {getattr(line, 'name', '?')}: the {parent_block.name} "
+                f"port it was attached to no longer exists"
+            )
+            continue
+        for attr, idx in port_moves:
+            setattr(line, attr, idx)
+        keep.append(line)
+        if port_moves:
+            try:
+                line.update_line(scope_blocks)
+            except Exception as e:  # geometry only; the connection itself is right
+                logger.debug(f"Could not re-route line {getattr(line, 'name', '?')}: {e}")
+
+    if len(keep) != len(scope_lines):
+        scope_lines[:] = keep
 
 
 def _next_sid(items):
