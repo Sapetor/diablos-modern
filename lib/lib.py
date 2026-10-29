@@ -130,6 +130,8 @@ class DSim:
 
         # Subsystem manager
         self.subsystem_manager = SubsystemManager(self.model, self)
+        # Saves always write the whole document, wherever the user has navigated.
+        self.file_service.root_context = self.get_root_context
 
     # ``dirty`` is a live view of the model's flag, not a copy.
     #
@@ -462,19 +464,9 @@ class DSim:
         return sim_params
 
     def serialize_root(self, modern_ui_data: Optional[Dict] = None) -> Dict[str, Any]:
-        """Serialize the *whole* diagram, even while navigated into a subsystem.
-
-        ``serialize()`` reads the model's current lists, which are a subsystem's
-        internals while the user is inside one; swap the root context in for
-        the duration of the call.
-        """
-        root_blocks, root_lines = self.get_root_context()
-        live = (self.model.blocks_list, self.model.line_list)
-        self.model.blocks_list, self.model.line_list = root_blocks, root_lines
-        try:
-            return self.serialize(modern_ui_data)
-        finally:
-            self.model.blocks_list, self.model.line_list = live
+        """Serialize the *whole* diagram (same as :meth:`serialize`, which now
+        always serializes the root scope; kept for existing callers)."""
+        return self.serialize(modern_ui_data)
 
     def clone_for_analysis(self) -> "DSim":
         """Return an independent ``DSim`` holding a copy of this diagram.

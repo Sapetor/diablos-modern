@@ -6,7 +6,7 @@ Handles saving and loading diagram files.
 import json
 import os
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 from PyQt6.QtCore import QRect
 
 from lib.atomic_io import atomic_write_json  # noqa: F401 - re-exported
@@ -65,6 +65,11 @@ class FileService:
         # Optional document lifecycle observer supplied by DSim.
         self.on_saved = None
         self._saving_autosave = False
+        #: Optional ``() -> (blocks, lines)`` returning the *root* diagram.
+        #: While the user is navigated into a subsystem the model's lists are
+        #: that subsystem's internals; DSim installs its ``get_root_context``
+        #: here so every save serializes the whole document.
+        self.root_context: Optional[Callable[[], Tuple[List[Any], List[Any]]]] = None
 
     def serialize(
         self,
@@ -72,7 +77,8 @@ class FileService:
         sim_params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
-        Serialize the current diagram state into a dictionary.
+        Serialize the whole diagram into a dictionary (the root scope, see
+        ``root_context``, even while a subsystem is open).
 
         Args:
             modern_ui_data: Additional UI state data
@@ -96,16 +102,19 @@ class FileService:
             "zero_crossing": bool(sim_params.get("zero_crossing", True)),
         }
 
+        if self.root_context is not None:
+            root_blocks, root_lines = self.root_context()
+        else:
+            root_blocks, root_lines = self.model.blocks_list, self.model.line_list
+
         # Serialize blocks (recurses into Subsystems via _serialize_block)
-        blocks_dict = [self._serialize_block(block) for block in self.model.blocks_list]
+        blocks_dict = [self._serialize_block(block) for block in root_blocks]
 
         # Serialize lines, skipping virtual (hidden) Goto/From connections —
         # those are recreated at execution time by link_goto_from and must
         # NOT be persisted, or reopened files accumulate stale ghost lines.
         lines_dict = [
-            self._serialize_line(line)
-            for line in self.model.line_list
-            if not getattr(line, "hidden", False)
+            self._serialize_line(line) for line in root_lines if not getattr(line, "hidden", False)
         ]
 
         # Assemble final data structure
