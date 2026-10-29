@@ -2956,7 +2956,8 @@ on <code>self</code> (see the Block Contract in <code>CLAUDE.md</code>). The lif
   parameters — allocate <code>mem</code>, discretise <code>A, B, C, D</code> at <code>dtime</code>, seed
   <code>_t_old_</code>, and so on — and to clear the flag afterwards.</li>
 <li><code>SimulationEngine._resolve_block_params()</code> builds <code>exec_params</code> from <code>params</code>
-  through the <code>WorkspaceManager</code>, copies every <code>_</code>-prefixed key across, and
+  against the diagram's workspace (<code>engine.workspace</code>, the same object as
+  <code>dsim.workspace</code>), copies every <code>_</code>-prefixed key across, and
   stamps <code>dtime</code>. It is skipped when <code>exec_params</code> is already current for this
   <code>dtime</code> and the parameter fingerprint is unchanged
   (<code>lib/engine/compile_cache.py::source_params_fingerprint</code>); on that cache hit

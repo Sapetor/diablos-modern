@@ -2100,7 +2100,7 @@
 </ol>
 <h2 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Variables are stored in <code>WorkspaceManager</code> (singleton)</li>
+<li>Variables are stored in the diagram's workspace (<code>dsim.workspace</code>, a <code>lib.workspace.Workspace</code>). The GUI's diagram uses the process-level default, which <code>WorkspaceManager()</code> still returns for older code</li>
 <li>During simulation initialization (<code>execution_init</code>), variable names in <code>block.params</code> are resolved</li>
 <li>Resolved values are stored in <code>block.exec_params</code> and used during execution</li>
 <li>This allows you to change values in one place and have all blocks update automatically</li>

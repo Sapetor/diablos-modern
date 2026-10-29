@@ -2398,6 +2398,15 @@ The setup dialog (<strong>Monte-Carlo Ensemble</strong>) takes:</p>
 <li><strong>Master seed</strong></li>
 <li><strong>Simulation time</strong></li>
 <li><strong>Step size (dt)</strong></li>
+<li><strong>Parallel workers</strong> — how many separate processes run the simulations
+  (default: up to 4, one fewer than your CPU count). Results are identical for
+  any value. Each extra process takes about a second to start, so use 1 for
+  small, quick ensembles.</li>
+<li><strong>Keep all run traces (exact percentile bands)</strong> — on by default. Turn it off
+  for very large ensembles: memory then no longer grows with runs × samples,
+  mean, std, min/max and the histograms stay exact, the band becomes
+  mean ± std (percentiles have no exact streaming form), and only a sample of
+  about 30 runs is drawn.</li>
 </ul>
 <h3 id="reproducibility-from-one-number">Reproducibility from one number<a class="headerlink" href="#reproducibility-from-one-number" title="Permanent link">&para;</a></h3>
 <p>Every block that exposes a <code>seed</code> parameter — <code>Noise</code>, <code>RandomSource</code>,
@@ -2433,6 +2442,7 @@ dialog offers:</p>
 <li>For each axis (<strong>Parameter X</strong>, <strong>Parameter Y</strong>): <strong>Block</strong>, <strong>Parameter</strong>,
   <strong>Min</strong>, <strong>Max</strong>, <strong>Points</strong></li>
 <li><strong>Simulation time</strong> and <strong>Step size (dt)</strong></li>
+<li><strong>Parallel workers</strong> — as for Monte Carlo</li>
 </ul>
 <p>Only numeric scalar parameters can be swept; if no block exposes one, the dialog
 says so.</p>
@@ -2442,7 +2452,9 @@ says so.</p>
   you see the shape change as the parameter moves. <strong>Metric vs parameter</strong> plots
   one outcome metric against the swept value — the usual way to find where
   overshoot or settling time turns over.</li>
-<li><strong>2-D</strong> draws a heatmap of one outcome metric over the two parameters.</li>
+<li><strong>2-D</strong> draws a heatmap of one outcome metric over the two parameters. Each
+  grid point is reduced to its metrics as soon as it finishes, so a 2-D sweep
+  never holds the traces of the whole grid.</li>
 </ul>
 <p>A 1-D sweep of a controller gain against <code>max</code> overshoot, or a 2-D sweep of
 <code>Kp</code> × <code>Ki</code> against <code>rms</code> error, is the fast way to see a design trade-off
@@ -2480,6 +2492,14 @@ re-simulation and redraws the scope plots.</p>
 <td><code>ParameterSweepRunner</code></td>
 </tr>
 <tr>
+<td><code>streaming.py</code></td>
+<td>Per-run reduction and streaming accumulators (Welford mean/std, min/max, metrics)</td>
+</tr>
+<tr>
+<td><code>parallel.py</code></td>
+<td>In-process loop or spawn process pool (<code>workers</code>), results released in run order</td>
+</tr>
+<tr>
 <td><code>linearizer.py</code></td>
 <td>Numeric Jacobian linearization producing A/B/C/D</td>
 </tr>
@@ -2491,7 +2511,11 @@ re-simulation and redraws the scope plots.</p>
 </table>
 <p>The two experiment runners snapshot the original block parameters and restore
 them afterwards, and they run off the GUI thread, so a long ensemble never
-freezes the window or leaves the diagram modified.</p>
+freezes the window or leaves the diagram modified. With <code>workers &gt; 1</code> each
+worker process rebuilds the diagram once from its serialized form and runs only
+the per-run seeds and parameter values the parent computed, and results are
+folded in run-index order, so the experiment is bit-identical whatever the
+worker count.</p>
 <p>See the <a href="../../DEVELOPER_GUIDE/">Developer Guide</a> and
 <a href="../../ARCHITECTURE/">Architecture</a> for the internals.</p>
 
