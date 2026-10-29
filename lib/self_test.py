@@ -72,7 +72,10 @@ def _check_simulation(solver):
     expected = np.where(t >= 1.0, 1.0 - np.exp(-(t - 1.0) / 2.0), 0.0)
     # The step itself is a discontinuity; compare away from it.
     mask = np.abs(t - 1.0) > 0.05
+    if not (np.all(np.isfinite(t)) and np.all(np.isfinite(y))):
+        raise AssertionError("non-finite time or output values")
     err = float(np.max(np.abs(y[mask] - expected[mask])))
+    # Written so a NaN error fails too (any comparison with NaN is False).
     if not (len(t) > 100 and err <= TOLERANCE[solver]):
         raise AssertionError(f"{len(t)} samples, max error {err:.3g} > {TOLERANCE[solver]}")
     if solver == "compiled" and result.engine != "compiled":

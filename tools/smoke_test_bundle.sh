@@ -53,9 +53,12 @@ data = np.genfromtxt(sys.argv[1], delimiter=",", names=True)
 t, y = data["t"], data["output"]
 expected = np.where(t >= 1.0, 1.0 - np.exp(-(t - 1.0) / 2.0), 0.0)
 mask = np.abs(t - 1.0) > 0.05
+# NaN compares False against any tolerance, so require finite values first.
+if not (np.all(np.isfinite(t)) and np.all(np.isfinite(y))):
+    sys.exit("the bundled CLI run produced non-finite time or output values")
 err = float(np.max(np.abs(y[mask] - expected[mask])))
 print(f"  {len(t)} samples, max error {err:.2e}")
-if len(t) < 100 or err > 1e-6:
+if len(t) < 100 or not np.isfinite(err) or err > 1e-6:
     sys.exit("the bundled CLI run does not match the closed form")
 PY
 echo "== bundle smoke test passed"
