@@ -2763,6 +2763,14 @@ kernel under its canonical name — no allowlist edit needed. Three rules:</p>
   <code>@events</code> under a built-in's name (say <code>"Gain"</code>) is ignored with a warning;
   it cannot replace the engine's own kernel.</li>
 </ul>
+<p>A user module's <code>@kernel</code> and <code>@events</code> registrations are <strong>bound to that
+module</strong>, not to the bare name: the compiler finds them from the block's class,
+so register them in the same file that defines the block. Two projects can
+each ship a <code>ReviewTripler</code> block with its own kernel, and each diagram
+compiles with the kernel defined next to its own block class, whichever
+project was opened first. For the same reason a user block never picks up a
+built-in kernel whose canonical name it happens to share, and
+<code>get_kernel_builder(name)</code> without a block only sees the built-in registry.</p>
 <p><code>docs/examples/custom_kernel_template.py</code> is a complete, working example.</p>
 <hr />
 <h2 id="8-localization">8. Localization<a class="headerlink" href="#8-localization" title="Permanent link">&para;</a></h2>
