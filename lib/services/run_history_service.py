@@ -3,6 +3,8 @@ import logging
 import numpy as np
 from pathlib import Path
 
+from lib.atomic_io import atomic_write_json
+
 logger = logging.getLogger(__name__)
 
 
@@ -79,7 +81,9 @@ class RunHistoryService:
                     }
                 )
 
-            self.history = loaded[-self.limit :] if loaded else []
+            # The same rule as record_run: the limit counts unpinned runs only,
+            # so a pinned baseline survives a restart.
+            self.history = self._apply_limit(loaded)
             logger.info(f"Loaded {len(self.history)} runs from history.")
         except Exception as e:
             logger.warning(f"Could not load run history: {e}")
@@ -117,8 +121,8 @@ class RunHistoryService:
                 )
 
             payload = {"persist": self.persist_enabled, "runs": serializable_runs}
-            with open(self.persist_path, "w", encoding="utf-8") as f:
-                json.dump(payload, f)
+            # Atomic: an interrupted write must not truncate the saved history.
+            atomic_write_json(str(self.persist_path), payload, indent=None)
             logger.debug("Run history saved.")
         except Exception as e:
             logger.warning(f"Could not save run history: {e}")
@@ -135,6 +139,19 @@ class RunHistoryService:
                 logger.warning(f"Could not remove run history file: {e}")
         else:
             self.save_history()
+
+    def _apply_limit(self, runs):
+        """``runs`` with only the newest ``limit`` unpinned entries; pinned ones all stay."""
+        drop = sum(1 for r in runs if not r.get("pinned", False)) - self.limit
+        if drop <= 0:
+            return list(runs)
+        kept = []
+        for r in runs:
+            if not r.get("pinned", False) and drop > 0:
+                drop -= 1
+                continue
+            kept.append(r)
+        return kept
 
     def record_run(self, timeline, traces, sim_dt, sim_time, run_name=None):
         """
@@ -172,18 +189,7 @@ class RunHistoryService:
         }
 
         self.history.append(run_entry)
-
-        # Enforce limit on unpinned runs while keeping pinned entries
-        unpinned_count = sum(1 for r in self.history if not r.get("pinned", False))
-        if unpinned_count > self.limit:
-            drop = unpinned_count - self.limit
-            new_history = []
-            for r in self.history:
-                if not r.get("pinned", False) and drop > 0:
-                    drop -= 1
-                    continue
-                new_history.append(r)
-            self.history = new_history
+        self.history = self._apply_limit(self.history)
 
         # Persist if enabled
         self.save_history()
