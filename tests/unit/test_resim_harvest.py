@@ -88,3 +88,50 @@ class TestHarvestScopeSignals:
     def test_returns_none_without_timeline(self):
         d = _DSim([_Scope("s", np.array([1.0]), 1, ["y"])], timeline=())
         assert harvest_scope_signals(d) is None
+
+
+@pytest.mark.unit
+class TestLabelCollisions:
+    """A generated ``#k`` name never collides with an explicit label.
+
+    Labels ``x, x, x#1`` used to come back as two channels: the second ``x``
+    became ``x#1`` and the literal ``x#1`` then overwrote it.
+    """
+
+    @staticmethod
+    def _scopes(labels):
+        return [
+            _Scope(f"s{k}", np.array([float(k), float(k)]), 1, [lab])
+            for k, lab in enumerate(labels)
+        ]
+
+    @pytest.mark.parametrize(
+        "labels",
+        [
+            ["x", "x", "x#1"],
+            ["x", "x#1", "x"],
+            ["x#1", "x", "x"],
+            ["x#1", "x#1", "x", "x"],
+            ["x", "x#2", "x", "x", "x"],
+        ],
+    )
+    def test_every_channel_kept(self, labels):
+        sig = _harvest(*self._scopes(labels))
+        assert len(sig) == len(labels)
+        assert sorted(float(v[0]) for v in sig.values()) == list(range(len(labels)))
+
+    def test_names_for_the_reported_case(self):
+        sig = _harvest(*self._scopes(["x", "x", "x#1"]))
+        assert {k: float(v[0]) for k, v in sig.items()} == {"x": 0.0, "x#1": 1.0, "x#1#1": 2.0}
+
+    def test_vector_channels_with_repeated_labels(self):
+        vec = _Scope("v", np.array([[1.0, 2.0, 3.0]]), 3, ["x", "x", "x#1"])
+        sig = _harvest(vec)
+        assert [float(v[0]) for v in sig.values()] == [1.0, 2.0, 3.0]
+
+    def test_unique_label(self):
+        from lib.analysis.resim import unique_label
+
+        assert unique_label("x", set()) == "x"
+        assert unique_label("x", {"x"}) == "x#1"
+        assert unique_label("x", {"x", "x#1", "x#2"}) == "x#3"

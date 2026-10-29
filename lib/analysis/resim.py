@@ -82,6 +82,22 @@ def iter_blocks_qualified(blocks, prefix=""):
             yield from iter_blocks_qualified(children, f"{full}/")
 
 
+def unique_label(name, taken):
+    """``name``, or the first ``name#k`` (k = 1, 2, ...) that is not in ``taken``.
+
+    Checked against every key already handed out -- generated ones included --
+    so labels ``x, x, x#1`` become ``x, x#1, x#1#1`` instead of the literal
+    ``x#1`` overwriting the generated one. The exported script
+    (``lib/export/python_codegen.py``) emits the same rule.
+    """
+    if name not in taken:
+        return name
+    k = 1
+    while f"{name}#{k}" in taken:
+        k += 1
+    return f"{name}#{k}"
+
+
 def harvest_scope_signals(dsim):
     """Read each Scope's trace(s) into ``{'timeline', 'signals'}`` (or ``None``).
 
@@ -91,22 +107,16 @@ def harvest_scope_signals(dsim):
     ``labels`` entry, or the ``<scope>-<j>`` default), on both execution paths.
     Only a channel without a label falls back to the block name (``<scope>``
     for a single channel, ``<scope>[j]`` otherwise); duplicate names are
-    disambiguated with a ``#n`` suffix.
+    disambiguated by :func:`unique_label`, so every channel gets its own key.
     """
     timeline = getattr(dsim, "timeline", None)
     if timeline is None or len(np.atleast_1d(timeline)) == 0:
         return None
     blocks = getattr(dsim.engine, "active_blocks_list", None) or dsim.blocks_list
     signals = {}
-    seen = {}
 
     def put(name, arr):
-        if name in seen:
-            seen[name] += 1
-            name = f"{name}#{seen[name]}"
-        else:
-            seen[name] = 0
-        signals[name] = np.asarray(arr, dtype=float).ravel()
+        signals[unique_label(name, signals)] = np.asarray(arr, dtype=float).ravel()
 
     for b in blocks:
         if b.block_fn != "Scope":
