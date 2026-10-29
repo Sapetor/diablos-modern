@@ -115,6 +115,12 @@ USER_MODULE_PREFIX = "diablos_user_blocks"
 #: Marker attributes stamped on a successfully loaded user block class.
 USER_BLOCK_FLAG = "__diablos_user_block__"
 USER_BLOCK_SOURCE = "__diablos_block_source__"
+#: The defining module's namespace (its ``__dict__``). Compiled kernels and
+#: event builders a user module registers are bound to that namespace (see
+#: ``lib.engine.compiler_kernels``), and this is how the compiler finds them
+#: from the block's class -- not by module name, which two projects' same-named
+#: files share.
+USER_BLOCK_NAMESPACE = "__diablos_block_namespace__"
 
 
 def _builtin_blocks_dirs() -> Set[str]:
@@ -542,6 +548,7 @@ def load_user_blocks(
             taken.add(name)
             setattr(cls, USER_BLOCK_FLAG, True)
             setattr(cls, USER_BLOCK_SOURCE, path)
+            setattr(cls, USER_BLOCK_NAMESPACE, module.__dict__)
             report.classes.append(cls)
             logger.info("Loaded user block %r from %s", name, path)
 
