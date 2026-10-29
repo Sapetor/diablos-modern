@@ -2238,6 +2238,9 @@
 <a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>rm<span class="w"> </span>-rf<span class="w"> </span>dist/DiaBloS-*.app<span class="w"> </span>build/
 </code></pre></div>
 <p><code>tools/build.sh</code> runs three steps: sync block registry, PyInstaller build, DMG creation. App names include the architecture (<code>DiaBloS-arm64.app</code>, <code>DiaBloS-x86_64.app</code>) so both can coexist in <code>/Applications</code>.</p>
+<p>To check a local build the way the release workflow does, run
+<code>tools/smoke_test_bundle.sh dist/DiaBloS-arm64.app/Contents/MacOS/DiaBloS</code>
+(any installed copy also answers <code>DiaBloS self-test</code>).</p>
 <p>Both <code>tools/build.sh</code> and <code>diablos.spec</code> read the version from <code>[project] version</code> in <code>pyproject.toml</code> -- the single source of truth. <code>modern_ui.__version__</code> reads it back at runtime from, in order: <code>_version.txt</code> (written into the bundle by <code>diablos.spec</code>, since a frozen app ships no <code>.dist-info</code>), <code>pyproject.toml</code> itself (dev checkout), installed distribution metadata, then a literal fallback. A frozen build therefore reports the real version rather than a hard-coded one. The DMG is named <code>DiaBloS-&lt;version&gt;-&lt;arch&gt;.dmg</code> and the bundle's <code>CFBundleShortVersionString</code> matches it, so bumping one number in <code>pyproject.toml</code> updates the window title, the About/bundle version, and the installer filename together.</p>
 <blockquote>
 <p><strong>macOS cursor bug — FIXED.</strong> The native macOS style fails to draw the blinking text caret in any QLineEdit that has a stylesheet <code>background-color</code> (QTBUG-109450) — which is every input field in this app. It first bit the PyQt5 5.15 arm64 builds and is not fixed in Qt 6 either. The app therefore switches to the Fusion style on macOS (<code>_maybe_use_fusion_style</code> in <code>modern_ui/styles/qss_styles.py</code>); Fusion is stylesheet-aware and draws the caret itself. arm64 is also ~10x faster to start than the Rosetta x86_64 build, so it is the preferred release.</p>
@@ -2545,7 +2548,13 @@ path literal passed to <code>open()</code> / <code>os.makedirs()</code> / <code>
    test matrix must be green), and only then builds on <code>macos-latest</code> (arm64,
    via <code>tools/build.sh</code>), <code>windows-latest</code> (PyInstaller + a zipped
    <code>dist/DiaBloS</code> folder) and <code>ubuntu-latest</code> (PyInstaller + a <code>dist/DiaBloS</code>
-   tarball). It publishes a GitHub release with <code>DiaBloS-&lt;version&gt;-arm64.dmg</code>,
+   tarball). Each job then runs the <strong>built executable</strong> through
+   <code>tools/smoke_test_bundle.sh</code> before uploading it: <code>DiaBloS self-test</code>
+   (bundled resources, both solvers against a closed form, a 2-process
+   Monte-Carlo ensemble, the main window built offscreen; see
+   <code>lib/self_test.py</code>) and a headless <code>DiaBloS run</code> whose CSV is checked
+   against the analytic step response. The JSON report is uploaded as the
+   <code>smoke-&lt;os&gt;</code> artifact, pass or fail. It publishes a GitHub release with <code>DiaBloS-&lt;version&gt;-arm64.dmg</code>,
    <code>DiaBloS-&lt;version&gt;-windows-x64.zip</code> and
    <code>DiaBloS-&lt;version&gt;-linux-x86_64.tar.gz</code> attached.</li>
 </ol>
