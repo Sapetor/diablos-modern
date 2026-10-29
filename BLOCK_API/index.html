@@ -2448,7 +2448,8 @@ arguments.</p>
 </ul>
 <p>Consequences:</p>
 <ul>
-<li><strong>Renaming it breaks saved diagrams.</strong> They will open with the block missing
+<li><strong>Renaming it breaks saved diagrams.</strong> They will open with the block shown as
+  a "missing: <name>" placeholder (kept on save, but the diagram will not run)
   and a "Missing block types" warning naming the search paths.</li>
 <li><strong>It must be unique.</strong> A user block whose <code>block_name</code> collides with a
   built-in is skipped with a warning — built-ins always win, precisely because
@@ -2834,8 +2835,16 @@ traceback and the block is skipped.</p>
 <h3 id="diagrams-that-use-a-user-block">Diagrams that use a user block<a class="headerlink" href="#diagrams-that-use-a-user-block" title="Permanent link">&para;</a></h3>
 <p>The block's <code>block_name</code> is stored in the file. Opening the diagram on a
 machine that has the block works normally; on one that does not, the block is
-left out and DiaBloS shows a translated warning naming the missing block types
-and every folder it searched.</p>
+kept as a red "missing: <name>" placeholder with its ports, connections and
+parameters, and DiaBloS shows a translated warning naming the missing block
+types and every folder it searched. Saving writes the placeholder back
+unchanged, so nothing is lost; running the diagram fails with an error naming
+the type until it is available (<em>Reload user blocks</em> then turns placeholders
+back into real blocks).</p>
+<p>A project's own <code>blocks/</code> folder (next to the <code>.diablos</code> file) is registered
+<em>before</em> the diagram is rebuilt -- after the trust question -- so its blocks
+open normally. Analysis copies and experiment worker processes inherit the
+same registrations; an untrusted folder is never loaded by them either.</p>
 <hr />
 <h2 id="10-validating-your-block">10. Validating your block<a class="headerlink" href="#10-validating-your-block" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">blocks.base_block</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_block_class</span><span class="p">,</span> <span class="n">block_contract_errors</span>
