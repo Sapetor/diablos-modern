@@ -464,16 +464,6 @@ def clear_mask(block: Any) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _workspace_variables() -> Dict[str, Any]:
-    try:
-        from lib.workspace import WorkspaceManager
-
-        return dict(WorkspaceManager().get_all_variables() or {})
-    except Exception:  # pragma: no cover - workspace is optional
-        logger.debug("Workspace variables unavailable for mask resolution", exc_info=True)
-        return {}
-
-
 def resolve_mask_scope(
     mask: Optional[Dict[str, Any]],
     values: Optional[Dict[str, Any]] = None,
@@ -484,8 +474,8 @@ def resolve_mask_scope(
     """Evaluate a mask's parameter values into a flat ``{name: value}`` scope.
 
     Expression strings are evaluated with :func:`lib.safe_eval.safe_expr` over
-    ``workspace`` (the diagram's variables, read from the ``WorkspaceManager``
-    when not supplied), overlaid with ``outer_scope`` (the enclosing mask's
+    ``workspace`` (the owning diagram's variables, ``dsim.workspace.variables``;
+    ``None`` means no variables), overlaid with ``outer_scope`` (the enclosing mask's
     scope, so nested masks resolve outer-to-inner), overlaid with the mask
     parameters resolved so far -- a later parameter may therefore reference an
     earlier one.
@@ -496,7 +486,7 @@ def resolve_mask_scope(
     if not mask:
         return {}
     if workspace is None:
-        workspace = _workspace_variables()
+        workspace = {}
     if values is None:
         values = {}
 

@@ -81,15 +81,14 @@ def _file_sim_params(filepath):
 def new_headless_dsim():
     """Return an empty ``DSim`` built under an offscreen QApplication.
 
-    Resets the workspace singleton so a headless run never inherits stale
-    variables (it is process-wide: every DSim shares it).
+    The DSim owns a fresh, empty workspace (``dsim.workspace``), so a headless
+    run never inherits another diagram's variables -- nor the GUI's default
+    ``WorkspaceManager()`` -- and never leaks its own into them.
     """
     _ensure_headless_qapp()
 
     from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
 
-    WorkspaceManager._instance = None
     return DSim()
 
 
@@ -207,6 +206,7 @@ def export_python(filepath, out_path=None, sim_time=None, sim_dt=None, solver=No
         rtol=sim_params.get("rtol", 1e-9),
         atol=sim_params.get("atol", 1e-12),
         diagram_name=os.path.basename(filepath),
+        workspace=dsim.workspace,
     ).generate()
 
     os.makedirs(os.path.dirname(os.path.abspath(out_path)) or ".", exist_ok=True)

@@ -8,7 +8,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from lib.lib import DSim
 from lib.simulation.block import DBlock
-from lib.workspace import WorkspaceManager
 from blocks.gain import GainBlock
 from blocks.step import StepBlock
 from blocks.base_block import BaseBlock
@@ -51,12 +50,10 @@ class TestVariableParams(unittest.TestCase):
             cls.app = QApplication.instance()
 
     def setUp(self):
-        # Reset WorkspaceManager
-        WorkspaceManager._instance = None
-        self.wm = WorkspaceManager()
-        self.wm.variables = {"gain_val": 5.0, "step_amp": 2.0}
-
+        # Workspace variables belong to the diagram.
         self.sim = DSim()
+        self.wm = self.sim.workspace
+        self.wm.variables = {"gain_val": 5.0, "step_amp": 2.0}
         self.sim.sim_dt = 0.1
         self.sim.sim_time = 1.0
 

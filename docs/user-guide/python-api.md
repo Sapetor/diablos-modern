@@ -47,6 +47,14 @@ A block inside a Subsystem is addressed as `"<Subsystem>/<block>"`; `sim.blocks`
 lists every name. A value can also be an expression string, resolved at run time
 exactly as in the parameter dialog.
 
+Workspace variables are per diagram:
+
+```python
+sim.set_param("gain1", "gain", "K")
+sim.set_variable("K", 2.0)
+sim.variables                    # {"K": 2.0}
+```
+
 ## Build a diagram in code
 
 ```python
@@ -119,7 +127,10 @@ when they finish. The result dictionaries are the ones the Analysis windows show
 
 - The first `load` creates an offscreen Qt application if the process has none.
   No window ever opens, so it works over SSH and in CI.
-- Workspace variables live in one process-wide store that each `load` resets.
-  Work on one diagram's variables at a time.
+- Workspace variables belong to the diagram. `sim.set_variable("K", 2.0)` sets
+  one, `sim.variables` lists them and `sim.workspace` is the underlying store
+  (it can also `load_from_file`). Each `load` or `from_builder` starts with an
+  empty workspace, and two diagrams in one process never see each other's
+  variables.
 - `sim.dsim` exposes the underlying simulator for anything not covered here. It
   is not part of the stable API.

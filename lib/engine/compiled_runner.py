@@ -48,7 +48,6 @@ from lib.engine.zero_crossing import (
     solve_with_events,
 )
 from lib.simulation.block import DBlock
-from lib.workspace import WorkspaceManager
 from lib.engine.topo import kahn_topological_order
 
 logger = logging.getLogger(__name__)
@@ -698,7 +697,7 @@ def run_compiled_simulation(
         # or missing.  initialize_execution above (or DSim.execution_init)
         # already resolves with the same sim_dt, so we skip the per-block
         # pass when exec_params['dtime'] is already current.
-        workspace_manager = WorkspaceManager()
+        workspace_manager = engine._get_workspace()
         for block in current_blocks:
             engine._resolve_block_params(block, dt, workspace_manager)
 

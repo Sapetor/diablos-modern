@@ -24,8 +24,9 @@ experiment tools already use (``lib/cli.py``, ``DSim.run_tuning_simulation``,
 window is ever shown.
 
 Run from the repository root (DiaBloS installs no importable package).
-Workspace variables live in a process-wide singleton that each :func:`load`
-resets, so one process should work on one diagram's variables at a time.
+Workspace variables belong to the diagram: each :class:`Diagram` owns its own
+(:attr:`Diagram.workspace`, set with :meth:`Diagram.set_variable`), so several
+diagrams with different variables can live in one process.
 """
 
 import json
@@ -153,6 +154,25 @@ class Diagram:
         b.params[param] = value
         if getattr(b, "exec_params", None):
             b.exec_params[param] = value
+
+    @property
+    def workspace(self):
+        """This diagram's workspace variables (a ``lib.workspace.Workspace``).
+
+        Parameters that name a variable (``gain = "K"``) or use one in an
+        expression resolve against it at run time. It is private to this
+        diagram: another :class:`Diagram` in the same process has its own.
+        """
+        return self._dsim.workspace
+
+    @property
+    def variables(self) -> Dict[str, Any]:
+        """A copy of the workspace variables, ``{name: value}``."""
+        return dict(self._dsim.workspace.variables)
+
+    def set_variable(self, name: str, value: Any) -> None:
+        """Set one workspace variable of this diagram for every later run."""
+        self._dsim.workspace.set_variable(name, value)
 
     def save(self, path: str) -> None:
         """Save the diagram, parameter changes included, as a ``.diablos`` file."""

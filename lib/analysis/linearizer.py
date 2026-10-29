@@ -118,9 +118,8 @@ class Linearizer:
         current_blocks = engine.active_blocks_list
         current_lines = engine.active_line_list if engine.active_line_list else lines
 
-        from lib.workspace import WorkspaceManager
-
-        wm = WorkspaceManager()
+        # The diagram's own workspace (the engine shares DSim.workspace).
+        wm = engine._get_workspace()
         dt = getattr(self.dsim, "sim_dt", 0.01) or 0.01
         for b in current_blocks:
             engine._resolve_block_params(b, dt, wm)

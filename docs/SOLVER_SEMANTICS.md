@@ -376,7 +376,8 @@ on `self` (see the Block Contract in `CLAUDE.md`). The lifecycle:
   parameters — allocate `mem`, discretise `A, B, C, D` at `dtime`, seed
   `_t_old_`, and so on — and to clear the flag afterwards.
 * `SimulationEngine._resolve_block_params()` builds `exec_params` from `params`
-  through the `WorkspaceManager`, copies every `_`-prefixed key across, and
+  against the diagram's workspace (`engine.workspace`, the same object as
+  `dsim.workspace`), copies every `_`-prefixed key across, and
   stamps `dtime`. It is skipped when `exec_params` is already current for this
   `dtime` and the parameter fingerprint is unchanged
   (`lib/engine/compile_cache.py::source_params_fingerprint`); on that cache hit

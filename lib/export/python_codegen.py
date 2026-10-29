@@ -361,27 +361,33 @@ class _Block:
         return "{} ({})".format(self.raw_fn, self.name)
 
 
-def _resolved_params(block: Any, warnings: Optional[List[str]] = None) -> Dict[str, Any]:
+def _resolved_params(
+    block: Any, warnings: Optional[List[str]] = None, workspace: Any = None
+) -> Dict[str, Any]:
     """Params with workspace variables resolved, the way the engine reads them.
 
     Prefers ``exec_params`` when the diagram has been run (that is what
-    ``SystemCompiler`` compiles from); otherwise resolves ``params`` through the
-    workspace manager so ``gain = "Kp"`` exports as its numeric value.
+    ``SystemCompiler`` compiles from); otherwise resolves ``params`` against the
+    diagram's workspace so ``gain = "Kp"`` exports as its numeric value.
 
     Args:
         block: the diagram block whose params are being read.
         warnings: optional list collecting human-readable warnings; a failed
             resolution is appended here as well as logged, so the caller
             (:class:`PythonCodeGenerator.warnings`) can surface it to the user.
+        workspace: the owning diagram's :class:`~lib.workspace.Workspace`
+            (``dsim.workspace``); ``None`` resolves with no variables.
     """
     exec_params = getattr(block, "exec_params", None)
     if exec_params:
         return dict(exec_params)
     params = dict(getattr(block, "params", None) or {})
     try:
-        from lib.workspace import WorkspaceManager
+        if workspace is None:
+            from lib.workspace import Workspace
 
-        return dict(WorkspaceManager().resolve_params(params))
+            workspace = Workspace()
+        return dict(workspace.resolve_params(params))
     except Exception as exc:  # noqa: BLE001 - workspace is optional for export
         # Falling through silently used to bake the *unresolved* value (the
         # variable name, e.g. gain = "Kp") into the exported script, which then
@@ -439,6 +445,9 @@ class PythonCodeGenerator:
         solver: solver method (``RK45`` ... or the fixed-step ``Euler``/``RK4``).
         rtol / atol: solve_ivp tolerances (engine defaults 1e-9 / 1e-12).
         diagram_name: name shown in the generated docstring.
+        workspace: the diagram's :class:`~lib.workspace.Workspace`, used to
+            resolve parameters of blocks that have not been run yet
+            (:meth:`from_dsim` passes ``dsim.workspace``).
     """
 
     def __init__(
@@ -451,8 +460,10 @@ class PythonCodeGenerator:
         rtol: float = 1e-9,
         atol: float = 1e-12,
         diagram_name: Optional[str] = None,
+        workspace: Any = None,
     ):
         self.raw_blocks = list(blocks or [])
+        self.workspace = workspace
         self.raw_lines = list(lines or [])
         self.sim_time = float(sim_time)
         self.sim_dt = float(sim_dt)
@@ -507,6 +518,7 @@ class PythonCodeGenerator:
             rtol=getattr(dsim, "rtol", 1e-9),
             atol=getattr(dsim, "atol", 1e-12),
             diagram_name=diagram_name or getattr(dsim, "filename", None),
+            workspace=getattr(dsim, "workspace", None),
         )
 
     def generate(self) -> str:
@@ -542,7 +554,8 @@ class PythonCodeGenerator:
         try:
             from lib.engine.flattener import Flattener
 
-            return Flattener().flatten(blocks, lines)
+            ws = getattr(self.workspace, "variables", None)
+            return Flattener().flatten(blocks, lines, workspace=ws)
         except Exception as exc:  # noqa: BLE001 - report as an unsupported block
             raise CodegenUnsupportedError(
                 [
@@ -558,7 +571,7 @@ class PythonCodeGenerator:
 
     def _prepare(self, blocks, lines):
         for obj in blocks:
-            blk = _Block(obj, _resolved_params(obj, self.warnings))
+            blk = _Block(obj, _resolved_params(obj, self.warnings, self.workspace))
             self._block_index[blk.name] = len(self._blocks)
             self._blocks.append(blk)
             self._by_name[blk.name] = blk

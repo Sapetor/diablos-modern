@@ -9,7 +9,7 @@ from typing import List, Dict, Tuple, Any, Optional, Union
 import numpy as np
 from lib.simulation.block import DBlock
 from lib.simulation.connection import DLine
-from lib.workspace import WorkspaceManager
+from lib.workspace import Workspace
 from lib.engine.system_compiler import SystemCompiler
 from lib.engine.flattener import Flattener
 from lib.engine.solver_diagnostics import build_diagnostics, format_diagnostics_for_log
@@ -61,15 +61,21 @@ class SimulationEngine:
     # (test stubs that call propagate_outputs directly) still works.
     _prop_adj = None
     _prop_adj_source = None
+    # The owning diagram's workspace (see lib/workspace.py); class-level None
+    # for the same __new__-built stubs, resolved lazily by _get_workspace().
+    workspace: Optional[Workspace] = None
 
-    def __init__(self, model: Any) -> None:
+    def __init__(self, model: Any, workspace: Optional[Workspace] = None) -> None:
         """
         Initialize simulation engine.
 
         Args:
             model: SimulationModel instance containing blocks and lines
+            workspace: the diagram's workspace variables. ``DSim`` passes its
+                own; a standalone engine gets a fresh, empty one.
         """
         self.model = model
+        self.workspace = workspace if workspace is not None else Workspace()
         # Execution state
         self.execution_initialized: bool = False
         self.execution_pause: bool = False
@@ -178,7 +184,7 @@ class SimulationEngine:
             if has_subsystems:
                 logger.info("Flattening hierarchical system...")
                 self.active_blocks_list, self.active_line_list = self.flattener.flatten(
-                    blocks_list, lines_list
+                    blocks_list, lines_list, workspace=self._get_workspace().variables
                 )
                 logger.info(
                     f"Flattening complete. Blocks: {len(self.active_blocks_list)}, Lines: {len(self.active_line_list)}"
@@ -223,7 +229,7 @@ class SimulationEngine:
             # calling this method).  Avoids a redundant pass over every block
             # in the normal execution path while keeping the resolve as a
             # fallback for direct callers (tests, alternate init paths).
-            workspace_manager = WorkspaceManager()
+            workspace_manager = self._get_workspace()
             current_dt = self.sim_dt
             for block in self.active_blocks_list:
                 self._resolve_block_params(block, current_dt, workspace_manager)
@@ -657,8 +663,14 @@ class SimulationEngine:
             return
         exec_params["output"] = np.array(exec_params["mem"], copy=True)
 
+    def _get_workspace(self) -> Workspace:
+        """The diagram workspace this engine resolves parameters against."""
+        if self.workspace is None:
+            self.workspace = Workspace()
+        return self.workspace
+
     def _resolve_block_params(
-        self, block: DBlock, dt: float, workspace_manager: Optional[WorkspaceManager] = None
+        self, block: DBlock, dt: float, workspace_manager: Optional[Workspace] = None
     ) -> None:
         """Resolve a block's exec_params for the given simulation step.
 
@@ -685,7 +697,7 @@ class SimulationEngine:
             push_down_internal_params(block)
             return
         if workspace_manager is None:
-            workspace_manager = WorkspaceManager()
+            workspace_manager = self._get_workspace()
         block.exec_params = workspace_manager.resolve_params(block.params)
         # Copy internal parameters (those starting with '_')
         block.exec_params.update({k: v for k, v in block.params.items() if k.startswith("_")})
@@ -1070,10 +1082,10 @@ class SimulationEngine:
         self.execution_time = execution_time
         self.invalidate_propagation_cache()
 
-        workspace_manager = WorkspaceManager()
+        workspace_manager = self._get_workspace()
 
         for block in self.model.blocks_list:
-            # Resolve parameters using WorkspaceManager
+            # Resolve parameters against the diagram workspace
             logger.debug(f"Block {block.name}: params before resolve = {block.params}")
             block.exec_params = workspace_manager.resolve_params(block.params)
             logger.debug(f"Block {block.name}: exec_params after resolve = {block.exec_params}")

@@ -13,13 +13,16 @@ class Flattener:
     Helper class to flatten a hierarchical block diagram into a list of primitive blocks and connections.
     """
 
-    def flatten(self, top_blocks, top_lines):
+    def flatten(self, top_blocks, top_lines, workspace=None):
         """
         Flatten the hierarchy.
 
         Args:
             top_blocks: List of DBlock objects at top level.
             top_lines: List of DLine objects at top level.
+            workspace: the diagram's workspace variables (``{name: value}``)
+                that mask parameter expressions may reference. ``None`` means
+                no variables.
 
         Returns:
             (flat_blocks, flat_lines): Lists of primitive blocks and resolved connections.
@@ -30,6 +33,7 @@ class Flattener:
         # keys: (full_block_name, port_idx). value: (full_src_name, src_port_idx)
         self.input_drivers = {}
         self.block_map = {}  # full_name -> block (clones for primitives)
+        self._workspace_vars = dict(workspace or {})
 
         # 1. Recursively collect primitives and build input map.
         #    Masked subsystems open a parameter scope here (see lib/masks.py):
@@ -118,7 +122,9 @@ class Flattener:
                 # its own resolved mask parameters; an unmasked one passes the
                 # enclosing scope straight through (so an unmasked subsystem
                 # nested in a masked one still sees the outer mask).
-                child_scope = child_scope_for(block, scope)
+                child_scope = child_scope_for(
+                    block, scope, workspace=getattr(self, "_workspace_vars", None) or {}
+                )
                 self._collect_recursive(
                     block.sub_blocks, block.sub_lines, f"{full_name}/", child_scope
                 )

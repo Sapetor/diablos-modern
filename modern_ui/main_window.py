@@ -65,7 +65,11 @@ class ModernDiaBloSWindow(QMainWindow):
         self.use_fast_solver = True  # Enabled by default
 
         # Core DSim functionality
-        self.dsim = DSim()
+        # The GUI's single diagram is built on the process-level default
+        # workspace, so legacy/user-block code calling WorkspaceManager()
+        # keeps seeing the window's variables. Variables survive New/Open
+        # (they belong to the window session, as before).
+        self.dsim = DSim(workspace=WorkspaceManager())
 
         # Performance monitoring
         self.perf_helper = PerformanceHelper()
@@ -1008,7 +1012,7 @@ class ModernDiaBloSWindow(QMainWindow):
     def _on_variables_updated(self):
         """Handle variable updates from the Variable Editor."""
         try:
-            var_count = len(WorkspaceManager().variables)
+            var_count = len(self.dsim.workspace.variables)
 
             # Refresh the Workspace Editor (table view)
             if hasattr(self, "workspace_editor"):
@@ -1485,7 +1489,7 @@ class ModernDiaBloSWindow(QMainWindow):
         )
         if filepath:
             try:
-                WorkspaceManager().load_from_file(filepath)
+                self.dsim.workspace.load_from_file(filepath)
                 self._on_variables_updated()
                 self.toast.show_message(
                     tr("Workspace loaded from {name}", name=os.path.basename(filepath)),

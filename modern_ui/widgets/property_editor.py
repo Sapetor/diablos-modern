@@ -264,6 +264,9 @@ class PropertyEditor(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("PropertyEditor")
+        # The edited diagram's Workspace (set by the layout manager to
+        # ``window.dsim.workspace``); None falls back to the process default.
+        self.workspace = None
         self.setFrameStyle(QFrame.Shape.StyledPanel)
         self.setAutoFillBackground(True)
 
@@ -322,6 +325,11 @@ class PropertyEditor(QFrame):
                 pass  # Widget already deleted
 
     # ── Public API ──────────────────────────────────────────────
+
+    def _workspace(self):
+        """The edited diagram's workspace (process default when unset)."""
+        ws = getattr(self, "workspace", None)
+        return ws if ws is not None else WorkspaceManager()
 
     def set_block(self, block):
         """Set the block to be edited and create the property form."""
@@ -476,7 +484,7 @@ class PropertyEditor(QFrame):
         wsec = CollapsibleSection(tr("Workspace"), expanded=True)
         self._sections.append(wsec)
         try:
-            ws = WorkspaceManager().variables or {}
+            ws = self._workspace().variables or {}
         except Exception as e:
             self.logger.debug("workspace read failed: %s", e)
             ws = {}
@@ -1212,7 +1220,7 @@ class PropertyEditor(QFrame):
                         raise ValueError("Not a list")
                     converted_value = val
                 except (ValueError, SyntaxError):
-                    ws = WorkspaceManager()
+                    ws = self._workspace()
                     if text in ws.variables and isinstance(ws.variables[text], list):
                         converted_value = text
                     else:
@@ -1221,7 +1229,7 @@ class PropertyEditor(QFrame):
                 try:
                     converted_value = int(text)
                 except ValueError:
-                    ws = WorkspaceManager()
+                    ws = self._workspace()
                     if text in ws.variables:
                         converted_value = text
                     else:
@@ -1230,7 +1238,7 @@ class PropertyEditor(QFrame):
                 try:
                     converted_value = float(text)
                 except ValueError:
-                    ws = WorkspaceManager()
+                    ws = self._workspace()
                     if text in ws.variables:
                         converted_value = text
                     else:
@@ -1263,7 +1271,7 @@ class PropertyEditor(QFrame):
             else:
                 raise ValueError("Expected a number or list of numbers")
         except (ValueError, SyntaxError, TypeError):
-            ws = WorkspaceManager()
+            ws = self._workspace()
             if text in ws.variables:
                 converted_value = text
             else:

@@ -207,7 +207,10 @@ class BaseAnalyzer:
         from lib.engine.flattener import Flattener
 
         try:
-            flat_blocks, flat_lines = Flattener().flatten([block], [])
+            # Mask expressions resolve against the analyzed diagram's workspace.
+            workspace = getattr(getattr(canvas, "dsim", None), "workspace", None)
+            ws = getattr(workspace, "variables", None)
+            flat_blocks, flat_lines = Flattener().flatten([block], [], workspace=ws)
         except Exception as exc:
             return self._unsupported(f"subsystem '{name}' could not be flattened: {exc}")
 

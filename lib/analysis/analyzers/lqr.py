@@ -145,10 +145,9 @@ class LQRAnalyzer(ErrorReportingMixin, BaseAnalyzer):
 
             # Try workspace variable
             try:
-                from lib.workspace import WorkspaceManager
-
-                ws = WorkspaceManager()
-                # WorkspaceManager exposes get_value(); the old get_variable()
+                # The analyzed diagram's own workspace.
+                ws = canvas.dsim.workspace
+                # Workspace exposes get_value(); the old get_variable()
                 # was removed, and the surrounding except swallowed the
                 # resulting AttributeError, so every workspace matrix name
                 # silently failed to resolve.

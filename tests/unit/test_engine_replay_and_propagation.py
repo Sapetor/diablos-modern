@@ -192,8 +192,9 @@ class TestCompiledRunWithWorkspaceVariableTF:
     """End-to-end: a workspace-variable TF must produce the same recorded
     trace as the same diagram written with literal coefficients."""
 
-    def _run(self, blocks, lines, t_end=2.0, dt=0.01):
-        engine = SimulationEngine(_MockModel(blocks, lines))
+    def _run(self, blocks, lines, t_end=2.0, dt=0.01, workspace=None):
+        # Workspace variables are per engine/diagram, not process-wide.
+        engine = SimulationEngine(_MockModel(blocks, lines), workspace=workspace)
         engine.update_sim_params(t_end, dt)
         assert engine.run_compiled_simulation(blocks, lines, (0.0, t_end), dt)
         scope = blocks[-1]
@@ -201,7 +202,7 @@ class TestCompiledRunWithWorkspaceVariableTF:
 
     def test_traces_match_and_scope_history_is_preallocated(self, qapp, workspace_tf_coeffs):
         literal = self._run(*_step_tf_scope([1.0], [1.0, 1.0]))
-        variable = self._run(*_step_tf_scope("tf_num", "tf_den"))
+        variable = self._run(*_step_tf_scope("tf_num", "tf_den"), workspace=workspace_tf_coeffs)
 
         # Shape/dtype contract the ScopePlotter reads: (samples, channels).
         assert literal.ndim == 2 and literal.shape[1] == 1

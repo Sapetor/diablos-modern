@@ -27,7 +27,10 @@ class WorkspaceEditor(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.workspace_manager = WorkspaceManager()
+        # The owning window's diagram workspace; the process default when the
+        # editor is built standalone.
+        ws = getattr(getattr(parent, "dsim", None), "workspace", None)
+        self.workspace_manager = ws if ws is not None else WorkspaceManager()
         self._init_ui()
         self.refresh_variables()
 

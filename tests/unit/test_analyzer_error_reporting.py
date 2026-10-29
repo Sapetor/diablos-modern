@@ -164,14 +164,14 @@ class TestFacadeForwardsTheCallback:
 class TestLqrWorkspaceLookup:
     def test_matrix_resolves_through_workspace_get_value(self):
         """_resolve_matrix used the removed get_variable(), silently failing."""
+        import types
+
         import numpy as np
 
-        from lib.workspace import WorkspaceManager
+        from lib.workspace import Workspace
 
-        ws = WorkspaceManager()
-        ws.set_variable("Amat", [[0.0, 1.0], [-2.0, -3.0]])
-        try:
-            resolved = LQRAnalyzer()._resolve_matrix("Amat", canvas=None)
-            assert np.allclose(resolved, [[0.0, 1.0], [-2.0, -3.0]])
-        finally:
-            ws.delete_variable("Amat")
+        # The analyzed diagram's own workspace (canvas.dsim.workspace).
+        ws = Workspace({"Amat": [[0.0, 1.0], [-2.0, -3.0]]})
+        canvas = types.SimpleNamespace(dsim=types.SimpleNamespace(workspace=ws))
+        resolved = LQRAnalyzer()._resolve_matrix("Amat", canvas=canvas)
+        assert np.allclose(resolved, [[0.0, 1.0], [-2.0, -3.0]])

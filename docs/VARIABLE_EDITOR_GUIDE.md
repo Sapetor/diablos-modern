@@ -33,7 +33,7 @@ coefficients = [1.5, 2.3, 3.7, 4.2]
 
 ## How It Works
 
-- Variables are stored in `WorkspaceManager` (singleton)
+- Variables are stored in the diagram's workspace (`dsim.workspace`, a `lib.workspace.Workspace`). The GUI's diagram uses the process-level default, which `WorkspaceManager()` still returns for older code
 - During simulation initialization (`execution_init`), variable names in `block.params` are resolved
 - Resolved values are stored in `block.exec_params` and used during execution
 - This allows you to change values in one place and have all blocks update automatically

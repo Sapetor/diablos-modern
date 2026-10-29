@@ -254,6 +254,9 @@ class LayoutManager:
 
         # Property editor
         window.property_editor = PropertyEditor()
+        dsim = getattr(window, "dsim", None)
+        if dsim is not None:
+            window.property_editor.workspace = dsim.workspace
         scroll_area.setWidget(window.property_editor)
 
         # A QScrollArea viewport absorbs mouse clicks and doesn't

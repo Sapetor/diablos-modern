@@ -6,7 +6,7 @@ import time
 from typing import Dict, Any, Optional
 from tqdm import tqdm
 from PyQt6.QtWidgets import QDialog
-from lib.workspace import WorkspaceManager
+from lib.workspace import Workspace
 from lib.dialogs import SimulationDialog
 from lib.i18n import tr
 from lib.sim_prefs import ask_before_run as _stored_ask_before_run, set_ask_before_run
@@ -45,7 +45,15 @@ class DSim:
 
     """
 
-    def __init__(self):
+    def __init__(self, workspace: Optional[Workspace] = None):
+        """Build an empty diagram.
+
+        ``workspace`` holds the diagram's workspace variables. Each DSim owns
+        its own (a fresh :class:`~lib.workspace.Workspace` by default), so two
+        diagrams in one process never share variables; the GUI passes the
+        process-level default ``WorkspaceManager()`` so legacy code calling
+        ``WorkspaceManager()`` still sees the window's variables.
+        """
         logger.debug("Initializing DSim with MVC architecture")
 
         # Initialize MVC components
@@ -56,7 +64,9 @@ class DSim:
         from lib.diagram_validator import DiagramValidator
 
         self.model = SimulationModel()
-        self.engine = SimulationEngine(self.model)
+        self.engine = SimulationEngine(
+            self.model, workspace=workspace if workspace is not None else Workspace()
+        )
         self.file_service = FileService(self.model)
         # Optional observers keep GUI history in sync without importing UI code.
         self.on_document_saved = None
@@ -188,6 +198,15 @@ class DSim:
         return self.subsystem_manager.get_root_context()
 
     # Properties for state shared with SimulationEngine
+    @property
+    def workspace(self) -> Workspace:
+        """This diagram's workspace variables (shared with its engine)."""
+        return self.engine._get_workspace()
+
+    @workspace.setter
+    def workspace(self, value: Workspace) -> None:
+        self.engine.workspace = value
+
     @property
     def timeline(self):
         """Timeline array - shared with engine."""
@@ -456,7 +475,11 @@ class DSim:
         save/reopen path, so block names (which the runners use to address
         parameters) and simulation settings are preserved.
         """
-        clone = DSim()
+        # The clone carries an independent copy of this diagram's workspace
+        # variables: parameters that reference them resolve the same way, and
+        # an experiment that edits the clone's variables (e.g. a sweep over a
+        # workspace variable) never touches the source diagram's.
+        clone = DSim(workspace=self.workspace.copy())
         # serialize() reads the model's *current* lists, which are a subsystem's
         # internals while the user is navigated inside one.  Always clone the
         # whole diagram.
@@ -658,7 +681,7 @@ class DSim:
         from lib.masks import MaskError, child_scope_for, resolve_params_in_scope
 
         for block in blocks:
-            # Resolve parameters using WorkspaceManager, with the enclosing
+            # Resolve parameters against the diagram workspace, with the enclosing
             # mask's parameters layered over the diagram workspace.
             block.exec_params = workspace_manager.resolve_params(
                 resolve_params_in_scope(block.params, mask_scope)
@@ -691,7 +714,9 @@ class DSim:
             # Recurse if subsystem
             if getattr(block, "block_type", "") == "Subsystem":
                 try:
-                    child_scope = child_scope_for(block, mask_scope)
+                    child_scope = child_scope_for(
+                        block, mask_scope, workspace=workspace_manager.variables
+                    )
                 except MaskError as e:
                     logger.error(str(e))
                     self.error_msg = str(e)
@@ -757,8 +782,7 @@ class DSim:
             logger.debug("*****INIT NEW EXECUTION*****")
             _t0 = time.time()
 
-            workspace_manager = WorkspaceManager()
-            logger.debug(f"[TIMING] WorkspaceManager created: {time.time() - _t0:.3f}s")
+            workspace_manager = self.workspace
 
             # Get Root Context for execution
             root_blocks, root_lines = self.get_root_context()
@@ -988,7 +1012,7 @@ class DSim:
 
             # Resolve parameters for all blocks (handles External reload and
             # Subsystem recursion identically to execution_init)
-            workspace_manager = WorkspaceManager()
+            workspace_manager = self.workspace
             root_blocks, root_lines = self.get_root_context()
 
             if not self._resolve_block_params(root_blocks, workspace_manager, sim_dt):

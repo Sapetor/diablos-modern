@@ -1,25 +1,63 @@
-import logging
+"""Workspace variables: named values that block parameters may reference.
+
+A :class:`Workspace` belongs to one diagram. Every ``DSim`` owns its own
+instance (``dsim.workspace``, shared with its ``SimulationEngine``) and threads
+it to every consumer -- parameter resolution, mask scopes in the flattener, the
+linearizer, the LQR analyzer and the Python exporter -- so two diagrams in one
+process never see each other's variables.  Analysis clones
+(``DSim.clone_for_analysis``) get an independent :meth:`Workspace.copy`.
+
+:class:`WorkspaceManager` is kept for backward compatibility as the
+process-level *default* workspace: ``WorkspaceManager()`` still returns one
+shared instance.  The GUI's single ``DSim`` is built on it, so third-party or
+user-block code calling ``WorkspaceManager()`` keeps seeing the variables loaded
+in the window.  Nothing under ``lib/`` reads it: a headless ``DSim`` (CLI,
+importable API, analysis clones) owns a fresh ``Workspace`` the default never
+sees.
+"""
+
 import ast
+import copy
+import logging
 import os
+from typing import Any, Dict, Optional
+
 from lib.safe_eval import safe_expr
 
 logger = logging.getLogger(__name__)
 
 
-class WorkspaceManager:
-    """
-    Manages workspace variables loaded from text files.
-    Singleton pattern to ensure consistent state across the application.
-    """
+class Workspace:
+    """A diagram's workspace variables, optionally loaded from a text file."""
 
-    _instance = None
+    def __init__(
+        self, variables: Optional[Dict[str, Any]] = None, workspace_file: Optional[str] = None
+    ):
+        self.variables: Dict[str, Any] = dict(variables or {})
+        self.workspace_file: Optional[str] = workspace_file
 
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(WorkspaceManager, cls).__new__(cls)
-            cls._instance.variables = {}
-            cls._instance.workspace_file = None
-        return cls._instance
+    def copy(self) -> "Workspace":
+        """An independent plain :class:`Workspace` with deep-copied variables."""
+        return Workspace.from_dict(self.to_dict())
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Picklable snapshot ``{"variables": {...}, "workspace_file": str | None}``.
+
+        The variables are deep-copied, so later changes to either side never
+        leak across.
+        """
+        return {
+            "variables": copy.deepcopy(dict(self.variables)),
+            "workspace_file": self.workspace_file,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Optional[Dict[str, Any]]) -> "Workspace":
+        """Rebuild a plain :class:`Workspace` from :meth:`to_dict` output."""
+        data = data or {}
+        return Workspace(
+            copy.deepcopy(dict(data.get("variables") or {})), data.get("workspace_file")
+        )
 
     def load_from_file(self, filepath):
         """
@@ -121,3 +159,29 @@ class WorkspaceManager:
         except Exception as e:
             logger.error(f"Error saving workspace file: {e}")
             return False
+
+
+class WorkspaceManager(Workspace):
+    """The process-level default workspace (backward-compatible singleton).
+
+    ``WorkspaceManager()`` always returns the same instance, and the GUI's
+    ``DSim`` is built on it.  Library code never calls it -- it uses the owning
+    diagram's ``dsim.workspace`` -- so it only serves third-party code written
+    against the old singleton API.  Setting ``WorkspaceManager._instance =
+    None`` starts a fresh default; a ``DSim`` already built on the old one keeps
+    it.
+    """
+
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            instance = super().__new__(cls)
+            Workspace.__init__(instance)
+            cls._instance = instance
+        return cls._instance
+
+    def __init__(self):
+        # State is set once in __new__: re-running Workspace.__init__ on every
+        # ``WorkspaceManager()`` call would wipe the shared variables.
+        pass

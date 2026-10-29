@@ -200,12 +200,10 @@ class TestCodegenWarnsOnUnresolvedParams:
             def resolve_params(self, params):
                 raise RuntimeError("workspace unavailable")
 
-        monkeypatch.setattr("lib.workspace.WorkspaceManager", lambda: Boom())
-
         block = types.SimpleNamespace(name="gain2", params={"gain": "Kp"}, exec_params=None)
         collected = []
         with caplog.at_level("WARNING"):
-            resolved = python_codegen._resolved_params(block, collected)
+            resolved = python_codegen._resolved_params(block, collected, workspace=Boom())
 
         # The unresolved value is still returned (the export is best-effort)...
         assert resolved == {"gain": "Kp"}
