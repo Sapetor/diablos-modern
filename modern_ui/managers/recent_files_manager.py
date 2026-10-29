@@ -122,6 +122,13 @@ class RecentFilesManager:
         """Open a file from the recent files list."""
         window = self.window
         if os.path.exists(filepath):
+            if hasattr(window, "open_diagram"):
+                # The window's open path registers the project's own blocks/
+                # folder before rebuilding the diagram (and asks about trust),
+                # so project-local block types are not lost on open.
+                window.open_diagram(filepath)
+                window.canvas.update()
+                return
             try:
                 # Use DSim's file service if available, else fall back.
                 if hasattr(window.dsim, "file_service"):

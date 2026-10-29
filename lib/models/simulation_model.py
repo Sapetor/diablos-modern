@@ -63,6 +63,9 @@ class SimulationModel:
 
         # Data containers
         self.menu_blocks: List[MenuBlocks] = []  # Available block types
+        #: Diagram path the registry was last built for by ``reload_blocks``
+        #: (its project ``blocks/`` and ``library/`` folders); None = none.
+        self.blocks_diagram_path: Optional[str] = None
         self.blocks_list: List[DBlock] = []  # Instantiated blocks in diagram
         self.line_list: List[DLine] = []  # Connections between blocks
 
@@ -274,7 +277,20 @@ class SimulationModel:
         self.load_all_blocks(diagram_path, reload_user=True)
         user_count = sum(1 for mb in self.menu_blocks if getattr(mb, "user_block", False))
         self.load_library_blocks(diagram_path)
+        self.blocks_diagram_path = diagram_path
         return user_count
+
+    def adopt_block_registry(self, other: "SimulationModel") -> None:
+        """Use ``other``'s palette (block registry) as this model's.
+
+        For a private copy of a diagram (``DSim.clone_for_analysis``): the copy
+        must reconstruct exactly the block types the original could, including
+        project-local user blocks, without importing anything again. The
+        entries are shared, not copied; the list is replaced in place because
+        DSim aliases it.
+        """
+        self.menu_blocks[:] = list(other.menu_blocks)
+        self.blocks_diagram_path = getattr(other, "blocks_diagram_path", None)
 
     def load_library_blocks(self, diagram_path: Optional[str] = None) -> int:
         """(Re)scan the user library folders and register the blocks found.

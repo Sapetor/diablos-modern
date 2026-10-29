@@ -476,6 +476,14 @@ class DSim:
         finally:
             self.model.blocks_list, self.model.line_list = live
 
+    def resolve_missing_blocks(self) -> int:
+        """Rebuild placeholder blocks whose type has since been registered.
+
+        See :meth:`FileService.resolve_missing_blocks`; returns how many.
+        """
+        root_blocks, _ = self.get_root_context()
+        return self.file_service.resolve_missing_blocks(root_blocks)
+
     def clone_for_analysis(self) -> "DSim":
         """Return an independent ``DSim`` holding a copy of this diagram.
 
@@ -495,6 +503,11 @@ class DSim:
         # an experiment that edits the clone's variables (e.g. a sweep over a
         # workspace variable) never touches the source diagram's.
         clone = DSim(workspace=self.workspace.copy())
+        # Same block registry as this diagram, so project-local user blocks
+        # (registered only once their folder was trusted) are reconstructed in
+        # the copy too instead of becoming placeholders. Reusing the already
+        # imported classes keeps the trust decision: nothing new is imported.
+        clone.model.adopt_block_registry(self.model)
         data = self.serialize_root()
         clone.deserialize(data)
         clone.use_fast_solver = getattr(self, "use_fast_solver", True)
@@ -687,6 +700,16 @@ class DSim:
         from lib.masks import MaskError, child_scope_for, resolve_params_in_scope
 
         for block in blocks:
+            # A placeholder for an unavailable block type (see
+            # lib/simulation/missing_block.py) must stop the run: simulating
+            # without it would silently produce a different system.
+            if getattr(block, "missing_block_type", None):
+                from lib.simulation.missing_block import missing_block_error
+
+                self.error_msg = missing_block_error(block)
+                logger.error(self.error_msg)
+                return False
+
             # Resolve parameters against the diagram workspace, with the enclosing
             # mask's parameters layered over the diagram workspace.
             block.exec_params = workspace_manager.resolve_params(

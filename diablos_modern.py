@@ -263,7 +263,10 @@ def main():
                 def load_file():
                     try:
                         # Use the same loading path as the file dialog
-                        if hasattr(window, "project_manager") and window.project_manager:
+                        if hasattr(window, "open_diagram"):
+                            # Registers the project's blocks/ folder first.
+                            window.open_diagram(file_path)
+                        elif hasattr(window, "project_manager") and window.project_manager:
                             window.project_manager.diagram_service.load_diagram(file_path)
                         elif hasattr(window, "diagram_service") and window.diagram_service:
                             window.diagram_service.load_diagram(file_path)

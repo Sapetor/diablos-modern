@@ -87,6 +87,8 @@ __all__ = [
     "user_block_search_paths",
     "is_project_blocks_trusted",
     "trust_project_blocks",
+    "trust_project_blocks_for_session",
+    "loaded_project_blocks_dir",
     "untrusted_project_block_files",
     "discover_user_block_files",
     "load_user_blocks",
@@ -232,9 +234,48 @@ def _trusted_folders() -> Set[str]:
     return {e for e in entries if isinstance(e, str)}
 
 
+#: Folders trusted for this process only (see trust_project_blocks_for_session).
+_SESSION_TRUSTED: Set[str] = set()
+
+
 def is_project_blocks_trusted(folder: Optional[str]) -> bool:
     """Whether the project ``blocks/`` ``folder`` may be imported."""
-    return bool(folder) and os.path.realpath(folder) in _trusted_folders()
+    if not folder:
+        return False
+    real = os.path.realpath(folder)
+    return real in _SESSION_TRUSTED or real in _trusted_folders()
+
+
+def trust_project_blocks_for_session(folder: str) -> None:
+    """Trust ``folder`` in this process only, without touching the trust store.
+
+    For an analysis worker process: its parent already holds the user's trust
+    decision and hands over exactly the folder it loaded blocks from, so the
+    worker reconstructs the same diagram even if the store is elsewhere or
+    has changed since.
+    """
+    _SESSION_TRUSTED.add(os.path.realpath(folder))
+
+
+def loaded_project_blocks_dir(
+    diagram_path: Optional[str], registered: Iterable[Any]
+) -> Optional[str]:
+    """The diagram's ``blocks/`` folder if ``registered`` holds a block from it.
+
+    ``registered`` is a palette (``menu_blocks``) or a list of block classes.
+    Returns None when there is no such folder, it is not trusted, or none of
+    the registered user blocks was loaded from it. This is the approved
+    extension context an analysis worker needs to rebuild the same diagram.
+    """
+    folder = project_blocks_dir(diagram_path)
+    if not folder or not os.path.isdir(folder) or not is_project_blocks_trusted(folder):
+        return None
+    real = os.path.realpath(folder)
+    for entry in registered or []:
+        source = user_block_source(entry)
+        if source and os.path.dirname(os.path.realpath(source)) == real:
+            return folder
+    return None
 
 
 def trust_project_blocks(folder: str) -> None:
@@ -560,11 +601,13 @@ def missing_block_names(diagram_data: Any, known: Iterable[str]) -> List[str]:
 def missing_blocks_message(names: Sequence[str], diagram_path: Optional[str] = None) -> str:
     """Translated explanation for block types the diagram needs but we lack."""
     return tr(
-        "This diagram uses block types that are not installed: {blocks}.\n\n"
-        "Those blocks were left out of the diagram. User block modules are "
-        "loaded from:\n  {paths}\n\n"
+        "This diagram uses block types that are not available: {blocks}.\n\n"
+        "Those blocks are shown as placeholders and are kept when you save, "
+        "but the diagram cannot run until their types are loaded. User block "
+        "modules are loaded from:\n  {paths}\n\n"
         "Put the block's .py file in one of those folders (or list its folder "
-        "in the {env} environment variable) and open the diagram again.",
+        "in the {env} environment variable), or trust the project's blocks "
+        "folder, then reload user blocks or open the diagram again.",
         blocks=", ".join(names),
         paths="\n  ".join(user_block_search_paths(diagram_path)),
         env=BLOCKS_ENV_VAR,

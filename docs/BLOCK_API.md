@@ -63,7 +63,8 @@ A non-empty string. It is:
 
 Consequences:
 
-- **Renaming it breaks saved diagrams.** They will open with the block missing
+- **Renaming it breaks saved diagrams.** They will open with the block shown as
+  a "missing: <name>" placeholder (kept on save, but the diagram will not run)
   and a "Missing block types" warning naming the search paths.
 - **It must be unique.** A user block whose `block_name` collides with a
   built-in is skipped with a warning — built-ins always win, precisely because
@@ -402,8 +403,17 @@ traceback and the block is skipped.
 
 The block's `block_name` is stored in the file. Opening the diagram on a
 machine that has the block works normally; on one that does not, the block is
-left out and DiaBloS shows a translated warning naming the missing block types
-and every folder it searched.
+kept as a red "missing: <name>" placeholder with its ports, connections and
+parameters, and DiaBloS shows a translated warning naming the missing block
+types and every folder it searched. Saving writes the placeholder back
+unchanged, so nothing is lost; running the diagram fails with an error naming
+the type until it is available (*Reload user blocks* then turns placeholders
+back into real blocks).
+
+A project's own `blocks/` folder (next to the `.diablos` file) is registered
+*before* the diagram is rebuilt -- after the trust question -- so its blocks
+open normally. Analysis copies and experiment worker processes inherit the
+same registrations; an untrusted folder is never loaded by them either.
 
 ---
 
