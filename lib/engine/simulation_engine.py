@@ -16,6 +16,7 @@ from lib.engine.solver_diagnostics import build_diagnostics, format_diagnostics_
 from lib.engine.zero_crossing import DEFAULT_MAX_EVENTS
 from lib.engine.compile_cache import source_params_fingerprint, compiled_system_fingerprint
 from lib.engine.block_params import push_down_internal_params
+from lib.engine.sample_times import SampleTimeError, propagate_sample_times
 from lib.engine import graph_analysis
 from lib.engine.algebraic_loop import AlgebraicLoop, AlgebraicLoopError
 from lib.engine.topo import cyclic_components
@@ -296,6 +297,11 @@ class SimulationEngine:
             self.execution_initialized = True
             return True
 
+        except SampleTimeError as e:
+            # A user-facing validation error (error_block is already set).
+            logger.error(f"Engine: {e}")
+            self.error_msg = str(e)
+            return False
         except Exception as e:
             import traceback
 
@@ -1202,42 +1208,27 @@ class SimulationEngine:
             if line.dstblock in input_sources:
                 input_sources[line.dstblock].append(line.srcblock)
 
-        # Create block lookup
         block_map = {b.name: b for b in self.active_blocks_list}
 
-        # Phase 1: Resolve explicit sample times from parameters
+        # Phase 1: each block's declared rate, read from its resolved
+        # parameters so a workspace variable or expression schedules exactly
+        # like the literal it stands for.  An unresolvable period is an error
+        # (SampleTimeError), not a silent fallback to continuous.
+        declared: Dict[str, float] = {}
         for block in self.active_blocks_list:
-            declared_rate = block.resolve_sample_time()
-            block.effective_sample_time = declared_rate
+            try:
+                declared[block.name] = block.resolve_sample_time()
+            except SampleTimeError as e:
+                self.error_block = e.block or block.name
+                raise
             # Reset execution state for new simulation
             block.reset_sample_time_state()
 
-        # Phase 2: Propagate inherited rates (sample_time = 0)
-        # Use iterative propagation until no changes occur
-        max_iterations = len(self.active_blocks_list) + 1
-        for iteration in range(max_iterations):
-            changed = False
-
-            for block in self.active_blocks_list:
-                # Only process blocks that inherit (sample_time = 0)
-                if block.effective_sample_time != 0.0:
-                    continue
-
-                # Find fastest (smallest positive) sample time from inputs
-                fastest_rate = -1.0  # Default to continuous if no discrete inputs
-                for src_name in input_sources.get(block.name, []):
-                    src_block = block_map.get(src_name)
-                    if src_block and src_block.effective_sample_time > 0:
-                        if fastest_rate < 0 or src_block.effective_sample_time < fastest_rate:
-                            fastest_rate = src_block.effective_sample_time
-
-                # Apply inherited rate
-                if fastest_rate != block.effective_sample_time:
-                    block.effective_sample_time = fastest_rate
-                    changed = True
-
-            if not changed:
-                break
+        # Phase 2: inherited rates (0) -> effective rates, as a fixed point
+        # over the graph (order-independent; see lib/engine/sample_times.py).
+        effective = propagate_sample_times(declared, input_sources)
+        for block in self.active_blocks_list:
+            block.effective_sample_time = effective[block.name]
 
         # Phase 3: Mark connections as discrete based on source block sample time
         for line in self.active_line_list:

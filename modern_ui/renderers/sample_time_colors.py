@@ -2,11 +2,11 @@
 
 The engine resolves rates only when a run starts
 (``SimulationEngine`` sample-time propagation), so a diagram that was never
-run would show no wire colors. ``wire_sample_times`` repeats the same rule
-on the canvas side: a block's declared rate comes from
-``DBlock.resolve_sample_time()``; an inherited block (0) takes the fastest
-discrete rate among its inputs, or becomes continuous; a wire carries the
-rate of its source block.
+run would show no wire colors. ``wire_sample_times`` applies the same rule
+on the canvas side (``lib.engine.sample_times.propagate_sample_times``): a
+block's declared rate comes from ``DBlock.resolve_sample_time()``; an
+inherited block (0) takes the fastest discrete rate among its inputs, or
+becomes continuous; a wire carries the rate of its source block.
 """
 
 from __future__ import annotations
@@ -15,6 +15,8 @@ import math
 from typing import Dict, Iterable, Optional
 
 from PyQt6.QtGui import QColor
+
+from lib.engine.sample_times import propagate_sample_times
 
 INHERITED_COLOR = QColor(128, 128, 128)
 
@@ -55,26 +57,12 @@ def _output_rate(block) -> float:
 def block_sample_times(blocks: Iterable, lines: Iterable) -> Dict[str, float]:
     """Effective sample time per block name (-1 continuous, > 0 discrete)."""
     blocks = list(blocks)
-    rates = {b.name: _declared(b) for b in blocks}
+    declared = {b.name: _declared(b) for b in blocks}
     sources: Dict[str, list] = {b.name: [] for b in blocks}
     for line in lines:
         if line.dstblock in sources:
             sources[line.dstblock].append(line.srcblock)
-    inherited = [name for name, r in rates.items() if r == 0]
-    for _ in range(len(inherited) + 1):
-        changed = False
-        for name in inherited:
-            fastest = -1.0
-            for src in sources[name]:
-                r = rates.get(src, -1.0)
-                if r > 0 and (fastest < 0 or r < fastest):
-                    fastest = r
-            if fastest != rates[name]:
-                rates[name] = fastest
-                changed = True
-        if not changed:
-            break
-    return rates
+    return propagate_sample_times(declared, sources)
 
 
 def wire_sample_times(blocks: Iterable, lines: Iterable) -> Dict[int, float]:
