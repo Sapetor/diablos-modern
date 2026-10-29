@@ -450,6 +450,29 @@ class FileService:
         self.model.update_lines()
         self.model.dirty = False
 
+    def resolve_missing_blocks(self, blocks: List[Any]) -> int:
+        """Replace placeholders whose type is now registered, in place.
+
+        A diagram opened before its block types were available holds
+        :class:`~lib.simulation.missing_block.MissingBlock` placeholders; once
+        the types are registered (e.g. the project's blocks folder was trusted
+        and reloaded) each one is rebuilt from its current record. Walks into
+        subsystems. Returns the number of blocks rebuilt.
+        """
+        known = {mb.block_fn for mb in self.model.menu_blocks}
+        rebuilt = 0
+        for index, block in enumerate(blocks):
+            if getattr(block, "missing_block_type", None):
+                if block.block_fn not in known:
+                    continue
+                replacement = self._construct_block(self._serialize_block(block))
+                if replacement is not None and not getattr(replacement, "missing_block_type", None):
+                    blocks[index] = replacement
+                    rebuilt += 1
+            elif getattr(block, "sub_blocks", None):
+                rebuilt += self.resolve_missing_blocks(block.sub_blocks)
+        return rebuilt
+
     @staticmethod
     def _build_name_map(blocks: list) -> Dict[str, str]:
         """Build {block.name: block.name, block.username: block.name} for line resolution."""
@@ -480,18 +503,32 @@ class FileService:
         )
         params = block_data.get("params", {})
 
+        menu_block = None
+        if block_fn not in ("Subsystem", "Inport", "Outport"):
+            menu_block = next(
+                (mb for mb in self.model.menu_blocks if mb.block_fn == block_fn), None
+            )
+
         if block_fn == "Subsystem":
             block = self._construct_subsystem(block_data, block_rect, params)
         elif block_fn in ("Inport", "Outport"):
             block = self._construct_port_block(block_fn, block_data, block_rect, params)
-        else:
-            menu_block = next(
-                (mb for mb in self.model.menu_blocks if mb.block_fn == block_fn), None
-            )
-            if menu_block is None:
-                logger.warning(f"Block type {block_fn} not found in menu_blocks")
-                return None
+        elif menu_block is None:
+            # Keep the record as a placeholder: dropping it lost the block and
+            # its connections, and the next save deleted them for good.
+            from lib.simulation.missing_block import MissingBlock
 
+            logger.warning(
+                f"Block type {block_fn} is not available; keeping "
+                f"{block_data.get('name') or block_fn} as a placeholder"
+            )
+            block = MissingBlock(
+                block_data,
+                block_rect,
+                color=self.model._get_category_color("Other"),
+                colors=self.model.colors,
+            )
+        else:
             category = getattr(menu_block, "category", "Other")
             block_color = self.model._get_category_color(category)
 

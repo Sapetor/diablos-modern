@@ -560,7 +560,10 @@ class TestSavedDiagramRoundTrip:
             data = json.load(fh)
         dsim.file_service.apply_loaded_data(data)
 
-        assert not any(b.block_fn == "AcmeScale" for b in dsim.blocks_list)
+        # Kept as a placeholder (not dropped), so saving cannot delete it.
+        from lib.simulation.missing_block import missing_block_types
+
+        assert missing_block_types(dsim.blocks_list) == ["AcmeScale"]
         known = [mb.block_fn for mb in dsim.menu_blocks]
         missing = ub.missing_block_names(data, known)
         assert missing == ["AcmeScale"]

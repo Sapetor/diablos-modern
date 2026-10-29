@@ -281,6 +281,36 @@ class DiagramService:
             self._report_error("Save Error", f"Could not save diagram:\n{str(e)}")
             return False
 
+    def choose_open_file(self):
+        """Ask for a diagram to open; return its path, or "" if cancelled.
+
+        Separate from :meth:`load_diagram` so a caller can act on the path
+        before the file is read -- the window registers the project's own
+        ``blocks/`` folder first, so its block types exist when the diagram is
+        rebuilt.
+        """
+        logger.info("Opening file dialog...")
+        # Use styled Qt dialog (fixes macOS native dialog click issues)
+        dialog = _create_styled_file_dialog(
+            self.main_window,
+            "Open Diagram",
+            self.last_directory,
+            "DiaBloS Files (*.diablos *.dbs *.json *.dat);;All Files (*)",
+            save=False,
+        )
+        try:
+            if dialog.exec() == QFileDialog.DialogCode.Accepted:
+                files = dialog.selectedFiles()
+                filename = files[0] if files else ""
+            else:
+                filename = ""
+        finally:
+            # Dispose the dialog promptly so repeated load cycles don't
+            # accumulate styled child widgets under the parent window.
+            dialog.deleteLater()
+        logger.info(f"File dialog returned: {filename}")
+        return filename
+
     def load_diagram(self, filename=None):
         """
         Load a diagram from a file.
@@ -295,26 +325,7 @@ class DiagramService:
             f"load_diagram called, filename={filename}, last_directory={self.last_directory}"
         )
         if not filename:
-            logger.info("Opening file dialog...")
-            # Use styled Qt dialog (fixes macOS native dialog click issues)
-            dialog = _create_styled_file_dialog(
-                self.main_window,
-                "Open Diagram",
-                self.last_directory,
-                "DiaBloS Files (*.diablos *.dbs *.json *.dat);;All Files (*)",
-                save=False,
-            )
-            try:
-                if dialog.exec() == QFileDialog.DialogCode.Accepted:
-                    files = dialog.selectedFiles()
-                    filename = files[0] if files else ""
-                else:
-                    filename = ""
-            finally:
-                # Dispose the dialog promptly so repeated load cycles don't
-                # accumulate styled child widgets under the parent window.
-                dialog.deleteLater()
-            logger.info(f"File dialog returned: {filename}")
+            filename = self.choose_open_file()
 
         if not filename:
             return None

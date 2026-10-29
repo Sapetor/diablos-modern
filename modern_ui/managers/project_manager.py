@@ -35,14 +35,13 @@ class ProjectManager:
         self.window.status_message.setText(tr("New diagram created"))
         # cleanup autosave on new? Maybe not necessary depending on logic
 
-    def open_diagram(self):
-        """Open diagram."""
+    def open_diagram(self, filename=None):
+        """Open ``filename`` (asks for one when None); return the loaded data or None."""
         logger.info("open_diagram called")
+        result = None
         if self.diagram_service:
             logger.info("Calling diagram_service.load_diagram()")
-            # DiagramService handles dialogs?
-            # Existing mainWindow implementation: self.diagram_service.load_diagram()
-            result = self.diagram_service.load_diagram()
+            result = self.diagram_service.load_diagram(filename)
             logger.info(f"load_diagram returned: {result is not None}")
             if result:
                 self.window.status_message.setText(tr("Diagram opened"))
@@ -54,14 +53,17 @@ class ProjectManager:
                     self.window.recent_files_manager.add(self.diagram_service.current_file)
         else:
             logger.warning("diagram_service is None!")
+        return result
 
     def open_example(self, filename):
-        """Open an example diagram."""
+        """Open an example diagram; return the loaded data or None."""
+        result = None
         if self.diagram_service:
-            self.diagram_service.load_diagram(filename)
+            result = self.diagram_service.load_diagram(filename)
         self.window.status_message.setText(
             tr("Example {name} opened", name=os.path.basename(filename))
         )
+        return result
 
     def save_diagram(self):
         """Save diagram."""

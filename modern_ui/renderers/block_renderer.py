@@ -28,6 +28,7 @@ from modern_ui.themes.theme_manager import (
     TYPE,
 )
 from lib.engine.block_params import runtime_params
+from lib.i18n import tr
 from lib.models.block_shape import resolve_block_shape
 
 logger = logging.getLogger(__name__)
@@ -908,6 +909,15 @@ class BlockRenderer:
         read block state (Sum signs, the Gain value, a Display's value, a
         Goto tag ...) go through _DYNAMIC_TEXT_ICONS.
         """
+        # A placeholder for an unavailable block type says so, in red, so it
+        # cannot be mistaken for a working block (lib/simulation/missing_block).
+        missing_type = getattr(block, "missing_block_type", None)
+        if missing_type:
+            self._draw_centered_text(
+                block, painter, tr("missing:") + "\n" + missing_type, bold=True, color="#d32f2f"
+            )
+            return
+
         # A masked subsystem draws its own identity (icon glyph, else the mask
         # display name) instead of the generic nested-squares glyph.
         mask = _block_mask(block)

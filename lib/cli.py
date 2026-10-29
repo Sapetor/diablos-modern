@@ -104,6 +104,13 @@ def load_diagram(filepath):
         raise FileNotFoundError(filepath)
 
     dsim = new_headless_dsim()
+    # Register the project's own blocks/ folder first -- the trust check in
+    # lib.user_blocks still applies -- so its block types are reconstructed
+    # rather than kept as placeholders that refuse to run.
+    from lib.user_blocks import project_blocks_dir
+
+    if os.path.isdir(project_blocks_dir(filepath) or ""):
+        dsim.model.reload_blocks(filepath)
     data = dsim.file_service.load(filepath=filepath)
     if data is None:
         raise RuntimeError(f"Failed to load diagram: {filepath}")

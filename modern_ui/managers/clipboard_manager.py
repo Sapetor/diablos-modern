@@ -12,6 +12,7 @@ from lib.i18n import tr
 from lib.masks import apply_mask_appearance
 from lib.simulation.block import DBlock
 from lib.simulation.connection import DLine
+from lib.simulation.missing_block import copy_missing_block, is_missing_block
 
 logger = logging.getLogger(__name__)
 
@@ -141,6 +142,8 @@ class ClipboardManager:
                     "params": copy.deepcopy(block.params),
                     "external": block.external,
                     "flipped": getattr(block, "flipped", False),
+                    # A placeholder for an unavailable block type pastes as one.
+                    "missing_block": block if is_missing_block(block) else None,
                 }
 
                 # SPECIAL HANDLING FOR SUBSYSTEM COPY
@@ -319,6 +322,8 @@ class ClipboardManager:
         sid = _next_block_sid(self.dsim.blocks_list, block_fn)
         if block_fn == "Subsystem":
             return self._build_subsystem(block_data, sid, coords)
+        if block_data.get("missing_block") is not None:
+            return copy_missing_block(block_data["missing_block"], sid, coords, self.dsim.colors)
         block_class = _find_block_class(self.dsim.menu_blocks, block_fn)
         return self._build_dblock(block_data, sid, coords, block_class)
 
@@ -478,6 +483,17 @@ class ClipboardManager:
                 self.canvas.history_manager.push_undo("Duplicate")
 
             offset = 30  # Offset for duplicated block
+            if is_missing_block(block):
+                coords = block.rect.translated(offset, offset)
+                sid = _next_block_sid(self.dsim.blocks_list, block.block_fn)
+                new_block = copy_missing_block(block, sid, coords, self.dsim.colors)
+                self.dsim.blocks_list.append(new_block)
+                self.dsim.model.dirty = True
+                if hasattr(self.canvas, "selection_manager"):
+                    self.canvas.selection_manager.clear_selections()
+                new_block.selected = True
+                self.canvas.update()
+                return
             new_position = QPoint(
                 block.rect.x() + block.rect.width() // 2 + offset,
                 block.rect.y() + block.rect.height() // 2 + offset,

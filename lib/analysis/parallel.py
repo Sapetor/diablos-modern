@@ -25,7 +25,10 @@ Pool design:
     ``cancel_cb``) aborts in-flight runs, pending futures are cancelled, and
     already completed records are still released (in index order).
   * Workspace variables are shipped explicitly
-    (:func:`workspace_variables_snapshot` / :func:`apply_workspace_variables`).
+    (:func:`workspace_variables_snapshot` / :func:`apply_workspace_variables`),
+    and so are the parent's block registrations
+    (:func:`block_context_snapshot` / :func:`apply_block_context`), so a
+    diagram using trusted project-local user blocks rebuilds identically.
 """
 
 import concurrent.futures as cf
@@ -44,6 +47,8 @@ __all__ = [
     "workspace_variables_snapshot",
     "apply_workspace_variables",
     "serialize_root",
+    "block_context_snapshot",
+    "apply_block_context",
 ]
 
 _CANCELLED = "cancelled"
@@ -65,6 +70,39 @@ def apply_workspace_variables(snapshot, dsim):
     from lib.workspace import Workspace
 
     dsim.workspace = Workspace.from_dict(snapshot)
+
+
+# --------------------------------------------------------------- blocks
+def block_context_snapshot(dsim):
+    """What a worker needs to register the same block types as ``dsim``.
+
+    ``None`` unless ``dsim`` has user blocks loaded from a project ``blocks/``
+    folder -- which happens only after the user trusted it. The worker's
+    default registry (built-ins, ``DIABLOS_BLOCKS_PATH``, the per-user folder)
+    already matches the parent's otherwise. When set, a picklable dict with
+    the diagram path and that folder, which the worker trusts for its own
+    lifetime only. An untrusted folder is never handed on, and a worker never
+    loads a project folder the parent did not.
+    """
+    from lib.user_blocks import loaded_project_blocks_dir
+
+    model = getattr(dsim, "model", None)
+    path = getattr(model, "blocks_diagram_path", None)
+    folder = loaded_project_blocks_dir(path, getattr(model, "menu_blocks", [])) if path else None
+    if not folder:
+        return None
+    return {"diagram_path": path, "project_blocks": folder}
+
+
+def apply_block_context(context, dsim):
+    """Register on ``dsim`` the block types described by ``context``."""
+    if not context:
+        return
+    from lib.user_blocks import trust_project_blocks_for_session
+
+    trust_project_blocks_for_session(context["project_blocks"])
+    dsim.model.reload_blocks(context["diagram_path"])
+    dsim.menu_blocks = dsim.model.menu_blocks
 
 
 # --------------------------------------------------------------- diagram
@@ -106,12 +144,20 @@ def simulate_and_reduce(dsim, sim_time, sim_dt, keep_signals, cancel_cb):
 _WORKER = {}
 
 
-def _worker_init(data, use_fast_solver, workspace_vars, cancel_event):
-    """Build this worker process's private headless DSim (once per process)."""
+def _worker_init(data, use_fast_solver, workspace_vars, cancel_event, block_context=None):
+    """Build this worker process's private headless DSim (once per process).
+
+    The parent's block registrations (project-local user blocks) are replayed
+    *before* the diagram is rebuilt; a block type that still cannot be
+    reconstructed becomes a placeholder, which makes every run fail with an
+    explicit "block type not available" error instead of running a reduced
+    diagram.
+    """
     from lib.cli import new_headless_dsim
 
     dsim = new_headless_dsim()
     apply_workspace_variables(workspace_vars, dsim)
+    apply_block_context(block_context, dsim)
     dsim.deserialize(data)
     dsim.use_fast_solver = use_fast_solver
     dsim.dynamic_plot = False
@@ -243,6 +289,7 @@ def _run_pool(
         bool(getattr(dsim, "use_fast_solver", True)),
         workspace_variables_snapshot(dsim),
         cancel_event,
+        block_context_snapshot(dsim),
     )
     # Bounded reorder window: at most this many runs submitted but not yet
     # released, so the buffer of out-of-order records stays O(workers).
