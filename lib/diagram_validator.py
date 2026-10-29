@@ -427,17 +427,31 @@ class DiagramValidator:
         # Build block lookup
         block_map = {block.name: block for block in self.dsim.blocks_list}
 
+        from lib.engine.sample_times import SampleTimeError, declared_sample_time
+        from lib.workspace import Workspace
+
+        workspace = getattr(self.dsim, "workspace", None)
+        if not isinstance(workspace, Workspace):
+            workspace = None
+
         def get_sample_time(block) -> float:
-            """Get effective sample time from block params. Returns -1 for continuous."""
+            """Declared sample time, resolving workspace names/expressions the
+            way a run does. Returns -1 for continuous (or an unresolvable
+            period, which the engine itself reports as an error)."""
             if not block:
                 return -1.0
-            params = getattr(block, "params", {})
-            sample_time = params.get(
-                "sampling_time", params.get("sample_time", params.get("output_sample_time", -1.0))
+            params = getattr(block, "params", {}) or {}
+            key = next(
+                (k for k in ("sampling_time", "sample_time", "output_sample_time") if k in params),
+                None,
             )
+            if key is None:
+                return -1.0
+            raw = {"sampling_time": params[key]}
+            resolved = workspace.resolve_params(raw) if workspace is not None else None
             try:
-                return float(sample_time)
-            except (ValueError, TypeError):
+                return declared_sample_time(raw, resolved, getattr(block, "name", ""))
+            except SampleTimeError:
                 return -1.0
 
         def is_rate_transition_block(block) -> bool:

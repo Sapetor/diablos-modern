@@ -115,47 +115,7 @@ class SubsystemManager:
 
         if parent_block:
             logger.info(f"Syncing ports for subsystem {current_subsystem_name}")
-
-            # Find all internal ports
-            inports = [b for b in internal_blocks if getattr(b, "block_fn", "") == "Inport"]
-            outports = [b for b in internal_blocks if getattr(b, "block_fn", "") == "Outport"]
-
-            # Sort by Y position to allow user to reorder ports by moving blocks
-            inports.sort(key=lambda b: b.top)
-            outports.sort(key=lambda b: b.top)
-
-            # Update parent block ports definition
-            if not hasattr(parent_block, "ports"):
-                parent_block.ports = {}
-
-            # Input Ports
-            parent_block.ports["in"] = []
-            for idx, inp in enumerate(inports):
-                rel_y = (parent_block.height / (len(inports) + 1)) * (idx + 1)
-                parent_block.ports["in"].append(
-                    {"pos": (0, rel_y), "type": "input", "name": str(idx + 1)}
-                )
-
-            # Output Ports
-            parent_block.ports["out"] = []
-            for idx, outp in enumerate(outports):
-                rel_y = (parent_block.height / (len(outports) + 1)) * (idx + 1)
-                parent_block.ports["out"].append(
-                    {"pos": (parent_block.width, rel_y), "type": "output", "name": str(idx + 1)}
-                )
-
-            # Update geometry (port coordinates)
-            if hasattr(parent_block, "update_Block"):
-                parent_block.update_Block()
-
-            # Update parameters to reflect new port counts
-            if parent_block.in_ports != parent_block.params.get("_inputs_"):
-                parent_block.params["_inputs_"] = parent_block.in_ports
-                logger.debug(f"Synced subsystem '_inputs_' param to {parent_block.in_ports}")
-
-            if parent_block.out_ports != parent_block.params.get("_outputs_"):
-                parent_block.params["_outputs_"] = parent_block.out_ports
-                logger.debug(f"Synced subsystem '_outputs_' param to {parent_block.out_ports}")
+            self._sync_subsystem_ports(parent_block, internal_blocks)
 
             # Mark dirty to ensure save
             self.dsim.dirty = True
@@ -171,6 +131,62 @@ class SubsystemManager:
             line.selected = False
 
         logger.info("Exited subsystem, returned to parent scope")
+
+    def _sync_subsystem_ports(self, parent_block, internal_blocks):
+        """Rebuild ``parent_block``'s external ports from its Inport/Outport blocks."""
+        # Find all internal ports
+        inports = [b for b in internal_blocks if getattr(b, "block_fn", "") == "Inport"]
+        outports = [b for b in internal_blocks if getattr(b, "block_fn", "") == "Outport"]
+
+        # Sort by Y position to allow user to reorder ports by moving blocks
+        inports.sort(key=lambda b: b.top)
+        outports.sort(key=lambda b: b.top)
+
+        # Update parent block ports definition
+        if not hasattr(parent_block, "ports"):
+            parent_block.ports = {}
+
+        # Input Ports
+        parent_block.ports["in"] = []
+        for idx, inp in enumerate(inports):
+            rel_y = (parent_block.height / (len(inports) + 1)) * (idx + 1)
+            parent_block.ports["in"].append(
+                {"pos": (0, rel_y), "type": "input", "name": str(idx + 1)}
+            )
+
+        # Output Ports
+        parent_block.ports["out"] = []
+        for idx, outp in enumerate(outports):
+            rel_y = (parent_block.height / (len(outports) + 1)) * (idx + 1)
+            parent_block.ports["out"].append(
+                {"pos": (parent_block.width, rel_y), "type": "output", "name": str(idx + 1)}
+            )
+
+        # Update geometry (port coordinates)
+        if hasattr(parent_block, "update_Block"):
+            parent_block.update_Block()
+
+        # Update parameters to reflect new port counts
+        if parent_block.in_ports != parent_block.params.get("_inputs_"):
+            parent_block.params["_inputs_"] = parent_block.in_ports
+            logger.debug(f"Synced subsystem '_inputs_' param to {parent_block.in_ports}")
+
+        if parent_block.out_ports != parent_block.params.get("_outputs_"):
+            parent_block.params["_outputs_"] = parent_block.out_ports
+            logger.debug(f"Synced subsystem '_outputs_' param to {parent_block.out_ports}")
+
+    def sync_open_subsystem_ports(self):
+        """Resync the external ports of every subsystem currently open.
+
+        ``exit_subsystem`` does this on the way out; saving while still inside
+        needs it too, or a port added inside is saved with the parent block's
+        stale port layout. Idempotent, and leaves the dirty flag alone.
+        """
+        entered = [entry[2] for entry in self.navigation_stack[1:]] + [self.current_subsystem]
+        for (parent_scope, _lines, _prev), name in zip(self.navigation_stack, entered):
+            parent_block = next((b for b in parent_scope if b.name == name), None)
+            if parent_block is not None:
+                self._sync_subsystem_ports(parent_block, parent_block.sub_blocks)
 
     def get_current_path(self):
         """

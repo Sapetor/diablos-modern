@@ -114,21 +114,6 @@ branches (see git log). Still open, both architectural:
   the process pool inside a PyInstaller bundle (GUI defaults to parallel;
   falls back in-process on `BrokenProcessPool`).
 
-### Open items from the second external review (2026-10-29)
-All six findings at 4dcd717 were fixed (save from a subsystem, rate
-inheritance order, workspace sample periods, stale analysis cache, project
-blocks on open / in clones and workers). Gaps found while fixing them:
-- [ ] **Bode / Nyquist / root locus ignore workspace variables.**
-  `lib/analysis/analyzers/base_analyzer.py` reads raw `block.params`, so a
-  Gain `"K"` is not resolved there (the Linearizer path is correct).
-- [ ] **Validator rate warnings treat a variable period as continuous.**
-  `lib/diagram_validator.py::_check_rate_mismatches` still does
-  `float(params[...])`; use `lib/engine/sample_times.declared_sample_time`.
-- [ ] **Subsystem ports resync only on exit.** Saving from inside a
-  subsystem writes the whole document now, but a port added inside is
-  reflected in the parent's external port layout only after
-  `exit_subsystem` runs.
-
 ### Open items from the Windows session (2026-10-09)
 All closed the same day (see the 2026-10-09 Change Log rows): resize,
 Windows style, cp1252 logging, toolbar/status/glyph test portability, saved
@@ -189,6 +174,15 @@ palette sideways shift, test isolation from the real QSettings store,
 ---
 
 ## Completed
+
+### October 2026 - second external review follow-ups (2026-10-29)
+- Bode / Nyquist / root locus resolve workspace variables
+  (`BaseAnalyzer._resolved_params`; `tests/unit/test_analyzer_workspace_params.py`).
+- Validator rate warnings resolve variable sample periods through
+  `lib/engine/sample_times.declared_sample_time` (`tests/unit/test_multirate.py`).
+- Saving inside a subsystem resyncs every open subsystem's external ports first
+  (`SubsystemManager.sync_open_subsystem_ports`;
+  `tests/regression/test_save_from_subsystem.py`).
 
 ### October 2026 - Windows follow-up (2026-10-09)
 - [x] **Review of the five commits `cf44b1f..cff6e81`:** no introduced

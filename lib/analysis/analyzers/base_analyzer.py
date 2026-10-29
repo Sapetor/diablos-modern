@@ -72,7 +72,7 @@ class BaseAnalyzer:
             return self._extract_subsystem_model(block, canvas, visited)
 
         # 3. Parameter-based Extraction (fallback for legacy blocks)
-        params = getattr(block, "params", {})
+        params = self._resolved_params(block, canvas)
 
         # A) Explicit Transfer Function
         if "numerator" in params and "denominator" in params:
@@ -176,6 +176,19 @@ class BaseAnalyzer:
             return block.get_transfer_function()
 
         return None
+
+    @staticmethod
+    def _resolved_params(block, canvas):
+        """``block.params`` with workspace names/expressions resolved.
+
+        Uses the analysed diagram's own workspace (``canvas.dsim.workspace``),
+        exactly as a run would; without one the raw params are returned.
+        """
+        params = getattr(block, "params", {}) or {}
+        workspace = getattr(getattr(canvas, "dsim", None), "workspace", None)
+        if workspace is None:
+            return params
+        return workspace.resolve_params(params)
 
     def _unsupported(self, reason):
         """Record and log why no LTI model could be extracted; return None."""
@@ -284,7 +297,7 @@ class BaseAnalyzer:
         instead of tracing on to the plant), so the case lives here.
         """
         block_fn = getattr(member, "block_fn", "")
-        params = getattr(member, "params", {}) or {}
+        params = self._resolved_params(member, canvas)
         if block_fn in ("Gain", "MatrixGain"):
             try:
                 gain = np.atleast_1d(np.asarray(params.get("gain", 1.0), dtype=float)).flatten()

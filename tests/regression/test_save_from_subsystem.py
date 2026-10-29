@@ -116,3 +116,43 @@ class TestSaveFromInsideASubsystem:
         out = tmp_path / "service.diablos"
         assert service.save_diagram(str(out)) is True
         assert _names(_saved(out)["blocks_data"]) == ROOT
+
+
+@pytest.mark.regression
+class TestPortsAddedInsideAreSaved:
+    """A port added inside an open subsystem reaches the saved parent block.
+
+    The parent's external ports were only resynced by ``exit_subsystem``, so
+    saving before leaving wrote the new Inport/Outport inside but the old port
+    layout outside.
+    """
+
+    def _add_inport(self, dsim):
+        from PyQt6.QtCore import QRect
+
+        from blocks.inport import Inport
+
+        existing = [b for b in dsim.model.blocks_list if b.block_fn == "Inport"]
+        top = max(b.top for b in existing) + 80 if existing else 100
+        port = Inport(block_name="In2", sid=99, coords=QRect(20, top, 40, 30), color="#888888")
+        port.name = "inport99"
+        dsim.model.blocks_list.append(port)
+
+    def test_saved_parent_ports_match_the_inside(self, dsim, tmp_path):
+        from lib.cli import load_diagram
+
+        sub = _subsystem(dsim.model.blocks_list)
+        before = len(sub.ports.get("in", []))
+        dsim.enter_subsystem(sub)
+        self._add_inport(dsim)
+
+        out = tmp_path / "ports.diablos"
+        dsim.dirty = True
+        assert dsim.save(filepath=str(out)) == 0
+        rec = next(r for r in _saved(out)["blocks_data"] if r["block_fn"] == "Subsystem")
+        assert len(rec["ports"]["in"]) == before + 1
+        assert dsim.dirty is False  # a save does not dirty the document
+
+        again, _ = load_diagram(str(out))
+        reloaded = _subsystem(again.model.blocks_list)
+        assert reloaded.in_ports == before + 1

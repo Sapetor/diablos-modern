@@ -381,3 +381,46 @@ class TestBlockSamplingTimeParam:
         # Also has sampling_time=-1 for continuous execution
         assert "sampling_time" in block.params
         assert block.params["sampling_time"]["default"] == -1.0
+
+
+class TestRateMismatchWithWorkspacePeriods:
+    """A sample period given as a workspace variable is a discrete rate.
+
+    The validator did ``float(params["sampling_time"])`` and treated ``"Ts"``
+    as continuous, so its rate warnings disagreed with what the engine runs.
+    """
+
+    def _pair(self, src_ts, dst_ts):
+        src, dst = MagicMock(), MagicMock()
+        for blk, name, ts in ((src, "d1", src_ts), (dst, "d2", dst_ts)):
+            blk.name = name
+            blk.username = name
+            blk.block_fn = "DiscreteTranFn"
+            blk.params = {"sampling_time": ts}
+            blk.in_ports = 1
+            blk.out_ports = 1
+            blk.block_instance = None
+            blk.category = "Control"
+        line = MagicMock()
+        line.srcblock, line.dstblock, line.hidden = "d1", "d2", False
+        return [src, dst], [line]
+
+    def _validate(self, blocks, lines, **variables):
+        from lib.diagram_validator import DiagramValidator
+        from lib.workspace import Workspace
+
+        dsim = MagicMock()
+        dsim.blocks_list, dsim.line_list = blocks, lines
+        dsim.workspace = Workspace(variables)
+        return DiagramValidator(dsim).validate()
+
+    def test_variable_periods_get_the_non_integer_ratio_warning(self):
+        blocks, lines = self._pair("Ts", "Tc")
+        errors = self._validate(blocks, lines, Ts=0.1, Tc=0.25)
+        assert any("Non-integer sample rate ratio" in str(e.message) for e in errors)
+
+    def test_variable_period_is_not_reported_as_continuous(self):
+        blocks, lines = self._pair(0.1, "Ts")
+        errors = self._validate(blocks, lines, Ts=0.1)
+        assert not any("Discrete signal" in str(e.message) for e in errors)
+        assert not any("Non-integer" in str(e.message) for e in errors)

@@ -131,7 +131,13 @@ class DSim:
         # Subsystem manager
         self.subsystem_manager = SubsystemManager(self.model, self)
         # Saves always write the whole document, wherever the user has navigated.
-        self.file_service.root_context = self.get_root_context
+        self.file_service.root_context = self._root_context_for_save
+
+    def _root_context_for_save(self):
+        """Root lists for serialization, with every open subsystem's external
+        ports synced to its insides first (normally done on exit)."""
+        self.subsystem_manager.sync_open_subsystem_ports()
+        return self.get_root_context()
 
     # ``dirty`` is a live view of the model's flag, not a copy.
     #
