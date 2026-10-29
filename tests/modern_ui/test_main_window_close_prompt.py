@@ -47,7 +47,7 @@ def spies(window, monkeypatch):
 
 
 def _close(window, prompt_answer, monkeypatch):
-    monkeypatch.setattr(window, "_prompt_unsaved_changes", lambda: prompt_answer)
+    monkeypatch.setattr(window, "_prompt_unsaved_changes", lambda **_: prompt_answer)
     event = QCloseEvent()
     window.closeEvent(event)
     return event
@@ -58,7 +58,7 @@ class TestCloseWithUnsavedChanges:
     def test_clean_diagram_closes_without_prompting(self, window, spies, monkeypatch):
         asked = {"n": 0}
         monkeypatch.setattr(
-            window, "_prompt_unsaved_changes", lambda: asked.__setitem__("n", 1) or "cancel"
+            window, "_prompt_unsaved_changes", lambda **_: asked.__setitem__("n", 1) or "cancel"
         )
         window.dsim.dirty = False
         event = QCloseEvent()

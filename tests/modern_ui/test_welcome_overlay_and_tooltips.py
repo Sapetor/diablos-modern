@@ -50,11 +50,13 @@ def test_overlay_visible_on_fresh_window(window, qapp):
     assert len(window.welcome_overlay.example_buttons) == 3
 
 
-def test_overlay_hides_on_add_and_returns_on_new(window, qapp):
+def test_overlay_hides_on_add_and_returns_on_new(window, qapp, monkeypatch):
     _settle(qapp, window)
     _add(window.canvas, "Gain")
     _settle(qapp, window)
     assert not window.welcome_overlay.isVisible()
+    # The added block is unsaved, so New asks first; discard it.
+    monkeypatch.setattr(window, "_prompt_unsaved_changes", lambda **_: "discard")
     window.new_diagram()
     _settle(qapp, window)
     assert window.welcome_overlay.isVisible()

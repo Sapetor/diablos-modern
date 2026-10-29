@@ -660,7 +660,14 @@ class ModernDiaBloSWindow(QMainWindow):
         return self._open_diagram_path(filename, self.project_manager.open_example)
 
     def _open_diagram_path(self, path, load):
-        """Register ``path``'s project blocks, ``load(path)``, then report gaps."""
+        """Register ``path``'s project blocks, ``load(path)``, then report gaps.
+
+        Unsaved edits are settled first (save / discard / cancel), before the
+        project's block folder is trusted or registered, so a cancelled open
+        changes neither the diagram nor its extension context.
+        """
+        if not self._settle_unsaved_changes():
+            return None
         self.reload_user_blocks(quiet=True, diagram_path=path)
         result = load(path)
         if result is None:
@@ -1059,18 +1066,21 @@ class ModernDiaBloSWindow(QMainWindow):
                 is_error=True,
             )
 
-    def _prompt_unsaved_changes(self) -> str:
+    def _prompt_unsaved_changes(self, closing: bool = True) -> str:
         """Ask what to do about unsaved changes: 'save', 'discard' or 'cancel'.
 
         Split out from :meth:`closeEvent` so the decision can be stubbed in
         tests (the suite neutralizes ``QMessageBox.exec_``, so the real dialog
-        never returns a meaningful button there).
+        never returns a meaningful button there). ``closing`` picks the wording:
+        the same question guards New and Open.
         """
         box = QMessageBox(self)
         box.setIcon(QMessageBox.Icon.Warning)
         box.setWindowTitle(tr("Unsaved Changes"))
         box.setText(tr("This diagram has unsaved changes."))
-        box.setInformativeText(tr("Save them before closing?"))
+        box.setInformativeText(
+            tr("Save them before closing?") if closing else tr("Save them first?")
+        )
         box.setStandardButtons(
             QMessageBox.StandardButton.Save
             | QMessageBox.StandardButton.Discard
@@ -1085,6 +1095,26 @@ class ModernDiaBloSWindow(QMainWindow):
         # Anything else (Cancel, Esc, closing the dialog) keeps the window open.
         return "cancel"
 
+    def _settle_unsaved_changes(self, closing: bool = False) -> bool:
+        """True when the current diagram may be replaced or closed.
+
+        A clean diagram passes. A dirty one asks save / discard / cancel:
+        Cancel, a cancelled Save dialog or a failed save keep it (graph, dirty
+        flag, file name and undo history untouched) and return False.
+        """
+        if not getattr(self.dsim, "dirty", False):
+            return True
+        choice = self._prompt_unsaved_changes(closing=closing)
+        if choice == "cancel":
+            logger.info("Kept the diagram: unsaved changes, user cancelled.")
+            return False
+        if choice == "save":
+            self.save_diagram()
+            if getattr(self.dsim, "dirty", False):
+                logger.info("Kept the diagram: save did not complete.")
+                return False
+        return True
+
     def closeEvent(self, event):
         """Handle application shutdown.
 
@@ -1095,20 +1125,11 @@ class ModernDiaBloSWindow(QMainWindow):
         """
         logger.info("Modern DiaBloS closing...")
 
-        if getattr(self.dsim, "dirty", False):
-            choice = self._prompt_unsaved_changes()
-            if choice == "cancel":
-                logger.info("Close cancelled by user (unsaved changes kept).")
-                event.ignore()
-                return
-            if choice == "save":
-                self.save_diagram()
-                if getattr(self.dsim, "dirty", False):
-                    # Save was cancelled or failed -- the work is still unsaved,
-                    # so don't close (and don't delete the autosave).
-                    logger.info("Close aborted: save did not complete.")
-                    event.ignore()
-                    return
+        if not self._settle_unsaved_changes(closing=True):
+            # Cancelled, or the save did not complete: the work is still
+            # unsaved, so don't close (and don't delete the autosave).
+            event.ignore()
+            return
 
         self.stop_simulation()
         if hasattr(self, "canvas"):
@@ -1358,10 +1379,18 @@ class ModernDiaBloSWindow(QMainWindow):
 
     # Override toolbar actions to use canvas methods
     def new_diagram(self):
-        """Create new diagram."""
+        """Start a new, untitled diagram once unsaved edits are settled.
+
+        Goes through the full document reset (``DiagramService.new_diagram``),
+        which also forgets the previous file name, so the next Save asks where
+        to write instead of overwriting the old file with the empty diagram.
+        """
+        if not self._settle_unsaved_changes():
+            return
+        self.project_manager.new_diagram()
         if hasattr(self, "canvas"):
-            self.canvas.clear_canvas()
-        self.status_message.setText(tr("New diagram created"))
+            self.canvas.clear_validation()
+            self.canvas.update()
 
     def start_simulation(self) -> None:
         """Start simulation with validation.
