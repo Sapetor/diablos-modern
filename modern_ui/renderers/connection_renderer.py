@@ -169,7 +169,126 @@ class ConnectionRenderer:
             logger.debug("Failed to format port value for live chip", exc_info=True)
         return ""
 
-    def draw_line(self, line, painter: QPainter, sample_time: float = -1.0):
+    # Radius (px) of the dot drawn where wires from one output port split.
+    JUNCTION_RADIUS = 3.5
+
+    @staticmethod
+    def _line_width(line) -> float:
+        """Stroke width: thicker for vector (MIMO) signals and when selected."""
+        base_width = 2.0 if getattr(line, "signal_width", 1) <= 1 else 3.5
+        selected = line.selected and line.selected_segment == -1
+        return base_width + 0.5 if selected else base_width
+
+    def draw_halo(self, line, painter: QPainter):
+        """Paint the canvas-coloured crossing-gap halo under ``line``.
+
+        Separate from :meth:`draw_line` so the canvas can paint the halos of
+        all wires leaving one port before any of their strokes: siblings then
+        never cut gaps into each other where they run together and split.
+        """
+        if self.CROSSING_GAP <= 0 or not painter or not painter.isActive():
+            return
+        if not line.path or line.path.isEmpty():
+            return
+        painter.save()
+        try:
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            painter.setPen(
+                QPen(
+                    theme_manager.get_color("canvas_background"),
+                    self._line_width(line) + self.CROSSING_GAP,
+                    Qt.PenStyle.SolidLine,
+                    Qt.PenCapStyle.FlatCap,
+                    Qt.PenJoinStyle.RoundJoin,
+                )
+            )
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawPath(line.path)
+        finally:
+            painter.restore()
+
+    @staticmethod
+    def _polyline(line):
+        """The wire as straight segments, or None when it is drawn as a curve.
+
+        Orthogonal and waypoint wires are polylines (their fillets are tiny);
+        a two-point bezier wire is a cubic unless its ends are level.
+        """
+        pts = list(getattr(line, "points", None) or [])
+        if len(pts) < 2:
+            return None
+        if getattr(line, "routing_mode", "bezier") == "orthogonal" or len(pts) > 2:
+            return pts
+        a, b = pts
+        return pts if a.x() == b.x() or a.y() == b.y() else None
+
+    @staticmethod
+    def _on_polyline(p, pts, tol=1.0) -> bool:
+        px, py = p.x(), p.y()
+        for a, b in zip(pts, pts[1:]):
+            ax, ay, bx, by = a.x(), a.y(), b.x(), b.y()
+            dx, dy = bx - ax, by - ay
+            seg2 = dx * dx + dy * dy
+            t = 0.0 if seg2 == 0 else max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / seg2))
+            if math.hypot(px - (ax + t * dx), py - (ay + t * dy)) <= tol:
+                return True
+        return False
+
+    @classmethod
+    def junction_points(cls, lines):
+        """Points where wires leaving the same output port part ways.
+
+        For each pair of sibling polylines, the junction is the last vertex of
+        one that still lies on the other. Wires that diverge right at the port
+        (e.g. a fan of bezier curves) get no dot.
+        """
+        groups = {}
+        for line in lines:
+            if getattr(line, "hidden", False):
+                continue
+            pts = cls._polyline(line)
+            if pts is not None:
+                groups.setdefault((line.srcblock, line.srcport), []).append(pts)
+
+        def split(a, b):
+            """Last vertex of ``b`` still on ``a``, with its distance along
+            ``b`` (None when ``b`` leaves ``a`` at the port)."""
+            k, dist = 0, 0.0
+            while k + 1 < len(b) and cls._on_polyline(b[k + 1], a):
+                p, q = b[k], b[k + 1]
+                dist += math.hypot(q.x() - p.x(), q.y() - p.y())
+                k += 1
+            return (dist, b[k]) if 0 < k < len(b) - 1 else None
+
+        found = {}
+        for siblings in groups.values():
+            for i, a in enumerate(siblings):
+                for b in siblings[i + 1 :]:
+                    # Both directions: whichever wire turns away first marks
+                    # only the start of the shared run; the split is the
+                    # point furthest along it.
+                    cands = [c for c in (split(a, b), split(b, a)) if c is not None]
+                    if cands:
+                        q = max(cands, key=lambda c: c[0])[1]
+                        found[(q.x(), q.y())] = QPointF(q)
+        return list(found.values())
+
+    def draw_junctions(self, painter: QPainter, points) -> None:
+        """Dot each branch point (Simulink-style) in the wire colour."""
+        if not points or not painter or not painter.isActive():
+            return
+        painter.save()
+        try:
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(theme_manager.get_color("connection_default"))
+            r = self.JUNCTION_RADIUS
+            for p in points:
+                painter.drawEllipse(p, r, r)
+        finally:
+            painter.restore()
+
+    def draw_line(self, line, painter: QPainter, sample_time: float = -1.0, halo: bool = True):
         """
         Draw the connection line with smooth Bezier curves and modern styling.
 
@@ -178,6 +297,8 @@ class ConnectionRenderer:
             painter: QPainter instance
             sample_time: rate the wire carries (see sample_time_colors);
                 a discrete wire (> 0) is tinted with the block dot's color.
+            halo: paint the crossing-gap halo first (False when the caller
+                already painted it with :meth:`draw_halo`).
         """
         if not painter or not painter.isActive():
             return
@@ -203,23 +324,12 @@ class ConnectionRenderer:
             idle_color = rate_tint or default_connection_color
             pen_color = active_connection_color if is_selected else idle_color
 
-            # Base line width - thicker for vector signals (MIMO indicator)
-            base_width = 2.0 if getattr(line, "signal_width", 1) <= 1 else 3.5
-            line_width = base_width + 0.5 if is_selected else base_width
+            line_width = self._line_width(line)
 
             # Crossing gap: a halo in the canvas colour under the wire so it
             # visibly passes over wires drawn before it.
-            if self.CROSSING_GAP > 0:
-                halo_pen = QPen(
-                    theme_manager.get_color("canvas_background"),
-                    line_width + self.CROSSING_GAP,
-                    Qt.PenStyle.SolidLine,
-                    Qt.PenCapStyle.FlatCap,
-                    Qt.PenJoinStyle.RoundJoin,
-                )
-                painter.setPen(halo_pen)
-                painter.setBrush(Qt.BrushStyle.NoBrush)
-                painter.drawPath(line.path)
+            if halo:
+                self.draw_halo(line, painter)
 
             # Draw subtle glow/shadow for selected connections
             if is_selected:
@@ -369,12 +479,11 @@ class ConnectionRenderer:
             return
 
         end_point = line.path.pointAtPercent(1.0)
-        point_before_end = line.path.pointAtPercent(max(0.0, 1.0 - (arrow_size / length)))
-
-        # Direction of the final approach
-        dx = end_point.x() - point_before_end.x()
-        dy = end_point.y() - point_before_end.y()
-        angle = math.atan2(dy, dx)  # Angle in radians
+        # Direction of the final approach: the path's tangent at the port.
+        # (A chord over the last arrow_size px tilted the arrow whenever a
+        # corner fillet ended that close to the port.) Qt measures the angle
+        # in degrees, counter-clockwise with y up.
+        angle = -math.radians(line.path.angleAtPercent(1.0))
 
         # Pull the tip back so it is not hidden under the port disc, but never
         # further than the wire is long.

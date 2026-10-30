@@ -2,7 +2,7 @@
 
 import heapq
 import logging
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Set, Tuple
 
 from PyQt6.QtCore import QPoint, QRect
 
@@ -14,7 +14,22 @@ BLOCK_MARGIN = 8
 # name drawn under it (see BlockRenderer.draw_block: 28 px text band).
 LABEL_CLEARANCE = 20
 TURN_PENALTY = 4
-PORT_STUB = 20
+# Straight run out of / into a port. It must outlast the orthogonal corner
+# fillet (ORTHOGONAL_CORNER_RADIUS = 10) plus the arrowhead and its inset in
+# front of the port disc (~17 px), or the arrow sits on the curve. Shortened
+# where a neighbouring block leaves less room (see _stub_length).
+PORT_STUB = 30
+# Cells this close (px) to a block's obstacle rect cost NEAR_BLOCK_PENALTY
+# extra, so a route uses free space instead of hugging a block edge. Without
+# it every turn position costs the same and A* happily runs a leg right
+# along a block (e.g. 10 px in front of an input it does not even enter).
+NEAR_BLOCK = 20
+NEAR_BLOCK_PENALTY = 2
+# Cost per cell of running on top of another source's wire. Without it two
+# unrelated signals could share a track and read as one wire. A crossing
+# touches one cell, so it stays cheap; wires from the same output port may
+# share freely (they carry the same signal and get a junction dot).
+OVERLAP_PENALTY = 8
 
 _Point = Tuple[int, int]
 _Dir = Optional[Tuple[int, int]]
@@ -39,21 +54,32 @@ def _block_obstacles(blocks) -> List[QRect]:
     return rects
 
 
-def _cell_blocked(cell: _Point, obstacles: Iterable[QRect]) -> bool:
-    px = cell[0] * GRID_SIZE
-    py = cell[1] * GRID_SIZE
-    for r in obstacles:
-        if r.left() <= px <= r.right() and r.top() <= py <= r.bottom():
-            return True
-    return False
+def _rect_cells(rects: Iterable[QRect]) -> Set[_Point]:
+    """Grid cells whose corner point (cell * GRID_SIZE) lies in any of
+    ``rects``, as a set so A* tests membership in O(1)."""
+    cells: Set[_Point] = set()
+    for r in rects:
+        x0, x1 = -(-r.left() // GRID_SIZE), r.right() // GRID_SIZE
+        y0, y1 = -(-r.top() // GRID_SIZE), r.bottom() // GRID_SIZE
+        cells.update((x, y) for x in range(x0, x1 + 1) for y in range(y0, y1 + 1))
+    return cells
+
+
+def _grids(blocks) -> Tuple[Set[_Point], Set[_Point]]:
+    """(blocked cells, near-a-block cells) for ``blocks``."""
+    obstacles = _block_obstacles(blocks)
+    return _rect_cells(obstacles), _rect_cells(_inflate(r, NEAR_BLOCK) for r in obstacles)
 
 
 def _astar(
     start: _Point,
     goal: _Point,
-    obstacles: List[QRect],
+    blocked: Set[_Point],
     bounds: Tuple[int, int, int, int],
     initial_dir: _Dir = None,
+    near: Set[_Point] = frozenset(),
+    taken: Optional[dict] = None,
+    source=None,
 ) -> Optional[List[_Point]]:
     if start == goal:
         return [start]
@@ -82,11 +108,14 @@ def _astar(
             if not (minx <= nx <= maxx and miny <= ny <= maxy):
                 continue
             new_pt = (nx, ny)
-            if new_pt != goal and _cell_blocked(new_pt, obstacles):
+            if new_pt != goal and new_pt in blocked:
                 continue
             this_dir = (dx, dy)
             turn_cost = 0 if last_dir is None or last_dir == this_dir else TURN_PENALTY
-            new_g = cur_cost + 1 + turn_cost
+            near_cost = NEAR_BLOCK_PENALTY if new_pt in near else 0
+            owners = taken.get(new_pt) if taken else None
+            overlap_cost = OVERLAP_PENALTY if owners and owners - {source} else 0
+            new_g = cur_cost + 1 + turn_cost + near_cost + overlap_cost
             new_key = (new_pt, this_dir)
             if new_g < g_score.get(new_key, 10**9):
                 g_score[new_key] = new_g
@@ -119,10 +148,28 @@ def _simplify(points: List[QPoint]) -> List[QPoint]:
     return out
 
 
-def _stubbed_endpoints(start: QPoint, end: QPoint) -> Tuple[QPoint, QPoint]:
+def _stub_length(port: QPoint, step: int, blocked: Set[_Point]) -> int:
+    """Longest of PORT_STUB, 20, 10 px whose straight run out of ``port``
+    (``step`` = +1 rightwards, -1 leftwards) stays on free cells.
+
+    A long stub that ends inside a neighbouring block makes A* fail and the
+    wire fall back to a straight line through the blocks, so tight gaps get
+    the shorter stub the router always used.
+    """
+    y = port.y() // GRID_SIZE
+    for length in (PORT_STUB, 20, GRID_SIZE):
+        cells = range(GRID_SIZE, length + 1, GRID_SIZE)
+        if all((port.x() // GRID_SIZE + step * c // GRID_SIZE, y) not in blocked for c in cells):
+            return length
+    return GRID_SIZE
+
+
+def _stubbed_endpoints(
+    start: QPoint, end: QPoint, blocked: Set[_Point] = frozenset()
+) -> Tuple[QPoint, QPoint]:
     return (
-        QPoint(start.x() + PORT_STUB, start.y()),
-        QPoint(end.x() - PORT_STUB, end.y()),
+        QPoint(start.x() + _stub_length(start, 1, blocked), start.y()),
+        QPoint(end.x() - _stub_length(end, -1, blocked), end.y()),
     )
 
 
@@ -135,11 +182,29 @@ def _scene_bounds(blocks, extra_points: List[QPoint]) -> Tuple[int, int, int, in
     return (min(xs) - pad, min(ys) - pad, max(xs) + pad, max(ys) + pad)
 
 
-def route_line(line, blocks, block_index=None) -> Optional[List[QPoint]]:
+def _source(line):
+    return (line.srcblock, line.srcport)
+
+
+def _mark_taken(taken: dict, line, points) -> None:
+    """Record the grid cells ``points`` (a polyline) passes through."""
+    src = _source(line)
+    for a, b in zip(points, points[1:]):
+        ax, ay = round(a.x() / GRID_SIZE), round(a.y() / GRID_SIZE)
+        bx, by = round(b.x() / GRID_SIZE), round(b.y() / GRID_SIZE)
+        n = max(abs(bx - ax), abs(by - ay), 1)
+        for i in range(n + 1):
+            cell = (ax + round((bx - ax) * i / n), ay + round((by - ay) * i / n))
+            taken.setdefault(cell, set()).add(src)
+
+
+def route_line(line, blocks, block_index=None, taken=None, grids=None) -> Optional[List[QPoint]]:
     """Compute orthogonal waypoints for one DLine. Returns None on failure.
 
     `block_index` is an optional {block.name: block} mapping; when provided it
-    avoids re-scanning `blocks` to resolve the endpoints.
+    avoids re-scanning `blocks` to resolve the endpoints. `taken` maps grid
+    cells to the sources of wires already laid there (see OVERLAP_PENALTY);
+    `grids` is ``_grids(blocks)``, passed in when routing many wires.
     """
     if block_index is None:
         block_index = {b.name: b for b in blocks}
@@ -152,16 +217,24 @@ def route_line(line, blocks, block_index=None) -> Optional[List[QPoint]]:
 
     start = src.out_coords[line.srcport]
     end = dst.in_coords[line.dstport]
-    stub_start, stub_end = _stubbed_endpoints(start, end)
-
-    obstacles = _block_obstacles(blocks)
+    blocked, near = grids if grids is not None else _grids(blocks)
+    stub_start, stub_end = _stubbed_endpoints(start, end, blocked)
     minx, miny, maxx, maxy = _scene_bounds(blocks, [start, end, stub_start, stub_end])
     bounds = (minx // GRID_SIZE, miny // GRID_SIZE, maxx // GRID_SIZE, maxy // GRID_SIZE)
 
     s_cell = (stub_start.x() // GRID_SIZE, stub_start.y() // GRID_SIZE)
     e_cell = (stub_end.x() // GRID_SIZE, stub_end.y() // GRID_SIZE)
 
-    grid_path = _astar(s_cell, e_cell, obstacles, bounds, initial_dir=(1, 0))
+    grid_path = _astar(
+        s_cell,
+        e_cell,
+        blocked,
+        bounds,
+        initial_dir=(1, 0),
+        near=near,
+        taken=taken,
+        source=_source(line),
+    )
     if grid_path is None:
         logger.debug(f"route_line: A* failed for {line.name}, falling back to L-route")
         return [start, QPoint(end.x(), start.y()), end]
@@ -173,14 +246,24 @@ def route_line(line, blocks, block_index=None) -> Optional[List[QPoint]]:
     return _simplify(waypoints)
 
 
-def route_all_lines(lines, blocks) -> int:
-    """Recompute routing for every line in `lines` in place. Returns count routed."""
+def route_all_lines(lines, blocks, others=()) -> int:
+    """Recompute routing for every line in `lines` in place. Returns count routed.
+
+    Each routed wire is avoided by the ones routed after it, and so are the
+    wires in `others` (left as they are): pass the rest of the diagram when
+    re-routing only some wires.
+    """
     rerouted = 0
     block_index = {b.name: b for b in blocks}
+    taken: dict = {}
+    grids = _grids(blocks)
+    for other in others:
+        if not getattr(other, "hidden", False) and getattr(other, "points", None):
+            _mark_taken(taken, other, other.points)
     for line in lines:
         if getattr(line, "hidden", False):
             continue
-        new_pts = route_line(line, blocks, block_index=block_index)
+        new_pts = route_line(line, blocks, block_index=block_index, taken=taken, grids=grids)
         if not new_pts or len(new_pts) < 2:
             continue
         src = block_index.get(line.srcblock)
@@ -200,5 +283,6 @@ def route_all_lines(lines, blocks) -> int:
         line.path = path
         line.points = pts
         line.segments = segs
+        _mark_taken(taken, line, new_pts)
         rerouted += 1
     return rerouted

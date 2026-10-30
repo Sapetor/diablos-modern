@@ -397,7 +397,8 @@ class ConnectionManager:
         blocks = getattr(self.dsim, "blocks_list", [])
         if push_undo:
             self.canvas._push_undo("Auto-route wire")
-        routed = route_all_lines([line], blocks) > 0
+        others = [o for o in getattr(self.dsim, "line_list", []) if o is not line]
+        routed = route_all_lines([line], blocks, others=others) > 0
         if not routed:
             line.reroute(blocks)
         self.dsim.dirty = True

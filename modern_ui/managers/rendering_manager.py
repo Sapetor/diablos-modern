@@ -96,12 +96,21 @@ class RenderingManager:
         """Render all connection lines."""
         if painter is None:
             return
+        renderer = self.canvas.connection_renderer
         rates = wire_sample_times(self.dsim.blocks_list, self.dsim.line_list)
+        # Wires from one output port are drawn as a group: all their crossing
+        # halos first, then their strokes, so siblings that run together and
+        # split never cut gaps into each other (they still cut other wires).
+        groups = {}
         for line in self.dsim.line_list:
             if not getattr(line, "hidden", False):
-                self.canvas.connection_renderer.draw_line(
-                    line, painter, sample_time=rates.get(id(line), -1.0)
-                )
+                groups.setdefault((line.srcblock, line.srcport), []).append(line)
+        for group in groups.values():
+            for line in group:
+                renderer.draw_halo(line, painter)
+            for line in group:
+                renderer.draw_line(line, painter, sample_time=rates.get(id(line), -1.0), halo=False)
+        renderer.draw_junctions(painter, renderer.junction_points(self.dsim.line_list))
 
     def render_ports(self, painter: QPainter) -> None:
         """Render all ports on top of lines for better visibility."""

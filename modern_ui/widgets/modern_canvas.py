@@ -581,7 +581,8 @@ class ModernCanvas(QWidget):
                 and (getattr(line, "auto_routed", False) or not getattr(line, "modified", False))
             ]
             if affected:
-                route_all_lines(affected, self.dsim.blocks_list)
+                others = [line for line in lines if line not in affected]
+                route_all_lines(affected, self.dsim.blocks_list, others=others)
                 self.dsim.dirty = True
                 # Request a repaint so rerouted wires show immediately, even if
                 # the caller's interaction flow doesn't trigger update().
