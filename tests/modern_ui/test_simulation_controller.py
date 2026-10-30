@@ -427,3 +427,36 @@ class TestVerificationReportIsLogged:
 
         assert capsys.readouterr().out == ""
         assert any("VERIFICATION RESULTS" in r.message for r in caplog.records)
+
+
+@pytest.mark.qt
+class TestNothingToShowHint:
+    """A run with no Scope-like block used to end with no window and no
+    visible change, which read as "Play did nothing"."""
+
+    HINT = "nothing to show"
+
+    def _finish(self, make_controller, statuses, blocks):
+        dsim = _StubDSim()
+        dsim.blocks_list = blocks
+        make_controller(dsim)._finish_batch(True, "")
+        return [s for s in statuses if self.HINT in s]
+
+    def test_hint_when_no_block_shows_results(self, make_controller, statuses):
+        hints = self._finish(make_controller, statuses, [_block("step0"), _block("tf0")])
+        assert len(hints) == 1
+        assert statuses[-1] == hints[0]
+
+    @pytest.mark.parametrize("viewer", ["Scope", "Display", "XYGraph", "Export"])
+    def test_no_hint_with_a_viewer(self, make_controller, statuses, viewer):
+        scope = _block("v0")
+        scope.block_fn = viewer
+        assert self._finish(make_controller, statuses, [_block(), scope]) == []
+
+    def test_no_hint_with_a_scope_inside_a_subsystem(self, make_controller, statuses):
+        scope = _block("scope0")
+        scope.block_fn = "Scope"
+        sub = _block("subsystem0")
+        sub.block_fn = "Subsystem"
+        sub.sub_blocks = [_block("inner"), scope]
+        assert self._finish(make_controller, statuses, [_block(), sub]) == []

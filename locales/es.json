@@ -1059,6 +1059,7 @@
   "Simulation failed: {error}": "La simulación falló: {error}",
   "Simulation finished": "Simulación finalizada",
   "Simulation finished [{solver}]": "Simulación finalizada [{solver}]",
+  "Simulation finished, but there is nothing to show: add a Scope (or Display / XYGraph) block to see the results.": "Simulación finalizada, pero no hay nada que mostrar: agregue un bloque Scope (o Display / XYGraph) para ver los resultados.",
   "Simulation settings": "Configuración de simulación",
   "Simulation settings unchanged": "Configuración de simulación sin cambios",
   "Simulation settings updated": "Configuración de simulación actualizada",

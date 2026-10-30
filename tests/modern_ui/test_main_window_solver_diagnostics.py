@@ -37,6 +37,10 @@ def _finish(window, monkeypatch, summary_property, solver="Fast (Compiled)"):
     monkeypatch.setattr(window.dsim, "plot_again", lambda: None)
     controller = window.canvas._sim_controller
     monkeypatch.setattr(controller, "_print_terminal_verification", lambda: None)
+    # The window's diagram is empty, so the "add a Scope" hint would replace
+    # the finished line these tests read (it is covered in
+    # test_simulation_controller.py::TestNothingToShowHint).
+    monkeypatch.setattr(controller, "_report_nothing_to_show", lambda: None)
     controller._finish_batch(True, "")
     return window.status_message.text()
 

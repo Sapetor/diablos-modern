@@ -28,6 +28,12 @@ from lib.engine.verification_report import build_verification_report, report_blo
 
 logger = logging.getLogger(__name__)
 
+#: Blocks that show or save a run's results; a diagram with none of them
+#: finishes silently, so the controller says so (``_report_nothing_to_show``).
+RESULT_VIEWER_BLOCKS = frozenset(
+    {"Scope", "XYGraph", "FFT", "Display", "AgentScope", "FieldScope", "FieldScope2D", "Export"}
+)
+
 # Batch runs that are currently executing on a worker thread. The window's
 # 60 FPS ``safe_update`` must not call ``dsim.execution_loop()`` while one of
 # these is stepping the same DSim, so it consults ``batch_simulation_active()``.
@@ -291,6 +297,7 @@ class SimulationController(QObject):
         # user is left looking at. Same channel the run already reports through
         # (status_changed -> status bar); nothing blocks and nothing is popped.
         self._report_stiffness()
+        self._report_nothing_to_show()
         # Plotting is deliberately done here rather than inside the run: the
         # worker sets defer_plots so no Qt object is created off the GUI thread.
         self.dsim.plot_again()
@@ -311,6 +318,30 @@ class SimulationController(QObject):
         if summary:
             logger.info("Solver diagnostics: %s", summary)
         return summary or ""
+
+    def _report_nothing_to_show(self):
+        """Say so when the run had no block that shows or saves a result.
+
+        Without one a successful run ends with no window and no visible
+        change, which reads as "Play did nothing". Same non-modal status
+        channel as the stiffness hint.
+        """
+
+        def walk(blocks):
+            for b in blocks:
+                yield b
+                yield from walk(getattr(b, "sub_blocks", None) or [])
+
+        if any(
+            getattr(b, "block_fn", "") in RESULT_VIEWER_BLOCKS for b in walk(self.dsim.blocks_list)
+        ):
+            return
+        self.status_changed.emit(
+            tr(
+                "Simulation finished, but there is nothing to show: add a Scope "
+                "(or Display / XYGraph) block to see the results."
+            )
+        )
 
     def _report_stiffness(self):
         """Suggest an implicit solver when the last run looked stiff.
