@@ -4024,9 +4024,11 @@ to search and run without hunting through menus. The palette indexes:</p>
 </ul>
 <hr />
 <h2 id="simulation-settings-and-solvers">Simulation Settings and Solvers<a class="headerlink" href="#simulation-settings-and-solvers" title="Permanent link">&para;</a></h2>
-<p>Pressing <strong>F5</strong> (<strong>Simulation → Run</strong>) runs the diagram straight away with the
-settings it already carries. To edit them, open the <strong>Simulation Configuration</strong>
-dialog: <strong>Ctrl+E</strong>, the gear next to the transport buttons, or
+<p>The first time you press <strong>F5</strong> (<strong>Simulation → Run</strong>) on a new or freshly
+opened diagram, the <strong>Simulation Configuration</strong> dialog opens so you can check
+the run length and solver; <strong>Simulate</strong> runs, <strong>Cancel</strong> returns to the canvas.
+After that, Run uses the diagram's settings straight away. To edit them again,
+open the dialog: <strong>Ctrl+E</strong>, the gear next to the transport buttons, or
 <strong>Simulation → Simulation Settings...</strong>. It has two groups:</p>
 <p><strong>Solver Configuration</strong>
 - <strong>Solver Method</strong>: <code>RK45</code> (default), <code>RK23</code>, <code>DOP853</code> (adaptive);
@@ -4047,8 +4049,8 @@ dialog: <strong>Ctrl+E</strong>, the gear next to the transport buttons, or
 <p><strong>Visualization</strong>
 - <strong>Plot Window Range [samples]</strong> and <strong>Enable Dynamic Plotting</strong> for live
   plotting during a run.</p>
-<p>Below the two groups, <strong>Ask before every run</strong> (off by default) restores the old
-behaviour of re-opening this dialog every time you press Play. Unlike the
+<p>Below the two groups, <strong>Ask before every run</strong> (off by default) re-opens this
+dialog every time you press Play, not only on a diagram's first run. Unlike the
 settings above it is an application preference, not diagram data: it is stored
 in your Qt settings and follows you across diagrams.</p>
 <p>Solver method, <code>rtol</code>, <code>atol</code> and the zero-crossing setting are saved inside the
