@@ -107,6 +107,14 @@ class DSim:
         # Play re-opens the Simulation-settings dialog before every run. Read
         # once here; the settings dialog keeps the two in step.
         self.ask_before_run = _stored_ask_before_run()
+        # False until the user has seen the Simulation-settings dialog for the
+        # current document: the first Play of a new or opened diagram shows it
+        # (once), later Plays run straight away. Reset per document in
+        # _reset_document_history.
+        self.settings_reviewed = False
+        # True when the last execution_init stopped because the user cancelled
+        # the settings dialog (not an error; the controller reports it as such).
+        self.last_init_cancelled = False
         # Set while execution_batch runs off the GUI thread: suppresses every
         # Qt call made from the interpreter loop (see execution_batch).
         self._defer_gui_plots = False
@@ -365,6 +373,8 @@ class DSim:
             self.on_document_saved()
 
     def _reset_document_history(self):
+        # A new or loaded document: its first Play shows the settings again.
+        self.settings_reviewed = False
         if self.on_document_reset is not None:
             self.on_document_reset()
 
@@ -628,6 +638,7 @@ class DSim:
         )
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return None
+        self.settings_reviewed = True
         try:
             return dialog.get_values()
         except (ValueError, TypeError):
@@ -668,7 +679,7 @@ class DSim:
     def execution_init_time(self):
         """
         :purpose: Creates a pop-up window to ask for graph simulation setup values.
-        :description: Opens the Simulation-settings dialog and applies what the user accepted, returning the simulation duration (or -1 if they cancelled). This is the *ask* path: since 2026-09 Play runs straight away with the stored settings, and this is reached only from Simulation > Simulation Settings... or when the "Ask before every run" preference is on.
+        :description: Opens the Simulation-settings dialog and applies what the user accepted, returning the simulation duration (or -1 if they cancelled). This is the *ask* path: Play runs straight away with the stored settings except on the first run of a new or opened diagram, or when the "Ask before every run" preference is on.
         """
         values = self.open_simulation_dialog(accept_label=tr("Simulate"))
         if values is None:
@@ -784,11 +795,15 @@ class DSim:
             self.timeline = np.array([self.time_step])  # Also keep np version for compatibility
 
             # Some parameters are initialized including the maximum simulation
-            # time. Only the opt-in "ask before every run" path pops the dialog;
-            # otherwise the stored duration is used as-is.
+            # time. The dialog pops on the first run of a document and, with the
+            # opt-in "ask before every run" preference, on every run; otherwise
+            # the stored duration is used as-is.
             if ask is None:
-                ask = bool(getattr(self, "ask_before_run", False))
+                ask = bool(getattr(self, "ask_before_run", False)) or not getattr(
+                    self, "settings_reviewed", True
+                )
             self.execution_time = self.execution_init_time() if ask else self.sim_time
+            self.last_init_cancelled = self.execution_time == -1
 
             # To cancel the simulation before running it (having pressed X in the pop up)
             if self.execution_time == -1 or len(self.blocks_list) == 0:

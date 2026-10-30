@@ -115,9 +115,11 @@ to search and run without hunting through menus. The palette indexes:
 
 ## Simulation Settings and Solvers
 
-Pressing **F5** (**Simulation → Run**) runs the diagram straight away with the
-settings it already carries. To edit them, open the **Simulation Configuration**
-dialog: **Ctrl+E**, the gear next to the transport buttons, or
+The first time you press **F5** (**Simulation → Run**) on a new or freshly
+opened diagram, the **Simulation Configuration** dialog opens so you can check
+the run length and solver; **Simulate** runs, **Cancel** returns to the canvas.
+After that, Run uses the diagram's settings straight away. To edit them again,
+open the dialog: **Ctrl+E**, the gear next to the transport buttons, or
 **Simulation → Simulation Settings...**. It has two groups:
 
 **Solver Configuration**
@@ -141,8 +143,8 @@ dialog: **Ctrl+E**, the gear next to the transport buttons, or
 - **Plot Window Range [samples]** and **Enable Dynamic Plotting** for live
   plotting during a run.
 
-Below the two groups, **Ask before every run** (off by default) restores the old
-behaviour of re-opening this dialog every time you press Play. Unlike the
+Below the two groups, **Ask before every run** (off by default) re-opens this
+dialog every time you press Play, not only on a diagram's first run. Unlike the
 settings above it is an application preference, not diagram data: it is stored
 in your Qt settings and follows you across diagrams.
 

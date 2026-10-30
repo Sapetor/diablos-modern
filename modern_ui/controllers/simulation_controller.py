@@ -136,6 +136,11 @@ class SimulationController(QObject):
                     else:
                         self.run_batch()
                         return True
+                elif getattr(self.dsim, "last_init_cancelled", False):
+                    # Cancel in the settings dialog: the user's choice, not a failure.
+                    self.status_changed.emit(tr("Simulation cancelled"))
+                    logger.info("Simulation cancelled from the settings dialog")
+                    return False
                 else:
                     error_msg = (
                         self.dsim.error_msg

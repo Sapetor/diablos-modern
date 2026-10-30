@@ -1053,6 +1053,7 @@
   "Simulation Error": "Error de simulación",
   "Simulation Failed to Start": "Error al iniciar la simulación",
   "Simulation Settin&gs...": "Confi&guración de simulación...",
+  "Simulation cancelled": "Simulación cancelada",
   "Simulation failed to start. {error}": "Error al iniciar la simulación. {error}",
   "Simulation failed — {n} error (click to view)": "La simulación falló — {n} error (clic para ver)",
   "Simulation failed — {n} errors (click to view)": "La simulación falló — {n} errores (clic para ver)",

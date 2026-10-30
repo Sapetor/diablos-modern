@@ -8,7 +8,10 @@ so it doubled as the settings editor.
 
 Now:
 
-  * Play runs immediately with the settings stored in the diagram;
+  * Play runs immediately with the settings stored in the diagram -- except
+    the first Play of a new or opened diagram, which shows the dialog once so
+    the user sees the run length and solver (2026-10: a 1 s default run hid a
+    disturbance stepping in at t = 8 s);
   * Simulation > Simulation Settings... (Ctrl+E, or the toolbar gear) opens the
     same dialog pre-filled, and applies on OK;
   * an opt-in "Ask before every run" preference (QSettings
@@ -75,6 +78,8 @@ def dsim(qapp, tmp_path, monkeypatch):
     sim = DSim()
     monkeypatch.setattr(sim, "save", lambda *a, **k: 0)
     _build_diagram(sim)
+    # Past the first run: the once-per-document dialog has its own tests.
+    sim.settings_reviewed = True
     yield sim
     sim.execution_initialized = False
 
@@ -253,6 +258,7 @@ def armed_window(window, tmp_path, monkeypatch):
     monkeypatch.setattr(window, "_auto_save", lambda *a, **k: None)
     monkeypatch.setattr(SimulationController, "run_batch", lambda self: None)
     monkeypatch.setattr(dsim, "ask_before_run", False, raising=False)
+    dsim.settings_reviewed = True
     yield window
     dsim.execution_initialized = False
     dsim.clear_all()
@@ -351,3 +357,78 @@ class TestSimulationSettingsAction:
         seen = _spy(monkeypatch, result=QDialog.DialogCode.Accepted)
         armed_window.start_simulation()
         assert len(seen) == 1
+
+
+# ---------------------------------------------------------------------------
+# The first run of a document shows the dialog once
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestFirstRunOfADocument:
+    def test_first_run_asks_then_later_runs_do_not(self, dsim, monkeypatch):
+        dsim.ask_before_run = False
+        dsim.settings_reviewed = False
+        seen = _spy(monkeypatch, result=QDialog.DialogCode.Accepted)
+        assert dsim.execution_init() is True
+        assert len(seen) == 1
+        dsim.execution_initialized = False
+        assert dsim.execution_init() is True
+        assert len(seen) == 1
+
+    def test_cancel_on_the_first_run_asks_again_next_time(self, dsim, monkeypatch):
+        dsim.ask_before_run = False
+        dsim.settings_reviewed = False
+        seen = _spy(monkeypatch, result=QDialog.DialogCode.Rejected)
+        assert dsim.execution_init() is False
+        assert dsim.last_init_cancelled is True
+        assert dsim.execution_init() is False
+        assert len(seen) == 2
+
+    def test_explicit_ask_false_never_asks_on_a_first_run(self, dsim, monkeypatch):
+        dsim.settings_reviewed = False
+        seen = _spy(monkeypatch, result=QDialog.DialogCode.Accepted)
+        assert dsim.execution_init(ask=False) is True
+        assert seen == []
+
+    def test_a_new_or_loaded_document_asks_again(self, dsim):
+        dsim.settings_reviewed = True
+        data = dsim.serialize_root()
+        dsim.deserialize(data)
+        assert dsim.settings_reviewed is False
+        dsim.settings_reviewed = True
+        dsim.new_diagram()
+        assert dsim.settings_reviewed is False
+
+
+class TestFirstPlayFromTheWindow:
+    def test_first_play_opens_the_dialog_once(self, armed_window, monkeypatch):
+        armed_window.dsim.settings_reviewed = False
+        seen = _spy(monkeypatch, result=QDialog.DialogCode.Accepted)
+        armed_window.start_simulation()
+        assert len(seen) == 1
+        armed_window.dsim.execution_initialized = False
+        armed_window.start_simulation()
+        assert len(seen) == 1
+
+    def test_the_settings_action_counts_as_reviewed(self, armed_window, monkeypatch):
+        armed_window.dsim.settings_reviewed = False
+        _spy(monkeypatch, result=QDialog.DialogCode.Accepted)
+        armed_window.open_simulation_settings()
+        seen = _spy(monkeypatch, result=QDialog.DialogCode.Accepted)
+        armed_window.start_simulation()
+        assert seen == []
+
+    def test_cancel_is_reported_as_cancelled_not_as_an_error(self, armed_window, monkeypatch):
+        from modern_ui.controllers.simulation_controller import SimulationController
+
+        armed_window.dsim.settings_reviewed = False
+        _spy(monkeypatch, result=QDialog.DialogCode.Rejected)
+        errors = []
+        monkeypatch.setattr(
+            SimulationController, "_report_error", lambda self, *a, **k: errors.append(a)
+        )
+        armed_window.start_simulation()
+        assert errors == []
+        assert armed_window.dsim.execution_initialized is False
+        assert armed_window.status_message.text() == "Simulation cancelled"
