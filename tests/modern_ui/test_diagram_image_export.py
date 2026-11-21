@@ -14,9 +14,12 @@ Run with:
         tests/modern_ui/test_diagram_image_export.py -p no:cacheprovider -o addopts=""
 """
 
+from types import SimpleNamespace
+from unittest.mock import Mock
+
 import pytest
 from PyQt6.QtCore import QRect, QPoint
-from PyQt6.QtGui import QImage
+from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtWidgets import QApplication, QFileDialog
 
 from lib.lib import DSim
@@ -136,6 +139,36 @@ class TestRenderImage:
         line.selected = False
         clean = exporter.render_diagram_image(canvas)
         assert deselected == clean
+
+
+@pytest.mark.parametrize(
+    "platform,offset", [("windows", (100, 50)), ("xcb", (100, 50)), ("cocoa", (1540, 160))]
+)
+def test_capture_screen_uses_backend_coordinates_and_saves_physical_pixels(
+    qapp, tmp_path, monkeypatch, platform, offset
+):
+    from modern_ui.main_window import ModernDiaBloSWindow
+
+    pixmap = QPixmap(450, 300)
+    pixmap.fill()
+    pixmap.setDevicePixelRatio(1.5)
+    screen = SimpleNamespace(
+        geometry=lambda: QRect(1440, 110, 960, 720),
+        grabWindow=Mock(return_value=pixmap),
+    )
+    window = SimpleNamespace(
+        _default_export_dir=lambda: str(tmp_path),
+        windowHandle=lambda: SimpleNamespace(screen=lambda: screen),
+        frameGeometry=lambda: QRect(1540, 160, 300, 200),
+    )
+    target = str(tmp_path / "screenshot.png")
+    monkeypatch.setattr(QApplication, "platformName", lambda: platform)
+    monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *_args: (target, ""))
+
+    ModernDiaBloSWindow.capture_screen(window)
+
+    screen.grabWindow.assert_called_once_with(0, *offset, 300, 200)
+    assert QImage(target).size() == pixmap.size()
 
 
 # ---------------------------------------------------------------------------

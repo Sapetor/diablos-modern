@@ -95,6 +95,7 @@ class ModernDiaBloSWindow(QMainWindow):
         # paste, flip, align, ...) attach to it.
         self._setup_menubar()
         self._setup_statusbar()
+        self.layout_manager.fit_canvas_to_screen()
 
         # Connect property editor signals
         self.property_editor.property_changed.connect(self._on_property_changed)
@@ -873,6 +874,9 @@ class ModernDiaBloSWindow(QMainWindow):
             screen = handle.screen() if handle is not None else QApplication.primaryScreen()
             if screen is not None:
                 geo = self.frameGeometry()
+                # Windows and X11 interpret desktop capture offsets from this screen.
+                if QApplication.platformName() in {"windows", "xcb"}:
+                    geo.translate(-screen.geometry().topLeft())
                 pixmap = screen.grabWindow(0, geo.x(), geo.y(), geo.width(), geo.height())
                 if pixmap.isNull():
                     pixmap = None

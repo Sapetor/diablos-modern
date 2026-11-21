@@ -164,9 +164,6 @@ def setup_application():
 def main():
     """Main application entry point."""
     try:
-        # Enable automatic scaling for high-DPI displays
-        os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
-
         logger.info("Starting Modern DiaBloS Application - Phase 1")
 
         # Restore persisted UI preferences (theme, palette, solid_fills)

@@ -28,10 +28,7 @@ class PlatformConfig:
         screen = QApplication.primaryScreen()
         if screen is None:
             raise RuntimeError("PlatformConfig requires an active QApplication with a display")
-        # The heuristics below describe the physical screen, so take the UI
-        # scale (QT_SCALE_FACTOR, lib/ui_scale.py) back out: otherwise 150% on
-        # a standard screen reads as high-DPI and widens the Properties panel
-        # a second time, on top of the scale itself.
+        # Classify the screen independently of the UI scale preference.
         from lib.ui_scale import qt_scale_factor
 
         ui_scale = qt_scale_factor()
@@ -115,40 +112,26 @@ class PlatformConfig:
 
     @property
     def canvas_min_width(self) -> int:
-        """Minimum width for canvas area."""
-        if self.is_retina_small:
-            return 400
-        elif self.is_high_dpi:
-            return 450
+        """Minimum canvas width in logical pixels."""
         return 400
 
     @property
     def canvas_min_height(self) -> int:
-        """Minimum height for canvas area."""
-        if self.is_retina_small:
-            return 500
-        elif self.is_high_dpi:
-            return 600
+        """Minimum canvas height in logical pixels."""
         return 500
 
     # Right panel (Properties)
 
     @property
     def property_panel_min_width(self) -> int:
-        """Minimum width for property panel."""
-        if self.is_retina_small:
-            return 260
-        elif self.is_high_dpi:
-            return int(260 * 1.3)
+        """Minimum Properties width in logical pixels."""
         return 260
 
     @property
     def property_panel_max_width(self) -> int:
-        """Maximum width for property panel."""
+        """Maximum Properties width in logical pixels."""
         if self.is_retina_small:
             return 380
-        elif self.is_high_dpi:
-            return int(440 * 1.3)
         return 440
 
     # Splitter sizing

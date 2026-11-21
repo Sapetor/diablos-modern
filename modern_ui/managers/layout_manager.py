@@ -21,7 +21,7 @@ and stores ``window._prop_scroll_viewport``.
 
 import logging
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -105,6 +105,17 @@ class LayoutManager:
         # Store splitters for theme updates
         window.main_splitter = main_splitter
         window.center_splitter = center_splitter
+
+    def fit_canvas_to_screen(self):
+        """Allow the canvas to shrink when the window chrome needs the space."""
+        window = self.window
+        if not window.screen_geometry:
+            return
+
+        canvas_minimum = window.canvas.minimumSize()
+        layout_shortfall = window.minimumSizeHint() - window.screen_geometry.size()
+        canvas_budget = (canvas_minimum - layout_shortfall).expandedTo(QSize(0, 0))
+        window.canvas.setMinimumSize(canvas_minimum.boundedTo(canvas_budget))
 
     def initialize_splitter_sizes(self):
         """Initialize splitter sizes based on actual window dimensions.

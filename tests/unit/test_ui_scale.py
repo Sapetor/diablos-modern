@@ -97,19 +97,30 @@ class TestApply:
 
 
 @pytest.mark.slow
-def test_startup_scales_the_whole_ui(store):
+@pytest.mark.parametrize("scale", [1.25, 1.5])
+def test_startup_scales_the_whole_ui(store, scale):
     """End to end in a fresh process: the stored scale reaches Qt's device
     pixel ratio, and the app font is not scaled a second time."""
-    _write(store, 1.5)
+    _write(store, scale)
     script = textwrap.dedent(
         """
+        import os
         import diablos_modern
 
-        app = diablos_modern.setup_application()
-        print(app.primaryScreen().devicePixelRatio(), app.font().pointSize())
+        setup_application = diablos_modern.setup_application
+
+        def check_application():
+            assert "QT_AUTO_SCREEN_SCALE_FACTOR" not in os.environ
+            app = setup_application()
+            print(app.primaryScreen().devicePixelRatio(), app.font().pointSize())
+            raise SystemExit(0)
+
+        diablos_modern.setup_application = check_application
+        raise SystemExit(diablos_modern.main())
         """
     )
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen", MPLBACKEND="Agg")
+    env.pop("QT_AUTO_SCREEN_SCALE_FACTOR", None)
     out = subprocess.run(
         [sys.executable, "-c", script],
         cwd=REPO,
@@ -120,5 +131,5 @@ def test_startup_scales_the_whole_ui(store):
     )
     assert out.returncode == 0, out.stderr
     ratio, points = out.stdout.split()[-2:]
-    assert float(ratio) == 1.5
+    assert float(ratio) == scale
     assert int(points) == 10

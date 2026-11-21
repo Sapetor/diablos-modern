@@ -10,7 +10,7 @@ from types import SimpleNamespace
 
 import pytest
 from PyQt6.QtCore import QRect
-from PyQt6.QtWidgets import QApplication, QMainWindow
+from PyQt6.QtWidgets import QApplication, QDialogButtonBox, QMainWindow
 
 from modern_ui import platform_config
 from modern_ui.managers import window_setup_manager
@@ -42,6 +42,18 @@ def test_ui_scale_does_not_change_the_dpi_heuristics(qapp, monkeypatch, scale):
 
     retina = _config(monkeypatch, scale, 2.0, 1512, 982)
     assert retina.is_high_dpi and not retina.is_retina_small
+    assert not retina.should_cap_window_size
+
+
+@pytest.mark.parametrize("scale", [1.0, 1.25, 1.5])
+@pytest.mark.parametrize("native_ratio", [1.5, 2.0])
+def test_native_dpi_does_not_inflate_logical_layout(qapp, monkeypatch, scale, native_ratio):
+    standard = _config(monkeypatch, scale, 1.0, 1920, 1080)
+    dense = _config(monkeypatch, scale, native_ratio, 1920, 1080)
+    assert dense.property_panel_min_width == standard.property_panel_min_width
+    assert dense.property_panel_max_width == standard.property_panel_max_width
+    assert dense.canvas_min_width == standard.canvas_min_width
+    assert dense.canvas_min_height == standard.canvas_min_height
 
 
 def test_minimum_window_size_fits_a_small_scaled_screen(qapp, monkeypatch):
@@ -53,3 +65,37 @@ def test_minimum_window_size_fits_a_small_scaled_screen(qapp, monkeypatch):
     assert win.minimumWidth() <= 960
     assert win.minimumHeight() <= 600
     win.deleteLater()
+
+
+@pytest.mark.parametrize("width,height", [(1440, 900), (1280, 720)])
+def test_main_canvas_fits_a_small_scaled_window(qtbot, monkeypatch, width, height):
+    from modern_ui.main_window import ModernDiaBloSWindow
+
+    cfg = _config(monkeypatch, 1.5, 1.0, width, height)
+    monkeypatch.setattr(platform_config, "_platform_config", cfg)
+    window = ModernDiaBloSWindow(QRect(0, 0, int(width / 1.5), int(height / 1.5)))
+    qtbot.addWidget(window)
+    window.show()
+    QApplication.processEvents()
+
+    central = window.centralWidget()
+    canvas_rect = QRect(
+        window.canvas.mapTo(central, window.canvas.rect().topLeft()), window.canvas.size()
+    )
+    assert central.rect().contains(canvas_rect)
+
+
+def test_tikz_export_dialog_fits_a_small_scaled_screen(qtbot, monkeypatch):
+    from modern_ui.widgets.tikz_export_dialog import TikZExportDialog
+
+    available = QRect(0, 0, 853, 480)
+    monkeypatch.setattr(TikZExportDialog, "screen", lambda self: _fake_screen(1.5, 853, 480))
+    dialog = TikZExportDialog([], [])
+    qtbot.addWidget(dialog)
+    dialog.show()
+    QApplication.processEvents()
+
+    assert dialog.frameGeometry().width() <= available.width()
+    assert dialog.frameGeometry().height() <= available.height()
+    button_box = dialog.findChild(QDialogButtonBox)
+    assert dialog.rect().contains(button_box.geometry())

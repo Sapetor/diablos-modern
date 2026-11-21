@@ -40,6 +40,7 @@ import math
 from PyQt6.QtCore import Qt, pyqtSignal, QSize, QRectF, QPointF, QTimer
 from PyQt6.QtGui import (
     QIcon,
+    QIconEngine,
     QPixmap,
     QPainter,
     QColor,
@@ -72,13 +73,46 @@ def _make_icon(kind: str, size: int = 18, color: str | None = None) -> QIcon:
     """
     if color is None:
         color = theme_manager.get_color("text_primary").name()
+    return QIcon(_GeometricIconEngine(kind, size, color))
 
-    # Render at 2× for DPI safety, let Qt downscale.
-    px = QPixmap(size * 2, size * 2)
-    px.fill(Qt.GlobalColor.transparent)
-    p = QPainter(px)
+
+class _GeometricIconEngine(QIconEngine):
+    """Paint the icon path at the resolution requested by Qt."""
+
+    def __init__(self, kind, size, color):
+        super().__init__()
+        self.kind = kind
+        self.size = size
+        self.color = color
+
+    def clone(self):
+        return _GeometricIconEngine(self.kind, self.size, self.color)
+
+    def paint(self, painter, rect, mode, state):
+        painter.save()
+        try:
+            if mode == QIcon.Mode.Disabled:
+                painter.setOpacity(painter.opacity() * 0.4)
+            painter.translate(rect.x(), rect.y())
+            painter.scale(rect.width() / self.size, rect.height() / self.size)
+            _paint_icon(painter, self.kind, self.size, self.color)
+        finally:
+            painter.restore()
+
+    def pixmap(self, size, mode, state):
+        # Qt's default scaledPixmap calls this method with the physical size.
+        pixmap = QPixmap(size)
+        pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(pixmap)
+        try:
+            self.paint(painter, pixmap.rect(), mode, state)
+        finally:
+            painter.end()
+        return pixmap
+
+
+def _paint_icon(p, kind, size, color):
     p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-    p.scale(2.0, 2.0)
 
     pen = QPen(QColor(color))
     pen.setWidthF(1.6)
@@ -243,9 +277,6 @@ def _make_icon(kind: str, size: int = 18, color: str | None = None) -> QIcon:
 
     elif kind == "minus":
         line(pad, s / 2, s - pad, s / 2)
-
-    p.end()
-    return QIcon(px)
 
 
 # -----------------------------------------------------------------------------

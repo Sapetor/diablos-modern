@@ -32,7 +32,7 @@ from PyQt6.QtWidgets import (
     QFrame,
     QScrollArea,
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtGui import QFont
 
 from lib.i18n import tr
@@ -49,11 +49,15 @@ class TikZExportDialog(QDialog):
         self.line_list = line_list
 
         self.setWindowTitle(tr("Export as TikZ"))
-        self.setMinimumSize(820, 520)
-        self.resize(900, 580)
         self.setModal(True)
 
         self._setup_ui()
+        preferred_size = QSize(900, 580)
+        screen = parent.screen() if parent is not None else self.screen()
+        if screen is not None:
+            # Keep room for the window frame on small or scaled displays.
+            preferred_size = preferred_size.boundedTo(screen.availableGeometry().size() * 0.9)
+        self.resize(preferred_size)
         self._update_preview()
 
     # ------------------------------------------------------------------
@@ -88,7 +92,6 @@ class TikZExportDialog(QDialog):
         left_scroll = QScrollArea()
         left_scroll.setWidgetResizable(True)
         left_scroll.setFrameShape(QFrame.Shape.NoFrame)
-        left_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
         left = QVBoxLayout(left_widget)

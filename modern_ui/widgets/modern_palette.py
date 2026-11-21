@@ -15,6 +15,7 @@ Drag MIME and signal are unchanged, so canvas drop logic doesn't need edits.
 """
 
 import logging
+import math
 import os
 import sys
 from typing import Callable, Dict
@@ -492,23 +493,28 @@ class CompactBlockRow(QFrame):
             # Drag preview: render a full block via existing BlockRenderer
             pix = self._drag_pixmap()
             drag.setPixmap(pix)
-            drag.setHotSpot(QPoint(pix.width() // 2, pix.height() // 2))
+            size = pix.deviceIndependentSize()
+            drag.setHotSpot(QPoint(round(size.width() / 2), round(size.height() / 2)))
             drag.setMimeData(mime)
             drag.exec(Qt.DropAction.CopyAction | Qt.DropAction.MoveAction, Qt.DropAction.CopyAction)
         except Exception as e:
             logger.error(f"Drag start failed: {e}")
 
     def _drag_pixmap(self) -> QPixmap:
+        ratio = self.devicePixelRatioF()
+
+        def preview_pixmap(width, height):
+            pixmap = QPixmap(math.ceil(width * ratio), math.ceil(height * ratio))
+            pixmap.setDevicePixelRatio(ratio)
+            return pixmap
+
         try:
             from lib.simulation.block import DBlock
             from modern_ui.renderers.block_renderer import BlockRenderer
 
             w, h = 80, 48
-            pix = QPixmap(w, h)
+            pix = preview_pixmap(w, h)
             pix.fill(Qt.GlobalColor.transparent)
-            p = QPainter(pix)
-            p.setOpacity(0.85)
-            p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
             mb = self.menu_block
             tmp = DBlock(
@@ -527,12 +533,17 @@ class CompactBlockRow(QFrame):
                 block_class=getattr(mb, "block_class", None),
             )
             tmp.update_Block()
-            BlockRenderer().draw_block(tmp, p, draw_name=False, draw_ports=True)
-            p.end()
+            p = QPainter(pix)
+            try:
+                p.setOpacity(0.85)
+                p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+                BlockRenderer().draw_block(tmp, p, draw_name=False, draw_ports=True)
+            finally:
+                p.end()
             return pix
         except Exception as e:
             logger.warning(f"drag pixmap fallback: {e}")
-            pix = QPixmap(72, 28)
+            pix = preview_pixmap(72, 28)
             pix.fill(theme_manager.get_color("accent_primary"))
             return pix
 
