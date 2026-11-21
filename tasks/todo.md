@@ -99,19 +99,28 @@ used to empty the canvas), atomic saves, failed autosave recovery keeps the
 file, project-local `blocks/` folders need explicit trust before import.
 Export pulse semantics and compiled-run cancellation were worked on separate
 branches (see git log). Still open, both architectural:
-- [ ] **Qt-free core / installable package.** Per-diagram workspaces are done
-  (2026-10-29: `Workspace` per `DSim`, `WorkspaceManager()` kept only as the
-  GUI's default). Stage 1 done (2026-11-21): the engine runs without PyQt6.
-  `src/diablos/core/qt_types.py` re-exports the Qt value types or pure-Python stand-ins
-  (checked against Qt in `tests/unit/test_qt_types.py`); QFont/QPixmap and the
-  dialogs are created lazily; all 56 examples give identical traces with PyQt6
-  blocked (`tests/regression/test_engine_without_pyqt6.py`). With PyQt6
-  installed the CLI still builds an offscreen QApplication. Still open:
-  stage 2, `blocks/` draw_icon behind a lazy import boundary (already
-  function-local everywhere); stage 3, an installable package namespace, with
-  the GUI-only modules still in `lib/` (`dialogs.py`, `analysis/analyzers/`,
-  `theming/theme_manager.py`, `plotting/signal_plot.py`,
-  `services/diagram_service.py`) moved out or behind an optional `gui` extra.
+- [ ] **Qt-free core / installable package.** Stages 1-3a done 2026-11-21:
+  the engine runs without PyQt6 (`src/diablos/core/qt_types.py` stand-ins,
+  `tests/regression/test_engine_without_pyqt6.py`), needs only numpy + scipy
+  (tqdm/matplotlib optional), block icons are toolkit-neutral
+  (`core/icon_path.py`, `blocks/` imports no Qt), headless runs create no
+  QApplication, and DiaBloS is one installable package `diablos` under `src/`
+  (`pip install .` = engine, `.[gui]` = app + `diablos` command;
+  `diablos.compat` keeps old `blocks.*`/`lib.*` imports working for user
+  blocks, opt-in for scripts; CI `package` job). Still open:
+  - **Stage 3b: GUI-only modules out of `diablos.core`** into `diablos.gui`:
+    `core/dialogs.py`, `core/analysis/analyzers/` + `control_system_analyzer.py`,
+    `core/theming/theme_manager.py`, `core/plotting/signal_plot.py` and the
+    pyqtgraph scope mixin, `core/services/diagram_service.py`,
+    `core/services/file_dialogs.py`. The seam is `DSim`: it builds a
+    `ScopePlotter` and opens the settings dialog itself; inject the plotter,
+    dialog callbacks and theme colours from the GUI instead. Same split for
+    `MenuBlocks` metadata vs drawing.
+  - **Publish to PyPI** from the tagged release flow (needs a PyPI project and
+    a trusted-publisher token); README/python-api docs install from git until
+    then.
+  - Drop the legacy `lib/icons/*.png` lookup in `core/simulation/menu_block.py`
+    (no such files are tracked) once nothing calls it.
 - [ ] **Experiments: disk-backed traces and resumable runs.** Streaming
   statistics, `keep_traces` and process-pool `workers` are done (2026-10-29,
   `src/diablos/core/analysis/streaming.py`, `parallel.py`). Still open: write kept traces to
