@@ -1,0 +1,8 @@
+# Source distribution contents beyond the package itself (see setup.py).
+include LICENSE THIRD_PARTY_LICENSES.md README.md setup.py
+include config/default_config.json config/logging.json
+include docs/USER_MANUAL.md
+graft locales
+graft examples
+graft licenses
+global-exclude __pycache__ *.pyc .DS_Store recent_files.json .autosave*

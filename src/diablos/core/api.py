@@ -22,7 +22,7 @@ experiment tools already use (``src/diablos/core/cli.py``, ``DSim.run_tuning_sim
 ``src/diablos/core/analysis/``). It needs no QApplication and runs without PyQt6
 installed; no window is ever shown.
 
-Run from the repository root (DiaBloS installs no importable package).
+Public name: :mod:`diablos.api` (``pip install diablos-modern``).
 Workspace variables belong to the diagram: each :class:`Diagram` owns its own
 (:attr:`Diagram.workspace`, set with :meth:`Diagram.set_variable`), so several
 diagrams with different variables can live in one process.

@@ -17,7 +17,6 @@ Drag MIME and signal are unchanged, so canvas drop logic doesn't need edits.
 import logging
 import math
 import os
-import sys
 from typing import Callable, Dict
 from PyQt6.QtWidgets import (
     QWidget,
@@ -171,8 +170,6 @@ def _save_recents(fn_names) -> None:
     """Persist the recents list (best-effort)."""
     _save_settings_list(_RECENT_KEY, fn_names)
 
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from diablos.gui.themes.theme_manager import theme_manager
 

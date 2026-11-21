@@ -5,7 +5,12 @@ import types
 import numpy as np
 import pytest
 
-from diablos.core.analysis.block_algebra import AlgebraError, Rational, sink_input_signal, transfer_function
+from diablos.core.analysis.block_algebra import (
+    AlgebraError,
+    Rational,
+    sink_input_signal,
+    transfer_function,
+)
 
 
 def B(name, fn, **params):

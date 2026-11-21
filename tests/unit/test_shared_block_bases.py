@@ -218,7 +218,7 @@ class TestAnalysisMarkerBase:
     def test_every_marker_uses_the_shared_base(self, module_name):
         import importlib
 
-        module = importlib.import_module(f"blocks.{module_name}")
+        module = importlib.import_module(f"diablos.blocks.{module_name}")
         cls = next(
             obj
             for _, obj in vars(module).items()

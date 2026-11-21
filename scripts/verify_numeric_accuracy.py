@@ -4,7 +4,7 @@ import numpy as np
 import logging
 
 # Add project root to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.append(os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")), "src"))
 
 # DBlock builds QPixmap-backed icons, which needs a live QApplication even
 # headless; without this the script aborts with "Must construct a

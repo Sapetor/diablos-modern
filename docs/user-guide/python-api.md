@@ -1,18 +1,24 @@
 # Python API
 
-`diablos.core.api` runs diagrams from plain Python, with no window. Load a `.diablos`
+`diablos.api` runs diagrams from plain Python, with no window. Load a `.diablos`
 file or build a diagram in code, change parameters, simulate, and get every
 Scope signal back as a numpy array, together with the solver's diagnostics.
 The Monte Carlo, parameter sweep, trim and linearization tools from the
 **Analysis** menu are available on the same object.
 
-DiaBloS installs no importable package, so run your script from the repository
-root (or put the root on `sys.path`).
+Install the engine with `pip install "git+https://github.com/Sapetor/diablos-modern.git"`
+(numpy and scipy only; the `gui` extra, `"diablos-modern[gui] @ git+..."`, adds the
+application). From a source checkout, `pip install -e .` makes `diablos`
+importable everywhere.
+
+Scripts written before November 2026 imported `lib.api`; change that to
+`diablos.api`, or call `diablos.compat.install_legacy_imports()` before the old
+import while you migrate.
 
 ## Load and run
 
 ```python
-from diablos.core.api import load
+from diablos.api import load
 
 sim = load("examples/first_order_step_response.diablos")
 sim.blocks                         # ['step0', 'tranfn1', 'scope2']
@@ -58,7 +64,7 @@ sim.variables                    # {"K": 2.0}
 ## Build a diagram in code
 
 ```python
-from diablos.core.api import from_builder
+from diablos.api import from_builder
 from diablos.core.diagram_builder import DiagramBuilder
 
 b = DiagramBuilder(sim_time=2.0, sim_dt=0.01)
@@ -122,7 +128,7 @@ bands, which need every trace. The result dictionaries are the ones the Analysis
 | Raised | When |
 |---|---|
 | `FileNotFoundError` | `load` of a missing file |
-| `diablos.core.api.SimulationError` | the diagram will not load, or a run fails (the message says why) |
+| `diablos.api.SimulationError` | the diagram will not load, or a run fails (the message says why) |
 | `KeyError` | an unknown block, parameter or signal name |
 | `ValueError` | bad arguments, or `linearize` on a diagram that does not compile or has no continuous states |
 

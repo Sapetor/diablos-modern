@@ -17,7 +17,11 @@ from PyQt6.QtGui import QCursor, QFont, QAction, QActionGroup
 from PyQt6.QtWidgets import QMenu, QWidgetAction, QWidget, QHBoxLayout, QLabel, QLineEdit
 
 from diablos.gui.themes.theme_manager import theme_manager, get_mono_font
-from diablos.gui.widgets.modern_palette import block_label, block_matches_filter, visible_menu_blocks
+from diablos.gui.widgets.modern_palette import (
+    block_label,
+    block_matches_filter,
+    visible_menu_blocks,
+)
 
 from diablos.core.i18n import tr
 

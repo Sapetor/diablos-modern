@@ -17,7 +17,11 @@ import logging
 import numpy as np
 from diablos.blocks.base_block import BaseBlock
 from diablos.blocks.pde._compat import as_scalar
-from diablos.blocks.param_templates import advection_velocity_param, domain_params_1d, init_flag_param
+from diablos.blocks.param_templates import (
+    advection_velocity_param,
+    domain_params_1d,
+    init_flag_param,
+)
 from diablos.core.engine.pde_ops import advection_rhs_1d
 
 logger = logging.getLogger(__name__)

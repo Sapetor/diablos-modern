@@ -145,7 +145,9 @@ class TestSharedTaxonomyConsistency:
         from diablos.core.engine import simulation_engine
 
         src = inspect.getsource(simulation_engine.SimulationEngine.identify_memory_blocks)
-        assert "from diablos.core.engine.memory_blocks import" in src or "memory_blocks import" in src, (
+        assert (
+            "from diablos.core.engine.memory_blocks import" in src or "memory_blocks import" in src
+        ), (
             "identify_memory_blocks no longer references the shared "
             "memory_blocks module — the taxonomy has drifted again."
         )
@@ -166,7 +168,7 @@ class TestSharedTaxonomyConsistency:
         with open("src/diablos/core/diagram_validator.py") as f:
             content = f.read()
         assert "MEMORY_BLOCK_TYPES = {" not in content, (
-            "src/diablos/core/diagram_validator.py defines a local MEMORY_BLOCK_TYPES "
+            "diablos/core/diagram_validator.py defines a local MEMORY_BLOCK_TYPES "
             "set — this duplicates the shared OUTPUT_ONLY_SAFE_BLOCK_FNS "
             "and is exactly the drift this refactor was meant to remove."
         )

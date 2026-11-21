@@ -82,7 +82,9 @@ class TestHeldOutputResetOnNewRun:
     def test_optimizer_primitives(self, mod, cls):
         import importlib
 
-        blk = getattr(importlib.import_module(f"diablos.blocks.optimization_primitives.{mod}"), cls)()
+        blk = getattr(
+            importlib.import_module(f"diablos.blocks.optimization_primitives.{mod}"), cls
+        )()
         params = {"_init_start_": True}
         blk.execute(0.0, {0: np.array([1.0])}, params)
         assert float(np.ravel(params["_last_update_"])[0]) != 0.0

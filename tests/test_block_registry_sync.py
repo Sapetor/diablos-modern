@@ -46,7 +46,7 @@ def test_block_modules_registry_is_in_sync():
     stale = sorted(actual - expected)  # registry entries with no block file
 
     assert expected == actual, (
-        "lib/block_loader._BLOCK_MODULES is out of sync with the blocks/ "
+        "diablos/core/block_loader._BLOCK_MODULES is out of sync with the blocks/ "
         "directory — the frozen/PyInstaller build would ship the wrong set "
         "of blocks.\n"
         f"  missing from _BLOCK_MODULES (present on disk): {missing}\n"
@@ -69,7 +69,7 @@ def test_sync_rewrite_is_byte_identical(tmp_path):
     Runs against a copy in ``tmp_path`` so the real file is never written.
     """
     tool = _load_sync_tool()
-    loader_path = os.path.join(_PROJECT_ROOT, "lib", "block_loader.py")
+    loader_path = os.path.join(_PROJECT_ROOT, "src", "diablos", "core", "block_loader.py")
     with open(loader_path) as f:
         original = f.read()
 

@@ -4,7 +4,7 @@ import unittest
 from PyQt6.QtWidgets import QApplication
 
 # Add project root to path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 
 try:
     from diablos.core.lib import DSim

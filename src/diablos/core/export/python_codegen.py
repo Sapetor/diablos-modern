@@ -68,7 +68,11 @@ from diablos.core.engine.block_names import canonical_fn
 from diablos.core.engine.compiled_runner import resolve_solver_method
 from diablos.core.engine.compiled_loops import order_units
 from diablos.core.engine.compiler_kernels.discrete import DISCRETE_FNS, RATED_FNS
-from diablos.core.engine.sample_times import SampleTimeError, declared_sample_time, propagate_sample_times
+from diablos.core.engine.sample_times import (
+    SampleTimeError,
+    declared_sample_time,
+    propagate_sample_times,
+)
 from diablos.core.engine.topo import kahn_topological_order
 
 logger = logging.getLogger(__name__)

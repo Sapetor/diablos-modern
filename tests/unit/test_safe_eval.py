@@ -6,7 +6,13 @@ import math
 import pytest
 import numpy as np
 
-from diablos.core.safe_eval import SafeEvalError, safe_literal, safe_expr, compile_expr, CompiledExpr
+from diablos.core.safe_eval import (
+    SafeEvalError,
+    safe_literal,
+    safe_expr,
+    compile_expr,
+    CompiledExpr,
+)
 
 
 # ===========================================================================

@@ -60,6 +60,7 @@ identically in a PyInstaller bundle, where the bundled ``blocks/`` package is
 
 import json
 import logging
+import builtins
 import os
 import sys
 import types
@@ -126,15 +127,14 @@ USER_BLOCK_NAMESPACE = "__diablos_block_namespace__"
 def _builtin_blocks_dirs() -> Set[str]:
     """Real paths of the built-in ``blocks/`` package directory.
 
-    ``blocks`` is a namespace package (no ``__init__.py``), so its ``__file__``
-    is None; the location comes from ``base_block``'s own file, plus every
-    ``__path__`` entry for good measure.
+    The location comes from ``base_block``'s own file, plus every
+    ``diablos.blocks.__path__`` entry for good measure.
     """
     found: Set[str] = set()
     base_file = getattr(sys.modules.get("diablos.blocks.base_block"), "__file__", None)
     if base_file:
         found.add(os.path.realpath(os.path.dirname(os.path.abspath(base_file))))
-    package = sys.modules.get("blocks")
+    package = sys.modules.get("diablos.blocks")
     for entry in getattr(package, "__path__", []) or []:
         try:
             found.add(os.path.realpath(entry))
@@ -442,6 +442,11 @@ def _import_module_file(path: str) -> types.ModuleType:
     module = types.ModuleType(module_name)
     module.__file__ = path
     module.__package__ = USER_MODULE_PREFIX
+    # Blocks written for the pre-package layout import ``blocks.base_block`` /
+    # ``lib.engine.compiler_kernels``: map those for this file's code only.
+    from diablos.compat import legacy_import_hook
+
+    module.__builtins__ = dict(vars(builtins), __import__=legacy_import_hook(path))
     sys.modules[module_name] = module
     try:
         exec(code, module.__dict__)

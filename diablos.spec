@@ -60,10 +60,11 @@ with open(VERSION_FILE, 'w', encoding='utf-8') as _fh:
     _fh.write(VERSION + '\n')
 
 # --- Hidden imports ---
-# Blocks are loaded dynamically via importlib (src/diablos/core/block_loader.py),
+# Blocks are loaded dynamically via importlib (diablos/core/block_loader.py),
 # so PyInstaller can't discover them through static analysis.
-# Auto-scanned from blocks/ directory at build time.
+# Auto-scanned from src/diablos/blocks/ at build time.
 sys.path.insert(0, PROJECT_ROOT)
+SRC_DIR = os.path.join(PROJECT_ROOT, 'src')
 from tools.sync_block_registry import scan_block_modules
 hidden_imports_blocks = scan_block_modules()
 
@@ -74,7 +75,7 @@ hidden_imports_numpy = [m for m in collect_submodules('numpy')
                         if '.tests' not in m and '.testing' not in m]
 
 # SymPy powers the optional symbolic features (LaTeX/MathML export,
-# `src/diablos/core/engine/symbolic_engine.py`, the per-block `symbolic_execute`). It is an
+# `diablos/core/engine/symbolic_engine.py`, the per-block `symbolic_execute`). It is an
 # optional dependency (`pip install .[symbolic]`), NOT part of requirements.txt,
 # so it is bundled only when the build environment has it -- see
 # docs/building.md. It used to be listed in `excludes` below, which meant even a
@@ -96,7 +97,7 @@ hidden_imports = (
         'PIL',
         'tqdm',
         # QSvgGenerator (vector "Export diagram as SVG") is imported lazily
-        # inside src/diablos/gui/tools/diagram_image_exporter.py, and QtSvg is a
+        # inside diablos/gui/tools/diagram_image_exporter.py, and QtSvg is a
         # separate shared library in Qt6 -- name it so PyInstaller ships the
         # module and its Qt6Svg dylib/DLL. (QSvgWidget lives in
         # PyQt6.QtSvgWidgets in Qt6; nothing here uses it, so it stays out.)
@@ -112,9 +113,10 @@ hidden_imports = (
 datas = [
     ('config/default_config.json', 'config'),
     ('config/logging.json', 'config'),
-    ('src/diablos/core/block_sizes.py', 'config'),
     ('examples', 'examples'),
-    ('src/diablos/gui/icons', 'src/diablos/gui/icons'),
+    ('src/diablos/gui/icons', 'diablos/gui/icons'),
+    # Help > User Manual opens this with the OS viewer.
+    ('docs/USER_MANUAL.md', 'docs'),
     (VERSION_FILE, '.'),
     ('locales', 'locales'),
     # Licence notices must travel with the binary: MIT requires the copyright
@@ -131,7 +133,9 @@ datas = [
 # --- Analysis ---
 a = Analysis(
     ['diablos_modern.py'],
-    pathex=[],
+    # The code is the `diablos` package under src/ (diablos_modern.py adds it
+    # to sys.path at run time in a checkout; the analysis needs it here).
+    pathex=[SRC_DIR],
     binaries=[],
     datas=datas,
     hiddenimports=hidden_imports,

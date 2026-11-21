@@ -210,7 +210,7 @@ def load_builtin_blocks():
             and not filename.startswith("__")
             and filename != "base_block.py"
         ):
-            block_modules.append(f"blocks.{filename[:-3]}")
+            block_modules.append(f"diablos.blocks.{filename[:-3]}")
 
     # Load from subdirectories (pde, optimization, etc.)
     for subdir in os.listdir(blocks_dir):
@@ -220,7 +220,7 @@ def load_builtin_blocks():
             if os.path.exists(init_file):
                 for filename in os.listdir(subdir_path):
                     if filename.endswith(".py") and not filename.startswith("__"):
-                        block_modules.append(f"blocks.{subdir}.{filename[:-3]}")
+                        block_modules.append(f"diablos.blocks.{subdir}.{filename[:-3]}")
 
     classes = _collect_block_classes(block_modules)
     logger.info(f"Loaded {len(classes)} block classes from {len(block_modules)} modules")

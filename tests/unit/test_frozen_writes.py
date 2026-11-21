@@ -37,11 +37,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 #: Packages whose modules run inside the packaged app and must never write to a
 #: relative path. Scripts under ``scripts/``, ``tools/`` and ``tests/`` are
 #: developer tooling run from a checkout, so they are out of scope.
-SHIPPED_ROOTS = ("lib", "modern_ui", "blocks", "config")
+SHIPPED_ROOTS = ("src/diablos",)
 SHIPPED_FILES = ("diablos_modern.py",)
 
 #: src/diablos/core/app_paths.py is the one place allowed to name the ``saves`` folder.
-PATH_AUTHORITY = Path("lib") / "app_paths.py"
+PATH_AUTHORITY = Path("src") / "diablos" / "core" / "app_paths.py"
 
 
 # ---------------------------------------------------------------------------

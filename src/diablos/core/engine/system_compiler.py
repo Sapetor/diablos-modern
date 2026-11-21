@@ -10,7 +10,12 @@ from diablos.core.engine.pde_helpers import (
 )
 from diablos.core.engine.block_names import canonical_fn
 from diablos.core.engine.compiler_kernels import BuildContext, build_events, get_kernel_builder
-from diablos.core.engine.compiled_delays import DelayHistory, build_delay, delay_time, is_delay_block
+from diablos.core.engine.compiled_delays import (
+    DelayHistory,
+    build_delay,
+    delay_time,
+    is_delay_block,
+)
 from diablos.core.engine.compiled_loops import make_loop_executor, order_units
 from diablos.core.engine.compiler_kernels.discrete import build_sampled, is_sampled_block
 from diablos.core.engine.block_params import runtime_params

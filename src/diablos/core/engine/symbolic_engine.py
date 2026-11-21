@@ -26,7 +26,8 @@ logger = logging.getLogger(__name__)
 # and imported when a SymbolicEngine is actually built.
 SYMPY_AVAILABLE = importlib.util.find_spec("sympy") is not None
 if not SYMPY_AVAILABLE:
-    logger.warning("SymPy not installed. Symbolic features disabled.")
+    # Optional (the "symbolic" extra): not worth a warning on every start.
+    logger.info("SymPy not installed. Symbolic features disabled.")
 
 
 class SymbolicEngine:

@@ -117,3 +117,7 @@ plot_data_*.csv
 
 # mkdocs build output
 /site/
+
+# Written at run time (bundle smoke test report; recent-files list in a checkout)
+smoke-report/
+config/recent_files.json

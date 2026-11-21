@@ -14,7 +14,7 @@ import os
 import sys
 
 # Run from anywhere: put the repo root on sys.path before importing lib/blocks.
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 
 from PyQt6.QtWidgets import QApplication
 

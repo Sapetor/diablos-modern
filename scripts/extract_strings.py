@@ -44,10 +44,10 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOCALES_DIR = os.path.join(REPO_ROOT, "locales")
 
 #: Directories scanned for ``tr(...)`` calls.
-SOURCE_ROOTS = ("modern_ui", "lib", "blocks", "diablos_modern.py")
+SOURCE_ROOTS = ("src/diablos", "diablos_modern.py")
 
 #: Directory whose modules also contribute block display metadata.
-BLOCKS_ROOT = "blocks"
+BLOCKS_ROOT = "src/diablos/blocks"
 
 SKIP_DIRS = {"__pycache__", ".git", "build", "dist", "archive", ".venv", ".venv-win"}
 
@@ -207,7 +207,7 @@ def extract_block_display_names(path: str) -> Set[str]:
     if tree is None:
         return set()
     if REPO_ROOT not in sys.path:
-        sys.path.insert(0, REPO_ROOT)
+        sys.path.insert(0, os.path.join(REPO_ROOT, "src"))
     from diablos.blocks.base_block import prettify_block_name
 
     names: Set[str] = set()

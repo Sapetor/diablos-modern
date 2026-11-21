@@ -1,0 +1,5 @@
+# Mechanical commits that `git blame` should look through.
+# Use: git config blame.ignoreRevsFile .git-blame-ignore-revs  (GitHub applies it automatically)
+
+# refactor: move lib/, blocks/, modern_ui/ into src/diablos (mechanical)
+4470985c84fd339571cddc8f9ffad83ddb351c5d

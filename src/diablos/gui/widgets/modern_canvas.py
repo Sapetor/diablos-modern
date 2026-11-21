@@ -10,13 +10,6 @@ from PyQt6.QtCore import Qt, QPoint, QRect, QTimer, QEvent, pyqtSignal
 from PyQt6.QtGui import QPainter, QPen
 
 # Import DSim and helper modules
-import sys
-import os
-
-# Add project root to path (idempotent check)
-_project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-if _project_root not in sys.path:
-    sys.path.append(_project_root)
 
 from diablos.gui.perf_helper import PerformanceHelper
 from diablos.gui.themes.theme_manager import (

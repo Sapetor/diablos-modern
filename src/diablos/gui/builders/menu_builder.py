@@ -174,8 +174,9 @@ class MenuBuilder:
 
     def _populate_examples_menu(self, menu):
         """Populate examples submenu. Filenames shown without extension."""
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        examples_dir = os.path.join(base_dir, "examples")
+        from diablos.core.app_paths import resource_path
+
+        examples_dir = resource_path("examples")
 
         if os.path.exists(examples_dir):
             try:

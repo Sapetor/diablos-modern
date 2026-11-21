@@ -51,8 +51,12 @@ def _version_from_pyproject():
     Regex-parsed rather than via ``tomllib`` so this works on the 3.9 baseline
     (tomllib is 3.11+); ``diablos.spec`` parses the same key the same way.
     """
+    # src/diablos/gui/__init__.py -> repository root, three levels up.
     path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "pyproject.toml"
+        os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        ),
+        "pyproject.toml",
     )
     try:
         with open(path, "r", encoding="utf-8") as fh:

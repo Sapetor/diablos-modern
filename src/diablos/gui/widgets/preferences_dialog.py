@@ -39,7 +39,13 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from diablos.core.i18n import SYSTEM_LANGUAGE, available_languages, stored_language_setting, tr, tr_noop
+from diablos.core.i18n import (
+    SYSTEM_LANGUAGE,
+    available_languages,
+    stored_language_setting,
+    tr,
+    tr_noop,
+)
 from diablos.core.ui_scale import CHOICES as UI_SCALE_CHOICES
 from diablos.gui.themes.theme_manager import PALETTE_DISPLAY_NAMES, ThemeType, theme_manager
 

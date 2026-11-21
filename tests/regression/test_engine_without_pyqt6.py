@@ -46,7 +46,8 @@ def no_qt_path(tmp_path_factory):
 
 
 def _run_without_qt(body=None, timeout=300, argv=None, no_qt=None, expect_ok=True):
-    env = dict(os.environ, MPLBACKEND="Agg", PYTHONPATH=no_qt)
+    pythonpath = os.pathsep.join(p for p in (no_qt, os.environ.get("PYTHONPATH")) if p)
+    env = dict(os.environ, MPLBACKEND="Agg", PYTHONPATH=pythonpath)
     env.pop("DIABLOS_PURE_TYPES", None)
     cmd = [sys.executable] + (argv if argv else ["-c", textwrap.dedent(body)])
     out = subprocess.run(cmd, cwd=REPO, env=env, capture_output=True, text=True, timeout=timeout)

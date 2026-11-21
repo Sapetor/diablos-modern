@@ -1,26 +1,35 @@
 # DiaBloS Modern
 
-Block diagram simulation tool (Simulink-style) built with Python/PyQt6. Entry point: `python diablos_modern.py`.
+Block diagram simulation tool (Simulink-style) built with Python/PyQt6. Entry point: `python diablos_modern.py` from a checkout (a thin shim around `diablos.main:entry`); installed, the `diablos` command or `python -m diablos`.
 
 ## Architecture
 
+All code is one package, `diablos`, under `src/` (since 2026-11; before that it was top-level `lib/`, `blocks/`, `modern_ui/` packages -- `diablos.compat` maps those old names for user blocks and old scripts). `pip install diablos-modern` installs the engine (numpy + scipy only); the `gui` extra adds PyQt6, pyqtgraph, matplotlib, tqdm, Pillow.
+
 ```
-modern_ui/          PyQt6 GUI: main_window.py (top-level); subdirs widgets/ [modern_canvas.py],
-                    controllers/, managers/ [undo/redo, clipboard, connections, selection],
-                    renderers/, builders/, interactions/, tools/, themes/, styles/
-lib/                Core engine (engine/, simulation/, analysis/, plotting/, services/,
-                    export/, managers/, models/)
-blocks/             Block implementations: mostly flat .py files (one block class each);
-                    subdirs pde/, optimization/, optimization_primitives/ group related families
-config/             Defaults: default_config.json, logging.json, block_sizes.py
+src/diablos/
+  api.py            Public scripting API (from diablos.api import load); re-exports diablos.core.api
+  main.py           Process entry point: entry() dispatches run/export-python/diff/self-test, else the GUI
+  compat.py         Old lib/blocks/modern_ui names -> diablos.* (user-block loader hook; opt-in for scripts)
+  core/             Engine, no PyQt6 at import (engine/, simulation/, analysis/, plotting/, services/,
+                    export/, managers/, models/); Qt value types via core/qt_types.py, paths via core/app_paths.py
+  blocks/           Block implementations: mostly flat .py files (one block class each); subdirs pde/,
+                    optimization/, optimization_primitives/; no Qt (icons are core/icon_path.IconPath)
+  gui/              PyQt6 GUI: main_window.py; widgets/ [modern_canvas.py], controllers/, managers/ [undo/redo,
+                    clipboard, connections, selection], renderers/, builders/, interactions/, tools/, themes/, styles/
+diablos_modern.py   Checkout launcher and PyInstaller entry script (adds src/ to sys.path)
+setup.py            Copies the root data folders into the wheel as diablos/resources/ (rest is pyproject.toml)
+config/             Defaults: default_config.json, logging.json (data; mapped into the wheel)
 locales/            UI translation catalogs (`<code>.json`, English keys -> translations)
 examples/           Example diagrams (mostly .diablos; some legacy .json/.py pairs + sample data)
 docs/               ARCHITECTURE.md, DEVELOPER_GUIDE.md, USER_MANUAL.md, FAST_SOLVER.md, building.md
 scripts/            Maintenance scripts (resave_examples.py, fix_diagram_overlaps.py, audit_wiki_docs.py)
-tests/              Unit, integration, regression, and GUI (modern_ui/) tests
+tests/              Unit, integration, regression, and GUI (tests/modern_ui/) tests; conftest puts src/ on the path
 tools/              Build scripts (build.sh, sync_block_registry.py)
 tasks/              TODO list (todo.md) and lessons learned (lessons.md)
 ```
+
+`diablos.core.app_paths.resource_path()` resolves data to the repository root in a checkout (incl. `pip install -e .`), to `diablos/resources/` in an installed wheel, and to `sys._MEIPASS` in a PyInstaller bundle.
 
 ### Simulation Data Flow
 
@@ -109,7 +118,7 @@ untranslated string still renders. Resolution order is `explicit user setting
 
 ## Adding New Blocks
 
-1. Create `.py` file in `blocks/` (or a subdirectory with `__init__.py`)
+1. Create `.py` file in `src/diablos/blocks/` (or a subdirectory with `__init__.py`)
 2. Inherit from `BaseBlock`, implement the required `@property` members and `execute()`. Class name convention is `<BlockName>Block` (block "Abs" in `src/diablos/blocks/abs_block.py` -> class `AbsBlock`).
 3. Run `python tools/sync_block_registry.py` to update `_BLOCK_MODULES` in `src/diablos/core/block_loader.py`
 
@@ -139,7 +148,7 @@ In addition to those subdirs (and `tests/profiling/`), ~15 `test_*.py` files liv
 @pytest.mark.unit
 class TestScaleBlock:
     def test_basic_output(self):
-        from blocks.scale import ScaleBlock
+        from diablos.blocks.scale import ScaleBlock
         block = ScaleBlock()
         params = {'gain': 2.0, '_init_start_': True}
         result = block.execute(time=0.5, inputs={0: np.array([3.0])}, params=params, dtime=0.01)

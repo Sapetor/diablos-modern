@@ -49,7 +49,7 @@ jobs:
         run: ruff format --check .
 
       - name: Block registry in sync
-        # lib/block_loader._BLOCK_MODULES is what the frozen build ships. A new
+        # diablos/core/block_loader._BLOCK_MODULES is what the frozen build ships. A new
         # block file that nobody synced works in dev and is silently missing
         # from the packaged app, so fail the branch instead.
         run: python tools/sync_block_registry.py --check
@@ -102,7 +102,7 @@ jobs:
         run: >-
           pytest tests/
           --timeout=120 --timeout-method=signal
-          --cov=lib --cov=blocks --cov=modern_ui --cov-report=term-missing
+          --cov=diablos --cov-report=term-missing
           --junitxml=junit/test-results-${{ matrix.python-version }}.xml
 
       - name: Upload JUnit test report
@@ -113,6 +113,54 @@ jobs:
           name: junit-py${{ matrix.python-version }}
           path: junit/test-results-${{ matrix.python-version }}.xml
           if-no-files-found: warn
+
+  package:
+    # The pip package: build the sdist and a wheel from it, install the wheel
+    # into a clean venv with no GUI libraries, and run it from outside the
+    # checkout -- the scripting API, the `diablos` command and the headless
+    # self-test (which also spawns Monte Carlo worker processes).
+    name: Package (wheel, engine only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.10"
+
+      - name: Build sdist and wheel
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build --outdir dist-pkg .
+
+      - name: Install the wheel without the gui extra
+        run: |
+          python -m venv /tmp/core
+          /tmp/core/bin/pip install dist-pkg/*.whl
+          /tmp/core/bin/pip list
+          ! /tmp/core/bin/python -c "import PyQt6" 2>/dev/null
+          ! /tmp/core/bin/python -c "import matplotlib" 2>/dev/null
+
+      - name: Run it from outside the checkout
+        working-directory: /tmp
+        env:
+          PYTHONPATH: ""
+        run: |
+          /tmp/core/bin/python -c "
+          from diablos.api import load
+          from diablos.core.app_paths import resource_path, checkout_root
+          assert checkout_root() is None
+          r = load(resource_path('examples/first_order_step_response.diablos')).run(t=2.0)
+          v = round(float(r['output'][-1]), 4)
+          assert v == 0.3935, v
+          print('api ok', r.engine, v)
+          "
+          /tmp/core/bin/diablos run "$(/tmp/core/bin/python -c "from diablos.core.app_paths import resource_path; print(resource_path('examples/pid_second_order.diablos'))")" -o /tmp/out.csv
+          /tmp/core/bin/diablos self-test --no-gui
+          /tmp/core/bin/diablos --version
 
   test-windows:
     # Windows-only regressions (native style, font metrics, cp1252 console,

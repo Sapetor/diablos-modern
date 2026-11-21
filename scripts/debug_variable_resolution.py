@@ -8,7 +8,7 @@ import sys
 
 # Run from anywhere: put the repo root on sys.path (this used to be a hardcoded
 # absolute path to one developer's checkout).
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 
 from diablos.core.workspace import WorkspaceManager
 

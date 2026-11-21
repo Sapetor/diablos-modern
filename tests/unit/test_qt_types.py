@@ -21,7 +21,9 @@ pytestmark = pytest.mark.unit
 
 @pytest.fixture(scope="module")
 def pure():
-    path = os.path.join(os.path.dirname(__file__), "..", "..", "lib", "qt_types.py")
+    path = os.path.join(
+        os.path.dirname(__file__), "..", "..", "src", "diablos", "core", "qt_types.py"
+    )
     os.environ["DIABLOS_PURE_TYPES"] = "1"
     try:
         spec = importlib.util.spec_from_file_location("_pure_qt_types", path)

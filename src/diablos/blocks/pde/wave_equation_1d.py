@@ -22,7 +22,11 @@ import numpy as np
 from diablos.blocks.base_block import BaseBlock
 from diablos.blocks.pde._compat import as_scalar_opt, or_zero
 from diablos.blocks.param_templates import wave_speed_param, domain_params_1d, init_flag_param
-from diablos.core.engine.pde_helpers import bc_params_1d, companion_seed, parse_pde_initial_condition
+from diablos.core.engine.pde_helpers import (
+    bc_params_1d,
+    companion_seed,
+    parse_pde_initial_condition,
+)
 from diablos.core.engine.pde_ops import wave_rhs_1d, wave_energy_1d
 
 logger = logging.getLogger(__name__)

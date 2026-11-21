@@ -474,7 +474,9 @@ def block_contract_errors(cls: Any) -> List[str]:
     if not inspect.isclass(cls):
         return ["{!r} is not a class; a block must be a class deriving from BaseBlock".format(cls)]
     if not issubclass(cls, BaseBlock):
-        return ["{} does not inherit from diablos.blocks.base_block.BaseBlock".format(_describe(cls))]
+        return [
+            "{} does not inherit from diablos.blocks.base_block.BaseBlock".format(_describe(cls))
+        ]
     if cls is BaseBlock:
         return ["BaseBlock itself is abstract and cannot be registered as a block"]
 

@@ -2,11 +2,24 @@
 Path resolution for both development and PyInstaller-bundled modes.
 
 Two path types:
-  resource_path()  — Read-only bundled assets (icons, default configs, examples).
-                     Resolves to sys._MEIPASS when frozen, project root in dev.
+  resource_path()  — Read-only bundled assets (default configs, locales, examples).
   user_data_path() — Writable user data (autosave, recent files, modified configs).
-                     Resolves to a platform-appropriate directory when frozen,
-                     project root in dev.
+
+Three ways DiaBloS runs, and where each kind of path resolves:
+
+  =================  ==========================  ===========================
+  mode               resource_path()             user_data_path()
+  =================  ==========================  ===========================
+  source checkout    repository root             repository root
+  (incl. ``pip install -e .``)
+  installed wheel    ``diablos/resources/``      platform data dir (below)
+  PyInstaller        ``sys._MEIPASS``            platform data dir
+  =================  ==========================  ===========================
+
+In a checkout the data folders (``config/``, ``locales/``, ``examples/``) live
+at the repository root; ``pyproject.toml`` maps them into the wheel as
+``diablos/resources/``, so the relative paths callers pass are the same in
+every mode.
 
 **Every runtime write must go through** :func:`user_data_path`,
 :func:`user_saves_path` or :func:`user_logs_path` — never through a bare
@@ -35,11 +48,27 @@ SETTINGS_ORG = "DiaBloS"
 SETTINGS_APP = "DiaBloS"
 
 
+# src/diablos/core/app_paths.py: the package directory is one level up and,
+# in a source checkout, the repository root three levels above that.
+_PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_CHECKOUT_ROOT = os.path.dirname(os.path.dirname(_PACKAGE_DIR))
+
+
+def checkout_root():
+    """The repository root when running from a source checkout, else None."""
+    root = _CHECKOUT_ROOT
+    if os.path.isfile(os.path.join(root, "pyproject.toml")) and os.path.isdir(
+        os.path.join(root, "config")
+    ):
+        return root
+    return None
+
+
 def get_base_path() -> str:
     """Return the base path for resolving bundled resource files (read-only)."""
     if getattr(sys, "frozen", False):
         return sys._MEIPASS
-    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return checkout_root() or os.path.join(_PACKAGE_DIR, "resources")
 
 
 def resource_path(relative_path: str) -> str:
@@ -62,14 +91,16 @@ def locales_path(filename: str = "") -> str:
 def get_user_data_dir() -> str:
     """Return a writable directory for user data (configs, autosave, etc.).
 
-    Frozen (PyInstaller):
+    Frozen (PyInstaller) and installed wheel:
       macOS:   ~/Library/Application Support/DiaBloS/
       Windows: %APPDATA%/DiaBloS/
       Linux:   ~/.local/share/DiaBloS/
-    Development: project root (same as get_base_path).
+    Source checkout: the repository root (same as get_base_path).
     """
     if not getattr(sys, "frozen", False):
-        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        root = checkout_root()
+        if root:
+            return root
 
     if sys.platform == "darwin":
         base = os.path.expanduser("~/Library/Application Support")

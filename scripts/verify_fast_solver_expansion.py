@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 
 # Add project root to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.append(os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")), "src"))
 
 from diablos.core.simulation.block import DBlock
 from diablos.core.simulation.connection import DLine

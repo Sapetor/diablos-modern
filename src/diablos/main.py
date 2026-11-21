@@ -175,9 +175,9 @@ def main():
     if _GUI_UNAVAILABLE is not None:
         print(
             f"The DiaBloS window needs PyQt6, which is not installed ({_GUI_UNAVAILABLE}).\n"
-            "Install it with: pip install PyQt6 pyqtgraph\n"
+            "Install it with: pip install 'diablos-modern[gui]'\n"
             "Without it you can still run diagrams headlessly: "
-            "diablos_modern.py run <diagram.diablos>",
+            "diablos run <diagram.diablos> (see diablos --help)",
             file=sys.stderr,
         )
         return 1
@@ -312,6 +312,17 @@ def main():
         return 1
 
 
+_USAGE = """usage: diablos [diagram.diablos]          open the application (needs the gui extra)
+       diablos run DIAGRAM [options]      simulate headlessly, write CSV/NPZ
+       diablos export-python DIAGRAM      write a standalone Python script
+       diablos diff A B                   compare two diagrams
+       diablos self-test [--no-gui]       check this installation
+       diablos --version
+
+'diablos COMMAND --help' shows a command's options. From a source checkout use
+'python diablos_modern.py' in place of 'diablos'. Scripts: from diablos.api import load"""
+
+
 def entry(argv=None):
     """Process entry point shared by ``python diablos_modern.py`` and the
     ``diablos`` console script.
@@ -319,9 +330,17 @@ def entry(argv=None):
     Headless subcommands (``run``, ``export-python``, ``diff``) dispatch to the CLI before
     any GUI is built, so agents/CI can simulate or export a diagram without a
     display. ``self-test`` checks the installation itself (the release
-    workflow runs it through every packaged build; see ``src/diablos/core/self_test.py``).
+    workflow runs it through every packaged build; see ``diablos/core/self_test.py``).
     """
     argv = sys.argv if argv is None else argv
+    if len(argv) > 1 and argv[1] in ("-h", "--help"):
+        print(_USAGE)
+        return 0
+    if len(argv) > 1 and argv[1] == "--version":
+        import diablos
+
+        print(f"DiaBloS {diablos.__version__}")
+        return 0
     if len(argv) > 1 and argv[1] == "self-test":
         from diablos.core.self_test import main as self_test_main
 

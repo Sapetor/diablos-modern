@@ -28,7 +28,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 EXAMPLES_DIR = REPO / "examples"
-sys.path.insert(0, str(REPO))
+sys.path.insert(0, str((REPO) / "src"))
 
 
 # Module-level reference to the QApplication. Without this, the app the

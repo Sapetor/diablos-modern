@@ -15,7 +15,7 @@ import sys
 import numpy as np
 
 # Run from anywhere: put the repo root on sys.path before importing lib.
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 
 # DBlock builds QPixmap-backed icons, which needs a live QApplication even
 # headless; without this the script aborts with "Must construct a

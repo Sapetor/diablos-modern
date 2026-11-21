@@ -115,7 +115,7 @@ In addition to those subdirs (and `tests/profiling/`), ~15 `test_*.py` files liv
 @pytest.mark.unit
 class TestScaleBlock:
     def test_basic_output(self):
-        from blocks.scale import ScaleBlock
+        from diablos.blocks.scale import ScaleBlock
         block = ScaleBlock()
         params = {'gain': 2.0, '_init_start_': True}
         result = block.execute(time=0.5, inputs={0: np.array([3.0])}, params=params, dtime=0.01)

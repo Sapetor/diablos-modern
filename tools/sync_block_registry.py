@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Scan the blocks/ directory and update _BLOCK_MODULES in src/diablos/core/block_loader.py.
+Scan src/diablos/blocks/ and update _BLOCK_MODULES in src/diablos/core/block_loader.py.
 
 Run this before building with PyInstaller so the frozen app includes all blocks.
 Called automatically by tools/build.sh, and reused by diablos.spec (which imports
@@ -18,8 +18,8 @@ import re
 import sys
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BLOCKS_DIR = os.path.join(PROJECT_ROOT, "blocks")
-BLOCK_LOADER = os.path.join(PROJECT_ROOT, "lib", "block_loader.py")
+BLOCKS_DIR = os.path.join(PROJECT_ROOT, "src", "diablos", "blocks")
+BLOCK_LOADER = os.path.join(PROJECT_ROOT, "src", "diablos", "core", "block_loader.py")
 
 #: Modules under blocks/ that define no block class. They are shared helpers
 #: imported *by* blocks, so listing them in ``_BLOCK_MODULES`` only made the
@@ -63,7 +63,7 @@ def scan_block_modules(blocks_dir=BLOCKS_DIR):
 
     for filename in sorted(os.listdir(blocks_dir)):
         if filename.endswith(".py") and _is_block_module(filename[:-3]):
-            modules.append(f"blocks.{filename[:-3]}")
+            modules.append(f"diablos.blocks.{filename[:-3]}")
 
     for subdir in sorted(os.listdir(blocks_dir)):
         subdir_path = os.path.join(blocks_dir, subdir)
@@ -72,7 +72,7 @@ def scan_block_modules(blocks_dir=BLOCKS_DIR):
             if os.path.exists(init_file):
                 for filename in sorted(os.listdir(subdir_path)):
                     if filename.endswith(".py") and _is_block_module(f"{subdir}/{filename[:-3]}"):
-                        modules.append(f"blocks.{subdir}.{filename[:-3]}")
+                        modules.append(f"diablos.blocks.{subdir}.{filename[:-3]}")
 
     return modules
 

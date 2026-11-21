@@ -27,7 +27,11 @@ from diablos.core.engine.block_names import canonical_fn
 from diablos.core.engine.block_params import runtime_params
 from diablos.core.engine.compile_cache import workspace_fingerprint
 from diablos.core.engine.compiled_delays import CompiledDelayError, is_delay_block
-from diablos.core.engine.compiler_kernels.discrete import DISCRETE_FNS, is_sampled_block, sample_update
+from diablos.core.engine.compiler_kernels.discrete import (
+    DISCRETE_FNS,
+    is_sampled_block,
+    sample_update,
+)
 from diablos.core.engine.solver_diagnostics import (
     estimate_stiffness,
     format_diagnostics_for_log,

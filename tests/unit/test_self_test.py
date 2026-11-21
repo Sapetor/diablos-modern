@@ -39,7 +39,7 @@ class TestSelfTest:
         assert "examples/x.diablos" in failed[0]["detail"]
 
     def test_entry_point_dispatches(self, monkeypatch):
-        import diablos_modern
+        import diablos.main as diablos_modern
 
         seen = {}
         monkeypatch.setattr(self_test, "main", lambda argv: seen.setdefault("argv", argv) and 0)

@@ -232,7 +232,7 @@ def print_report(issues):
 
 def main():
     project_root = find_project_root()
-    blocks_dir = project_root / "blocks"
+    blocks_dir = project_root / "src" / "diablos" / "blocks"
     wiki_dir = project_root / "docs" / "wiki"
 
     print(f"Project root: {project_root}")

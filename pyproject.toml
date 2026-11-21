@@ -1,22 +1,25 @@
 # Packaging + tooling configuration for DiaBloS Modern.
 #
 # The `[project]` table below is the single source of truth for the version:
-# `src/diablos/gui/__init__.py` parses it back out of this file (or, in a frozen
-# build, out of the `_version.txt` the spec emits), and `diablos.spec` /
-# `tools/build.sh` parse it so the macOS bundle version and the DMG filename
-# always match the release tag.
+# `diablos/gui/__init__.py` parses it back out of this file (or, in a frozen
+# build, out of the `_version.txt` the spec emits; installed, out of the
+# distribution metadata), and `diablos.spec` / `tools/build.sh` parse it so the
+# macOS bundle version and the DMG filename always match the release tag.
 #
-# Distribution to end users is PyInstaller (`diablos.spec`, `tools/build.sh`)
-# and DiaBloS is run from a checkout in development (`python diablos_modern.py`).
-# It is an *application*, not a library: its top-level directories are `lib/`,
-# `blocks/` and `config/`, names far too generic to drop into site-packages, so
-# this project deliberately installs no importable packages at all (see
-# `[tool.setuptools]` below). The pip metadata exists purely to carry one
-# canonical version string that `src/diablos/gui/__init__.py`, `diablos.spec`,
-# `tools/build.sh` and the release workflow all read back.
+# DiaBloS installs as one package, `diablos` (src/diablos):
+#   pip install diablos-modern          the engine + scripting API (numpy, scipy)
+#   pip install 'diablos-modern[gui]'   plus the application (`diablos` command)
+# Until 2026-11 the code lived in top-level `lib/`, `blocks/`, `modern_ui/`
+# packages and nothing was installable; `diablos.compat` maps those old names
+# for user blocks (automatically) and old scripts (opt-in).
+#
+# The data folders `config/`, `locales/`, `examples/`, `licenses/` stay at the
+# repository root (one canonical copy, used directly by a checkout); setup.py
+# copies them into the wheel as `diablos/resources/`, which is where
+# `diablos.core.app_paths.resource_path` looks in an installed package.
 
 [build-system]
-requires = ["setuptools>=64", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -24,7 +27,8 @@ name = "diablos-modern"
 version = "1.1.0"
 description = "Simulink-style block diagram simulation tool built with Python and PyQt6"
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.10"
 authors = [{ name = "DiaBloS Development Team" }]
 keywords = ["simulation", "block-diagram", "control-systems", "pyqt6", "simulink"]
@@ -33,25 +37,29 @@ classifiers = [
     "Environment :: X11 Applications :: Qt",
     "Intended Audience :: Education",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering",
 ]
 
-# Mirrors requirements.txt, which explains the bounds.
+# The engine needs only numpy and scipy (tests/regression/
+# test_engine_without_pyqt6.py::test_engine_needs_only_numpy_and_scipy).
+# Bounds are explained in requirements.txt, which lists everything (core + gui).
 dependencies = [
     "numpy>=1.20.0,<3.0",
-    "matplotlib>=3.5.0",
-    "tqdm>=4.60.0",
-    "pyqtgraph>=0.13.0",
-    "PyQt6>=6.7",
     "scipy>=1.6.0,<2.0",
-    "Pillow>=8.0.0",
 ]
 
 [project.optional-dependencies]
+# The application: window, live plots, figures, progress bar, GIF export.
+gui = [
+    "PyQt6>=6.7",
+    "pyqtgraph>=0.13.0",
+    "matplotlib>=3.5.0",
+    "tqdm>=4.60.0",
+    "Pillow>=8.0.0",
+]
 # Mirrors requirements-dev.txt.
 dev = [
     "pytest>=7.0.0",
@@ -74,23 +82,19 @@ symbolic = ["sympy>=1.9"]
 Homepage = "https://github.com/Sapetor/diablos-modern"
 Repository = "https://github.com/Sapetor/diablos-modern"
 
-[tool.setuptools]
-# Deliberately install NOTHING importable.
-#
-# `lib/`, `blocks/` and `config/` are top-level directories in this repo. The
-# previous `include = ["lib*", "modern_ui*", "blocks*", "config*"]` meant
-# `pip install .` dropped packages literally named `lib`, `blocks` and `config`
-# into site-packages, where they shadow anything else with those names for every
-# other project in the same environment. Renaming them is out of scope (they are
-# referenced by absolute import from ~500 places, saved diagrams and the spec),
-# so the project is simply not shipped as a wheel of top-level packages:
-# `pip install .` now installs only the distribution metadata (the canonical
-# version string), and `pip install -e .` likewise leaves the checkout as the
-# only import root. Run the app from the checkout (`python diablos_modern.py`)
-# or install a PyInstaller build; there is no `diablos` console script, because
-# a console script would import packages that are not installed.
-packages = []
-py-modules = []
+[project.scripts]
+# Headless subcommands (run, export-python, diff, self-test) work without the
+# gui extra; bare `diablos` opens the application and needs it.
+diablos = "diablos.main:entry"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["diablos*"]
+
+[tool.setuptools.package-data]
+# GUI icons ship inside the package; the root data folders are copied in by
+# setup.py (see the header).
+"diablos.gui" = ["icons/*.svg"]
 
 [tool.ruff]
 # 3.10 is the supported baseline (requires-python, CI matrix); do not let Ruff

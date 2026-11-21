@@ -412,7 +412,7 @@ may depend on instance state). A headless run creates no `QApplication`, with
 or without PyQt6 installed; set `DIABLOS_HEADLESS_QAPP=1` for a third-party
 block that builds a `QPixmap`/`QFont` outside `draw_icon`. Only process entry
 points (the CLI, Monte Carlo/sweep worker processes) select the offscreen Qt
-and `Agg` matplotlib backends; `diablos.core.api.load()` in a notebook leaves the
+and `Agg` matplotlib backends; `diablos.api.load()` in a notebook leaves the
 environment alone. `DSim.execution_init()` opens the settings dialog only when
 a Qt application is running.
 

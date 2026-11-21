@@ -6,7 +6,7 @@ from pathlib import Path
 
 # Add project root to sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
+sys.path.insert(0, str((PROJECT_ROOT) / "src"))
 
 
 def load_block_classes(blocks_dir):
@@ -25,7 +25,9 @@ def load_block_classes(blocks_dir):
         file_path = blocks_dir / string_path
 
         try:
-            spec = importlib.util.spec_from_file_location(f"blocks.{module_name}", file_path)
+            spec = importlib.util.spec_from_file_location(
+                f"diablos.blocks.{module_name}", file_path
+            )
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
 
@@ -160,7 +162,7 @@ def generate_category_page(category, blocks):
 
 def main():
     print("Initializing Wiki Generator...")
-    blocks_dir = PROJECT_ROOT / "blocks"
+    blocks_dir = PROJECT_ROOT / "src" / "diablos" / "blocks"
     docs_dir = PROJECT_ROOT / "docs"
     wiki_dir = ensure_wiki_dir(docs_dir)
 

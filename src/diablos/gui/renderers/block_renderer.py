@@ -592,7 +592,7 @@ class BlockRenderer:
         # Built-in icons are pure functions of the rect (tested), so they are
         # memoized per (class, geometry). A user block's draw_icon may read
         # instance state, so it is called every time instead.
-        cacheable = type(instance).__module__.startswith("blocks.")
+        cacheable = type(instance).__module__.startswith("diablos.blocks.")
         key = (type(instance),) + _geometry_key(block)
         cached = _ICON_SOURCE_CACHE.get(key) if cacheable else None
         if cached is not None:

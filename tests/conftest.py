@@ -6,9 +6,13 @@ import os
 import sys
 from pathlib import Path
 
-# Add parent directory to path so we can import diablos modules
+# Make the checkout's src/ importable here and in every child process the
+# tests start (subprocess tests run fresh interpreters), with or without an
+# editable install.
 project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+_src = str(project_root / "src")
+sys.path.insert(0, _src)
+os.environ["PYTHONPATH"] = os.pathsep.join(p for p in (_src, os.environ.get("PYTHONPATH", "")) if p)
 
 from diablos.core.qt_setup import configure_qt_env  # noqa: E402
 

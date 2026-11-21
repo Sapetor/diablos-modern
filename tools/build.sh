@@ -6,7 +6,7 @@
 #   source ~/.venvs/evaluate-diablos/bin/activate && ./tools/build.sh   # x86_64
 #
 # Steps:
-#   1. Sync _BLOCK_MODULES in block_loader.py with blocks/ directory
+#   1. Sync _BLOCK_MODULES in src/diablos/core/block_loader.py with src/diablos/blocks/
 #   2. Run PyInstaller to produce the app bundle
 #   3. Package into a DMG with Applications shortcut
 #

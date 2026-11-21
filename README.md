@@ -51,14 +51,28 @@ needed. The builds are unsigned — macOS needs
 `xattr -rd com.apple.quarantine /Applications/DiaBloS-arm64.app` once, and
 Windows SmartScreen needs *More info ▸ Run anyway*.
 
-**From source** (Python 3.10+):
+**With pip** (Python 3.10+). The application:
+
+```bash
+pip install "diablos-modern[gui] @ git+https://github.com/Sapetor/diablos-modern.git"
+diablos                      # opens the window; `diablos --help` lists the headless commands
+```
+
+Only the engine, for scripts, notebooks and CI (numpy and scipy, no Qt):
+
+```bash
+pip install "git+https://github.com/Sapetor/diablos-modern.git"
+python -c "from diablos.api import load; print(load.__doc__)"
+```
+
+**From a checkout** (for development):
 
 ```bash
 git clone https://github.com/Sapetor/diablos-modern.git
 cd diablos-modern
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-python diablos_modern.py
+pip install -e ".[gui,dev]"
+python diablos_modern.py     # or: diablos
 ```
 
 Full instructions, including conda and Linux system libraries:
@@ -97,7 +111,7 @@ python diablos_modern.py diff old.diablos new.diablos
 The same headless path is a Python API ([docs](https://sapetor.github.io/diablos-modern/user-guide/python-api/)):
 
 ```python
-from diablos.core.api import load
+from diablos.api import load
 
 sim = load("model.diablos")
 sim.set_param("gain1", "gain", 4.0)

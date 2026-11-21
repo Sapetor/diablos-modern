@@ -105,7 +105,7 @@ def test_startup_scales_the_whole_ui(store, scale):
     script = textwrap.dedent(
         """
         import os
-        import diablos_modern
+        import diablos.main as diablos_modern
 
         setup_application = diablos_modern.setup_application
 

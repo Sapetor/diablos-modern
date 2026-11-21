@@ -19,7 +19,7 @@ import numpy as np
 
 REPO = Path(__file__).resolve().parents[3]
 if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
+    sys.path.insert(0, str((REPO) / "src"))
 
 OUT_DIR = Path(
     os.environ.get("DIABLOS_BENCH_OUT", REPO / "scripts" / "benchmarks" / "pathsim" / "out")

@@ -246,7 +246,7 @@ Your block should appear in the Block Palette under the category you specified!
 
 ```python
 from diablos.blocks.base_block import validate_block_class
-from blocks.my_custom_block import MyCustomBlock
+from diablos.blocks.my_custom_block import MyCustomBlock
 
 validate_block_class(MyCustomBlock)   # raises BlockContractError with details
 ```
@@ -260,7 +260,7 @@ block with a malformed params spec, a port dict missing `name`, or an
 ```python
 # tests/unit/test_my_custom_block.py
 import pytest
-from blocks.my_custom_block import MyCustomBlock
+from diablos.blocks.my_custom_block import MyCustomBlock
 
 
 @pytest.mark.unit

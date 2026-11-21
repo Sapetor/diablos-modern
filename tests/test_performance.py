@@ -189,7 +189,9 @@ def run_benchmark():
 
         # Import the block
         try:
-            module = __import__(f"blocks.{block_type.lower()}", fromlist=[f"{block_type}Block"])
+            module = __import__(
+                f"diablos.blocks.{block_type.lower()}", fromlist=[f"{block_type}Block"]
+            )
             block_class = getattr(module, f"{block_type}Block")
             block = block_class()
 

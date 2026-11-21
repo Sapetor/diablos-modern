@@ -19,6 +19,11 @@ Start from the copy-paste templates:
 
 ## 1. The minimal block
 
+Blocks written before November 2026 import `blocks.base_block` (and
+`lib.engine.compiler_kernels`); the loader still maps those old names onto
+`diablos.blocks` / `diablos.core` for the block file, with a deprecation note
+in the log. New blocks use the names below.
+
 ```python
 import numpy as np
 from diablos.blocks.base_block import BaseBlock
@@ -342,7 +347,7 @@ ways:
   `.diablos` format strings. They are persisted and compared against.
 
 Strings in a *user* block are not extracted into the shipped catalogs (only
-`blocks/`, `lib/`, `modern_ui/` are scanned), so ship your own text in whatever
+`src/diablos/` is scanned), so ship your own text in whatever
 language you like — or in English, so it reads consistently.
 
 ---

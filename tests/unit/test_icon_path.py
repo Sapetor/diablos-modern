@@ -182,7 +182,7 @@ def test_guard_sees_imports_in_try_if_and_class_bodies():
 
 def test_block_library_imports_no_pyqt6():
     offenders = {}
-    for root, _dirs, files in os.walk(os.path.join(REPO, "blocks")):
+    for root, _dirs, files in os.walk(os.path.join(REPO, "src", "diablos", "blocks")):
         for name in files:
             if name.endswith(".py"):
                 path = os.path.join(root, name)
