@@ -6,7 +6,7 @@ Extracted from lib.py to reduce file size and improve modularity.
 
 import logging
 import re
-from PyQt6.QtCore import QPoint, QRect
+from lib.qt_types import QPoint, QRect
 from blocks.subsystem import Subsystem
 from blocks.inport import Inport
 from blocks.outport import Outport

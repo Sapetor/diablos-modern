@@ -394,6 +394,16 @@ For a headless run of either engine, `lib/cli.py`
 loads a diagram, simulates it, and exports the Scope traces to CSV/NPZ without
 the GUI. It defaults to the compiled path.
 
+The engine does not need PyQt6. The diagram model keeps its geometry and
+colours as `QPoint` / `QRect` / `QColor` / `QPainterPath`, imported from
+`lib/qt_types.py`: the real Qt classes when PyQt6 is installed (so the GUI can
+hand them straight to `QPainter`), pure-Python stand-ins with the same
+semantics otherwise. Anything that needs a `QGuiApplication` (`QFont`,
+`QPixmap`, dialogs) is created lazily, on first use by the GUI. Engine code in
+`lib/` must import these types from `lib.qt_types`, never from PyQt6 at module
+level; `tests/regression/test_engine_without_pyqt6.py` runs examples with
+PyQt6 made unimportable and compares the traces with a normal run.
+
 ### 4. File Save/Load Flow
 ```
 Save:

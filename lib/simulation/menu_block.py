@@ -2,10 +2,8 @@
 MenuBlocks class - represents blocks in the palette menu.
 """
 
-from PyQt6.QtGui import QPixmap, QFont
-from PyQt6.QtCore import Qt, QRect
-
 from lib.app_paths import resource_path
+from lib.qt_types import QRect
 
 
 class MenuBlocks:
@@ -33,24 +31,44 @@ class MenuBlocks:
         self.b_color = b_color
         self.size = coords
         self.side_length = (30, 30)
-        pixmap = QPixmap(resource_path(f"lib/icons/{self.block_fn.lower()}.png"))
-        if not pixmap.isNull():
-            self.image = pixmap.scaled(
-                self.side_length[0],
-                self.side_length[1],
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
-            )
-        else:
-            self.image = pixmap
+        self._image = None
+        self._font = None
         self.external = external
         self.collision = None
-        self.font = QFont("Arial", 10)
         self.block_class = block_class
         self.colors = colors
 
+    # QPixmap/QFont need a running QGuiApplication, which a headless engine
+    # run (every block type gets a MenuBlocks) does not have: build on use.
+    @property
+    def image(self):
+        if self._image is None:
+            from PyQt6.QtCore import Qt
+            from PyQt6.QtGui import QPixmap
+
+            pixmap = QPixmap(resource_path(f"lib/icons/{self.block_fn.lower()}.png"))
+            if not pixmap.isNull():
+                pixmap = pixmap.scaled(
+                    self.side_length[0],
+                    self.side_length[1],
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+            self._image = pixmap
+        return self._image
+
+    @property
+    def font(self):
+        if self._font is None:
+            from PyQt6.QtGui import QFont
+
+            self._font = QFont("Arial", 10)
+        return self._font
+
     def draw_menublock(self, painter, pos):
-        # Lazy import to avoid circular dependency
+        # Lazy imports: circular dependency, and GUI-only
+        from PyQt6.QtCore import Qt
+
         from lib.theming.theme_manager import theme_manager
 
         self.collision = QRect(40, 80 + 40 * pos, self.side_length[0], self.side_length[1])

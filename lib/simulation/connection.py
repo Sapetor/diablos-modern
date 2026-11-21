@@ -6,8 +6,7 @@ import logging
 import copy
 import math
 from typing import List, Tuple, Optional, Union
-from PyQt6.QtGui import QPainterPath, QColor
-from PyQt6.QtCore import QPoint, QPointF, QRect
+from lib.qt_types import QColor, QPainterPath, QPoint, QPointF, QRect
 
 logger = logging.getLogger(__name__)
 

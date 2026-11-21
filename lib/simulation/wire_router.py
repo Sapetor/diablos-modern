@@ -4,7 +4,7 @@ import heapq
 import logging
 from typing import Iterable, List, Optional, Set, Tuple
 
-from PyQt6.QtCore import QPoint, QRect
+from lib.qt_types import QPoint, QRect
 
 logger = logging.getLogger(__name__)
 

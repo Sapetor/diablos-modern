@@ -101,10 +101,17 @@ Export pulse semantics and compiled-run cancellation were worked on separate
 branches (see git log). Still open, both architectural:
 - [ ] **Qt-free core / installable package.** Per-diagram workspaces are done
   (2026-10-29: `Workspace` per `DSim`, `WorkspaceManager()` kept only as the
-  GUI's default). Still open: headless runs build an offscreen QApplication
-  because `lib/` (22 files) and `blocks/` (77 files, mostly `draw_icon`) import
-  PyQt6; needs the remaining Qt value types out of `lib/` and an installable
-  package namespace.
+  GUI's default). Stage 1 done (2026-11-21): the engine runs without PyQt6.
+  `lib/qt_types.py` re-exports the Qt value types or pure-Python stand-ins
+  (checked against Qt in `tests/unit/test_qt_types.py`); QFont/QPixmap and the
+  dialogs are created lazily; all 56 examples give identical traces with PyQt6
+  blocked (`tests/regression/test_engine_without_pyqt6.py`). With PyQt6
+  installed the CLI still builds an offscreen QApplication. Still open:
+  stage 2, `blocks/` draw_icon behind a lazy import boundary (already
+  function-local everywhere); stage 3, an installable package namespace, with
+  the GUI-only modules still in `lib/` (`dialogs.py`, `analysis/analyzers/`,
+  `theming/theme_manager.py`, `plotting/signal_plot.py`,
+  `services/diagram_service.py`) moved out or behind an optional `gui` extra.
 - [ ] **Experiments: disk-backed traces and resumable runs.** Streaming
   statistics, `keep_traces` and process-pool `workers` are done (2026-10-29,
   `lib/analysis/streaming.py`, `parallel.py`). Still open: write kept traces to

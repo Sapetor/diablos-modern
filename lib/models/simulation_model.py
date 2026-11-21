@@ -6,8 +6,7 @@ Manages blocks, lines, and diagram state.
 import logging
 import copy
 from typing import List, Dict, Optional, Tuple, Any
-from PyQt6.QtGui import QColor
-from PyQt6.QtCore import QRect, QPoint
+from lib.qt_types import QColor, QPoint, QRect
 from lib.simulation.block import DBlock
 from lib.simulation.connection import DLine
 from lib.block_loader import load_blocks
@@ -81,8 +80,13 @@ class SimulationModel:
     def _get_category_color(self, category: str) -> QColor:
         """Theme-aware fill colour for a block category."""
         from lib.theming.categories import category_theme_key
-        from lib.theming.theme_manager import theme_manager
 
+        try:
+            from lib.theming.theme_manager import theme_manager
+        except ImportError:
+            # Headless without PyQt6: colours are cosmetic, and a loaded
+            # diagram re-derives them from the palette (see FileService).
+            return QColor(128, 128, 128)
         return theme_manager.get_color(category_theme_key(category))
 
     def load_all_blocks(

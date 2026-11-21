@@ -5,9 +5,7 @@ import os
 import time
 from typing import Dict, Any, Optional
 from tqdm import tqdm
-from PyQt6.QtWidgets import QDialog
 from lib.workspace import Workspace
-from lib.dialogs import SimulationDialog
 from lib.i18n import tr
 from lib.sim_prefs import ask_before_run as _stored_ask_before_run, set_ask_before_run
 import logging
@@ -622,6 +620,11 @@ class DSim:
         the same dialog serves both the Simulation > Simulation Settings...
         action and the opt-in "ask before every run" path.
         """
+        # GUI-only: imported here so the engine imports without PyQt6.
+        from PyQt6.QtWidgets import QDialog
+
+        from lib.dialogs import SimulationDialog
+
         dialog = SimulationDialog(
             self.sim_time,
             self.sim_dt,

@@ -50,15 +50,20 @@ _QAPP = None
 def _ensure_headless_qapp():
     """Create an offscreen QApplication if none exists.
 
-    DSim construction builds real QWidgets/QPixmaps, which require a
-    QApplication even headless. Force the offscreen platform so no window ever
+    Kept when PyQt6 is installed so block code that still touches Qt behaves
+    as in the GUI; without PyQt6 the engine runs on lib.qt_types' stand-ins
+    and no QApplication is needed. Force the offscreen platform so no window ever
     appears (mirrors tests/conftest.py). Must run before QApplication is built.
     """
     global _QAPP
     from lib.qt_setup import configure_qt_env
 
     configure_qt_env(headless=True)
-    from PyQt6.QtWidgets import QApplication
+    try:
+        from PyQt6.QtWidgets import QApplication
+    except ImportError:
+        # No PyQt6: the engine runs on lib.qt_types' pure-Python stand-ins.
+        return None
 
     _QAPP = QApplication.instance() or QApplication(["diablos-run"])
     return _QAPP

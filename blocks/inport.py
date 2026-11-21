@@ -13,7 +13,7 @@ class Inport(DBlock):
     """
 
     def __init__(self, block_name="In1", sid=1, coords=(0, 0, 40, 30), color="green"):
-        from PyQt6.QtCore import QRect
+        from lib.qt_types import QRect
 
         if isinstance(coords, tuple):
             rect = QRect(*coords)

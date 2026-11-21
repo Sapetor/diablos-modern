@@ -7,7 +7,7 @@ import json
 import os
 import logging
 from typing import Any, Callable, Dict, List, Optional, Tuple
-from PyQt6.QtCore import QRect
+from lib.qt_types import QRect
 
 from lib.atomic_io import atomic_write_json  # noqa: F401 - re-exported
 from lib.services.file_dialogs import prompt_open_path, prompt_save_path
@@ -683,7 +683,7 @@ class FileService:
     ) -> Optional[Any]:
         """Reconstruct a single connection line from its serialized dict."""
         from lib.simulation.connection import DLine
-        from PyQt6.QtCore import QPoint
+        from lib.qt_types import QPoint
 
         points = [tuple(p) if isinstance(p, list) else p for p in line_data["points"]]
 

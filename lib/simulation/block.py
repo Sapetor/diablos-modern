@@ -7,9 +7,7 @@ import copy
 from typing import Dict, List, Optional, Any, Union
 import math
 import numpy as np
-from PyQt6.QtGui import QColor, QFont, QPixmap
-from PyQt6.QtCore import QRect, QPoint
-from lib.dialogs import PortDialog
+from lib.qt_types import QColor, QPoint, QRect
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +98,6 @@ class DBlock:
             self.b_color: QColor = QColor()  # invalid colour = "no colour"
         else:
             self.b_color: QColor = QColor(color)
-        self.image: QPixmap = QPixmap()  # Initialize as null QPixmap since no icons are available
 
         self.params: Dict[str, Any] = params.copy()
         self.initial_params: Dict[str, Any] = params.copy()
@@ -163,8 +160,6 @@ class DBlock:
         self.selected: bool = False
 
         self.font_size: int = 11  # Reduced from 14 for better fit
-        self.font: QFont = QFont()
-        self.font.setPointSize(self.font_size)
 
         self.hierarchy: int = -1
         self.data_received: int = 0
@@ -610,6 +605,7 @@ class DBlock:
 
     def change_port_numbers(self):
         logger.debug(f"Changing port numbers for block: {self.name}")
+        from lib.dialogs import PortDialog  # GUI-only; keeps the engine Qt-free
 
         if self.io_edit == "both":
             # Inputs and outputs can be edited
@@ -746,10 +742,30 @@ class DBlock:
 
         logger.debug(f"Final parameters for {self.name}: {self.params}")
 
+    @property
+    def font(self):
+        """The block-name font (a ``QFont``), created on first use.
+
+        Building a QFont needs a running QGuiApplication, which a headless
+        engine run does not have, so only the GUI (the renderer) creates it.
+        """
+        font = self.__dict__.get("_font")
+        if font is None:
+            from PyQt6.QtGui import QFont
+
+            font = QFont()
+            font.setPointSize(self.font_size)
+            self._font = font
+        return font
+
+    @font.setter
+    def font(self, value):
+        self._font = value
+
     def __deepcopy__(self, memo):
         """
-        Custom deepcopy implementation to assume QPixmap is not copied (recreate or ignore).
-        QPixmap cannot be pickled/copied deeply.
+        Custom deepcopy: GUI objects (QFont/QPixmap) are not copied, and Qt
+        value types are rebuilt with their copy constructors.
         """
         # Create a new instance
         cls = self.__class__
@@ -771,14 +787,10 @@ class DBlock:
         }
 
         for k, v in self.__dict__.items():
-            if k == "image" or k == "pixmap":
-                # QPixmap cannot be copied, create a new empty one
-                setattr(result, k, QPixmap())
-            elif k == "font":
-                # QFont cannot be copied safely in some versions, recreate it
-                f = QFont()
-                f.setPointSize(self.font_size)
-                setattr(result, k, f)
+            if k in ("image", "pixmap", "_font"):
+                # GUI objects (QPixmap/QFont) are not copied; the font is
+                # recreated on first use (see the ``font`` property).
+                setattr(result, k, None)
             elif isinstance(v, QColor):
                 # QColor cannot always be deepcopied; reconstruct it explicitly
                 setattr(result, k, QColor(v))

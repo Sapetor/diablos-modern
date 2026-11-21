@@ -13,7 +13,6 @@ import logging
 
 import numpy as np
 
-from lib.plotting.signal_plot import SignalPlot
 
 logger = logging.getLogger(__name__)
 
@@ -138,6 +137,8 @@ class _PyQtGraphScopeMixin:
             previous_run = self._stash_run(t_arr, flat_labels, flat_vectors, flat_step_modes)
 
             # Use step mode for discrete/ZOH signals to keep values constant between samples
+            from lib.plotting.signal_plot import SignalPlot
+
             self.plotty = SignalPlot(
                 self.dsim.sim_dt,
                 flat_labels,
@@ -193,6 +194,8 @@ class _PyQtGraphScopeMixin:
                 self._close_plotty()
 
                 step_modes = self._scope_step_modes()
+                from lib.plotting.signal_plot import SignalPlot
+
                 self.plotty = SignalPlot(
                     self.dsim.sim_dt, labels_list, self.dsim.plot_trange, step_mode=step_modes
                 )

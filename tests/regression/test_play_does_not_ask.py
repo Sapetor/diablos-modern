@@ -26,6 +26,7 @@ import pytest
 from PyQt6.QtCore import QPoint
 from PyQt6.QtWidgets import QDialog
 
+import lib.dialogs as lib_dialogs
 import lib.lib as lib_lib
 from lib.dialogs import SimulationDialog
 
@@ -38,7 +39,7 @@ pytestmark = [pytest.mark.regression, pytest.mark.qt]
 
 
 def _spy(monkeypatch, result=QDialog.DialogCode.Rejected, mutate=None):
-    """Replace ``lib.lib.SimulationDialog`` with a recording subclass.
+    """Replace ``lib.dialogs.SimulationDialog`` with a recording subclass.
 
     Returns the list its instances are appended to. ``mutate`` (if given) is
     called with the dialog just before ``exec`` returns ``result``, so a test
@@ -56,7 +57,7 @@ def _spy(monkeypatch, result=QDialog.DialogCode.Rejected, mutate=None):
                 mutate(self)
             return result
 
-    monkeypatch.setattr(lib_lib, "SimulationDialog", _Spy)
+    monkeypatch.setattr(lib_dialogs, "SimulationDialog", _Spy)
     return seen
 
 
