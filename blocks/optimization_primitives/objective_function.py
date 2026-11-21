@@ -76,9 +76,9 @@ class ObjectiveFunctionBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw f(x) over axes with the evaluated point marked."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Axes
         path.moveTo(0.08, 0.90)
         path.lineTo(0.96, 0.90)

@@ -80,9 +80,9 @@ class ExternalBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw a bracketed source-file glyph (external code)."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         path.moveTo(0.2, 0.2)
         path.lineTo(0.8, 0.2)
         path.moveTo(0.2, 0.5)

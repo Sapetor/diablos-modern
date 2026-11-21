@@ -101,9 +101,9 @@ class DataFitBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw data fit icon - data points with fitted curve."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Draw data points
         path.addEllipse(0.15, 0.55, 0.08, 0.08)
         path.addEllipse(0.28, 0.35, 0.08, 0.08)

@@ -80,9 +80,9 @@ class SwitchBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw switch selector icon in normalized 0-1 coordinates."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Control arrow from top
         path.moveTo(0.5, 0.10)
         path.lineTo(0.5, 0.35)

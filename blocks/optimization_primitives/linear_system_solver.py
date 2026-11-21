@@ -86,9 +86,9 @@ class LinearSystemSolverBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw a bracketed triangular factor (LU solve of Ax = b)."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Brackets
         path.moveTo(0.22, 0.08)
         path.lineTo(0.12, 0.08)

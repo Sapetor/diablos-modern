@@ -56,9 +56,9 @@ class ConstantBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw constant value icon in normalized 0-1 coordinates."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Horizontal line representing constant
         path.moveTo(0.1, 0.5)
         path.lineTo(0.9, 0.5)

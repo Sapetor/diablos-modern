@@ -68,9 +68,9 @@ class SineBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw sine wave icon in normalized 0-1 coordinates."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         path.moveTo(0.1, 0.5)
         path.quadTo(0.3, 0.1, 0.5, 0.5)
         path.quadTo(0.7, 0.9, 0.9, 0.5)

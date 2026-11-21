@@ -49,9 +49,9 @@ class SigProductBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw multiplication X symbol in normalized 0-1 coordinates."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         path.moveTo(0.2, 0.2)
         path.lineTo(0.8, 0.8)
         path.moveTo(0.2, 0.8)

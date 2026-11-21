@@ -88,9 +88,9 @@ class DiscreteStateSpaceBlock(StateSpaceBaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw a bracketed coefficient matrix beside a discrete "z"."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Left bracket
         path.moveTo(0.26, 0.12)
         path.lineTo(0.16, 0.12)

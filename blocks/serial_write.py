@@ -77,9 +77,9 @@ class SerialWriteBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """A plug with an outgoing arrow."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         path.addRoundedRect(0.15, 0.35, 0.30, 0.30, 0.05, 0.05)
         path.moveTo(0.05, 0.43)
         path.lineTo(0.15, 0.43)

@@ -229,7 +229,7 @@ All of these have working defaults in `BaseBlock`; override only what you need.
 | `shape` | `"rect"` | Outline: `rect`, `triangle` (amplifier), `circle` (Sum/Product), `tag` (Goto/From). Unknown tokens are rejected by the validator. |
 | `use_port_grid_snap` | `True` | Set `False` when exact port geometry matters (triangles). |
 | `io_editable` | `None` | `"input"`, `"output"` or `"both"` to let the user change the port count. |
-| `draw_icon(block_rect)` | `None` | Return a `QPainterPath` in 0..1 normalized coordinates for the block glyph. See [`SYMBOL_DRAWING_GUIDE.md`](SYMBOL_DRAWING_GUIDE.md). |
+| `draw_icon(block_rect)` | `None` | Return an `IconPath` (`lib.icon_path`; records `QPainterPath`-style calls, so no Qt import) in 0..1 normalized coordinates for the block glyph. A `QPainterPath` is still accepted. Return type: `IconPath | QPainterPath | None`. See [`SYMBOL_DRAWING_GUIDE.md`](SYMBOL_DRAWING_GUIDE.md). |
 | `symbolic_execute(inputs, params)` | `None` | Return `{port: sympy_expr}` so the block participates in equation extraction / transfer-function export. Without it the block is opaque to the symbolic engine (numeric linearization still works). |
 | `get_symbolic_params(params)` | `{}` | Which parameters become symbols during extraction. |
 | `output_is_post_update` | `False` | `True` when `execute()` returns the *already advanced* state (like Integrator), so a sample-time gate holds the pre-update value instead. |

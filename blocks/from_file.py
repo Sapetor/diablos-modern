@@ -109,9 +109,9 @@ class FromFileBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw a document/data-file glyph in normalized 0-1 coordinates."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Page outline with a folded corner.
         path.moveTo(0.30, 0.15)
         path.lineTo(0.62, 0.15)

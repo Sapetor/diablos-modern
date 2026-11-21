@@ -89,9 +89,9 @@ Output = Bias + Amplitude * Waveform(Frequency * t + Phase)"""
         return {0: bias + amp * val}
 
     def draw_icon(self, block_rect):
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
 
         # Draw a composite wave icon (sine + square hint)
         # Sine part

@@ -67,9 +67,9 @@ class TransportDelayBlock(DelayBufferBlock):
 
     def draw_icon(self, block_rect):
         """Draw a step and its time-shifted copy, spanned by a tau arrow."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Input step (upper band)
         path.moveTo(0.04, 0.38)
         path.lineTo(0.28, 0.38)

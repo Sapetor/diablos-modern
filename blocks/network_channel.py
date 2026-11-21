@@ -115,9 +115,9 @@ class NetworkChannelBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw a 'lossy + delayed pulse' icon (two nodes, one dropped) in 0-1 coords."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # transmit node
         path.addEllipse(0.08, 0.42, 0.16, 0.16)
         # receive node

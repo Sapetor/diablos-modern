@@ -211,7 +211,7 @@ class TestFFTBlock:
         assert "frequency" in block.doc.lower() or "Frequency" in block.doc
 
     def test_draw_icon_returns_path(self):
-        """Test that draw_icon returns a QPainterPath."""
+        """Test that draw_icon returns an IconPath."""
         from blocks.fft import FFTBlock
         from PyQt6.QtCore import QRectF
 
@@ -219,10 +219,10 @@ class TestFFTBlock:
         rect = QRectF(0, 0, 100, 100)
         path = block.draw_icon(rect)
 
-        # Should return a QPainterPath
-        from PyQt6.QtGui import QPainterPath
+        # Should return an IconPath
+        from lib.icon_path import IconPath
 
-        assert isinstance(path, QPainterPath)
+        assert isinstance(path, IconPath)
 
     def test_multiple_executions_same_params_dict(self):
         """Test that same params dict is used across executions."""

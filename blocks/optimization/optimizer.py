@@ -124,9 +124,9 @@ class OptimizerBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw optimizer icon - converging arrows to minimum."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Draw converging search pattern
         # Left arrow
         path.moveTo(0.2, 0.3)

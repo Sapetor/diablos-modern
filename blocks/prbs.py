@@ -69,9 +69,9 @@ class PRBSBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw PRBS pulse train icon in normalized 0-1 coordinates."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Irregular pulse train
         path.moveTo(0.1, 0.7)
         path.lineTo(0.18, 0.7)

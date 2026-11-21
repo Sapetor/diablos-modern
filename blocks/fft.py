@@ -67,9 +67,9 @@ class FFTBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw FFT spectrum icon in normalized 0-1 coordinates."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Axis
         path.moveTo(0.15, 0.80)
         path.lineTo(0.15, 0.20)

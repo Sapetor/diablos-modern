@@ -78,9 +78,9 @@ class AdamBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw a damped zig-zag descent converging in a cost bowl."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Cost bowl
         path.moveTo(0.06, 0.08)
         path.quadTo(0.50, 1.12, 0.94, 0.08)

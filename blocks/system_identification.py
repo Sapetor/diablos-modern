@@ -113,9 +113,9 @@ class SystemIdentificationBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Measured points with a fitted step response through them."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         for x, y in ((0.22, 0.70), (0.34, 0.45), (0.48, 0.33), (0.64, 0.29), (0.80, 0.30)):
             path.addEllipse(x - 0.035, y - 0.035, 0.07, 0.07)
         path.moveTo(0.15, 0.82)

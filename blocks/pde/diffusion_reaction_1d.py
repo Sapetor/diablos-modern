@@ -120,9 +120,9 @@ class DiffusionReaction1DBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw diffusion-reaction icon - spreading profile with reaction."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Draw spreading Gaussian profile
         path.moveTo(0.1, 0.75)
         path.cubicTo(0.2, 0.75, 0.35, 0.25, 0.5, 0.25)

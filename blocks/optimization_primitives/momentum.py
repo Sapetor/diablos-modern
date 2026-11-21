@@ -72,9 +72,9 @@ class MomentumBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw a cost bowl with an arrow carrying through the minimum."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Cost bowl
         path.moveTo(0.08, 0.10)
         path.quadTo(0.50, 1.10, 0.92, 0.10)

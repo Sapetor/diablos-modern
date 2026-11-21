@@ -8,6 +8,7 @@ run route wires or hit-test differently from the GUI.
 import importlib.util
 import os
 import pickle
+import math
 import random
 import sys
 
@@ -97,6 +98,8 @@ def test_rect_setters_match_qt(pure):
 
 
 def test_rectf_matches_qt(pure):
+    for args in [(1.5, 2.0, 10.25, 4.0), (-2.5, 0.5, 3.5, 0.4), (0.49, 1.51, 2.0, 2.0)]:
+        assert _r(QRectF(*args).toRect()) == _r(pure.QRectF(*args).toRect()), args
     q, p = QRectF(1.5, 2.0, 10.25, 4.0), pure.QRectF(1.5, 2.0, 10.25, 4.0)
     assert (q.right(), q.bottom()) == (p.right(), p.bottom())
     assert _p(q.center()) == _p(p.center())
@@ -155,17 +158,53 @@ def test_stand_ins_pickle(pure):
         assert pickle.loads(pickle.dumps(obj)) == obj
 
 
-def test_painter_path_records_elements(pure):
-    path = pure.QPainterPath(pure.QPointF(0, 0))
-    assert path.isEmpty()
-    path.lineTo(pure.QPointF(10, 0))
-    path.quadTo(pure.QPointF(20, 0), pure.QPointF(20, 10))
-    assert not path.isEmpty()
-    assert [path.elementAt(i).isCurveTo() for i in range(path.elementCount())] == [
-        False,
-        False,
-        True,
-        True,
-    ]
-    assert _p(path.pointAtPercent(0)) == (0.0, 0.0)
-    assert _p(path.pointAtPercent(1)) == (20.0, 10.0)
+def _path_ops(lib, P):
+    """The same drawing calls against either backend's QPainterPath."""
+    path = lib.QPainterPath(P(0, 0))
+    path.lineTo(P(0, 0))  # zero-length: Qt drops it
+    path.lineTo(P(10, 0))
+    path.quadTo(P(20, 0), P(20, 10))  # Qt stores a cubic
+    path.cubicTo(P(20, 10), P(20, 10), P(20, 10))  # degenerate: dropped
+    path.cubicTo(P(30, 20), P(0, 40), P(40, 40))
+    path.moveTo(P(50, 50))
+    path.moveTo(P(60, 60))  # a trailing moveTo is replaced
+    path.lineTo(P(60, 80))
+    return path
+
+
+def test_painter_path_matches_qt(pure):
+    from PyQt6 import QtGui
+
+    real = _path_ops(QtGui, QPointF)
+    stand_in = _path_ops(pure, pure.QPointF)
+    assert stand_in.elementCount() == real.elementCount()
+    for i in range(real.elementCount()):
+        a, b = real.elementAt(i), stand_in.elementAt(i)
+        assert (a.type.value, a.isCurveTo()) == (b.type, b.isCurveTo()), i
+        assert (a.x, a.y) == pytest.approx((b.x, b.y)), i
+    for t in (0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0):
+        qa, qb = real.pointAtPercent(t), stand_in.pointAtPercent(t)
+        assert math.dist((qa.x(), qa.y()), (qb.x(), qb.y())) < 0.5, t
+    assert pure.QPainterPath(pure.QPointF(1, 1)).isEmpty()
+    degenerate = pure.QPainterPath(pure.QPointF(5, 5))
+    degenerate.cubicTo(pure.QPointF(5, 5), pure.QPointF(5, 5), pure.QPointF(5, 5))
+    assert degenerate.isEmpty() and degenerate.elementCount() == 1
+
+
+def test_integer_types_refuse_floats_like_pyqt6(pure):
+    for bad in ((1.5, 2), (1.0, 2)):
+        with pytest.raises(TypeError):
+            QPoint(*bad)
+        with pytest.raises(TypeError):
+            pure.QPoint(*bad)
+        with pytest.raises(TypeError):
+            pure.QRect(*bad, 3, 4)
+    # ...but scaling a point rounds, as Qt's operator* does.
+    assert _p(QPoint(3, 5) * 1.5) == _p(pure.QPoint(3, 5) * 1.5)
+    assert _p(QPoint(-3, 5) / 2) == _p(pure.QPoint(-3, 5) / 2)
+
+
+def test_every_qt_colour_name_is_known(pure):
+    for name in QColor.colorNames():
+        assert pure.QColor(name).name() == QColor(name).name(), name
+    assert pure.QColor("SteelBlue").name() == "#4682b4"

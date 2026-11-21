@@ -153,8 +153,9 @@ def _worker_init(data, use_fast_solver, workspace_vars, cancel_event, block_cont
     explicit "block type not available" error instead of running a reduced
     diagram.
     """
-    from lib.cli import new_headless_dsim
+    from lib.cli import configure_headless_process, new_headless_dsim
 
+    configure_headless_process()  # a worker process: never show a window
     dsim = new_headless_dsim()
     apply_workspace_variables(workspace_vars, dsim)
     apply_block_context(block_context, dsim)

@@ -87,9 +87,9 @@ class FieldProbe2DBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw 2D probe icon - crosshairs on grid."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
 
         # Grid
         path.addRect(0.2, 0.2, 0.6, 0.6)
@@ -254,9 +254,9 @@ class FieldScope2DBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw 2D scope icon - heatmap pattern."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
 
         # Screen/frame
         path.addRect(0.15, 0.15, 0.7, 0.7)
@@ -373,9 +373,9 @@ class FieldSliceBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw slice icon - grid with line through it."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
 
         # Grid
         path.addRect(0.2, 0.2, 0.6, 0.6)

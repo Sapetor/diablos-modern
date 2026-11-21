@@ -8,23 +8,31 @@ This guide outlines the standards for drawing block symbols in the `modern_ui` f
     - `0.0, 0.0`: Top-Left corner of the block.
     - `1.0, 1.0`: Bottom-Right corner of the block.
     - `0.5, 0.5`: Center of the block.
-- **Scaling**: The `draw_Block` method automatically scales these normalized coordinates to the actual block size (width, height) using a `QTransform`.
+- **Scaling**: The renderer automatically scales these normalized coordinates to the actual block size (width, height) using a `QTransform`.
 - **Margins**: Avoid drawing too close to the edges. A safe internal margin is generally **0.1** to **0.9**.
 
-## drawing Implementation
+## Drawing Implementation
 
-Symbols are drawn using `QPainterPath` in `lib/simulation/block.py`.
+A block draws its symbol in its own `draw_icon(block_rect)` method by building
+an `IconPath` (`lib/icon_path.py`) and returning it. `IconPath` records the
+same calls as Qt's `QPainterPath` (numbers only), so the block needs no GUI
+toolkit; the renderer replays the path onto a `QPainterPath`.
 
 ### Code Structure
 
 ```python
-elif self.block_fn == "BlockName":
-    # 1. Define the path using normalized coordinates
-    path.moveTo(0.1, 0.5)
-    path.lineTo(0.9, 0.5)
-    
-    # 2. Add shapes or details
-    # Arrows, Curves, etc.
+from lib.icon_path import IconPath
+
+class MyBlock(BaseBlock):
+    def draw_icon(self, block_rect):
+        path = IconPath()
+        # 1. Define the path using normalized coordinates
+        path.moveTo(0.1, 0.5)
+        path.lineTo(0.9, 0.5)
+        # 2. Add shapes or details: quadTo, cubicTo, addEllipse, addRect,
+        #    addRoundedRect, arcTo, closeSubpath
+        path.addEllipse(0.45, 0.45, 0.1, 0.1)
+        return path
 ```
 
 ### Best Practices

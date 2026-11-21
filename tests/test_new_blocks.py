@@ -131,8 +131,8 @@ def test_cost_function():
 
 
 def test_draw_icons():
-    """Every PDE/Optimization block draws an icon (a QPainterPath or None)."""
-    from PyQt6.QtGui import QPainterPath
+    """Every PDE/Optimization block draws an icon (an IconPath or None)."""
+    from lib.icon_path import IconPath
 
     problems = []
     for inst in _instances():
@@ -146,6 +146,6 @@ def test_draw_icons():
         except Exception as e:
             problems.append(f"{inst.block_name}: {e}")
             continue
-        if path is not None and not isinstance(path, QPainterPath):
+        if path is not None and not isinstance(path, IconPath):
             problems.append(f"{inst.block_name}: returned {type(path)}")
     assert not problems

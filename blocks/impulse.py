@@ -56,9 +56,9 @@ class ImpulseBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw impulse icon: vertical spike with arrow."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Baseline
         path.moveTo(0.1, 0.8)
         path.lineTo(0.9, 0.8)

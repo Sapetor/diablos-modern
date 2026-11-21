@@ -67,9 +67,9 @@ class ScopeBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw oscilloscope icon in normalized 0-1 coordinates."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         path.moveTo(0.1, 0.9)
         path.lineTo(0.9, 0.9)  # x-axis
         path.moveTo(0.1, 0.9)

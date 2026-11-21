@@ -63,9 +63,9 @@ class DeadbandBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw deadband characteristic icon in normalized 0-1 coordinates."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Left slope
         path.moveTo(0.15, 0.80)
         path.lineTo(0.35, 0.50)

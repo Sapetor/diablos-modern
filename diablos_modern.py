@@ -67,8 +67,16 @@ from lib.qt_setup import configure_qt_env
 
 configure_qt_env()  # must precede the first Qt / pyqtgraph import
 
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtGui import QFont
+try:
+    import PyQt6  # noqa: F401
+except ImportError as _exc:
+    # Headless install: the run / export-python / diff subcommands still work
+    # (see entry()); only the GUI needs PyQt6.
+    _GUI_UNAVAILABLE = _exc
+else:
+    _GUI_UNAVAILABLE = None
+    from PyQt6.QtWidgets import QApplication
+    from PyQt6.QtGui import QFont
 
 
 def _preload_heavy_modules():
@@ -109,9 +117,10 @@ _preload_thread = threading.Thread(target=_preload_heavy_modules, daemon=True)
 _preload_thread.start()
 
 # Import modern UI components
-from modern_ui.main_window import ModernDiaBloSWindow
-from modern_ui.styles.qss_styles import apply_modern_theme
-from modern_ui.themes.theme_manager import theme_manager, ThemeType
+if _GUI_UNAVAILABLE is None:
+    from modern_ui.main_window import ModernDiaBloSWindow
+    from modern_ui.styles.qss_styles import apply_modern_theme
+    from modern_ui.themes.theme_manager import theme_manager, ThemeType
 
 # Setup logging from config file
 from lib.logging_config import setup_logging
@@ -163,6 +172,15 @@ def setup_application():
 
 def main():
     """Main application entry point."""
+    if _GUI_UNAVAILABLE is not None:
+        print(
+            f"The DiaBloS window needs PyQt6, which is not installed ({_GUI_UNAVAILABLE}).\n"
+            "Install it with: pip install PyQt6 pyqtgraph\n"
+            "Without it you can still run diagrams headlessly: "
+            "diablos_modern.py run <diagram.diablos>",
+            file=sys.stderr,
+        )
+        return 1
     try:
         logger.info("Starting Modern DiaBloS Application - Phase 1")
 

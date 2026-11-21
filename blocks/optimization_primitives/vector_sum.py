@@ -85,9 +85,9 @@ class VectorSumBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw a summing junction between two vector buses."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Bus in
         path.moveTo(0.00, 0.36)
         path.lineTo(0.22, 0.36)

@@ -108,9 +108,9 @@ class RandomSourceBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw a 'dice / random samples' icon in normalized 0-1 coordinates."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # scattered random stems on a baseline
         path.moveTo(0.10, 0.80)
         path.lineTo(0.10, 0.45)

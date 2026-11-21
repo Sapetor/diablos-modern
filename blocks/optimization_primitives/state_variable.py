@@ -85,9 +85,9 @@ class StateVariableBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw a state register x fed back on itself."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Register box
         path.moveTo(0.26, 0.24)
         path.lineTo(0.74, 0.24)

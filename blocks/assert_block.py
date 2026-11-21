@@ -61,9 +61,9 @@ class AssertBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw a check mark inside a warning triangle."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Triangle
         path.moveTo(0.50, 0.06)
         path.lineTo(0.96, 0.90)

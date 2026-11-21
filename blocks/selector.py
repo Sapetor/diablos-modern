@@ -71,9 +71,9 @@ class SelectorBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw selector icon in normalized 0-1 coordinates."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Vector box on left
         path.moveTo(0.15, 0.3)
         path.lineTo(0.15, 0.7)

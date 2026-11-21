@@ -239,20 +239,25 @@ class BaseBlock(ABC):
 
     def draw_icon(self, block_rect: Any) -> Optional[Any]:
         """
-        Return a QPainterPath for the block's icon in normalized coordinates.
+        Return the block's icon as an ``IconPath`` in normalized coordinates.
 
         The path should use coordinates from 0.0 to 1.0 where (0,0) is top-left
         and (1,1) is bottom-right. The path will be automatically scaled and
         positioned within the block's drawing area.
 
+        ``lib.icon_path.IconPath`` records ``QPainterPath``-style calls
+        (``moveTo``, ``lineTo``, ``cubicTo``, ``addEllipse``, ...; numbers only),
+        so a block needs no GUI toolkit; the renderer replays it onto a
+        ``QPainterPath``. A ``QPainterPath`` is still accepted from older blocks.
+
         Override this method in subclasses to provide custom block icons.
-        If not overridden, the fallback switch-based drawing in DBlock is used.
 
         Args:
-            block_rect: QRect of the block (for context, not for positioning).
+            block_rect: the block's rectangle (for context, not for positioning);
+                may be None.
 
         Returns:
-            QPainterPath in 0-1 normalized coordinates, or None to use fallback.
+            IconPath in 0-1 normalized coordinates, or None for no drawn icon.
         """
         return None  # Default: use fallback switch-based drawing
 

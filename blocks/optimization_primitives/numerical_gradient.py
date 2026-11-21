@@ -120,9 +120,9 @@ class NumericalGradientBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw a nabla beside an approximation sign (finite differences)."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Nabla
         path.moveTo(0.12, 0.16)
         path.lineTo(0.68, 0.16)

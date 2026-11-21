@@ -19,9 +19,8 @@ The same object drives the analysis tools: :meth:`Diagram.monte_carlo`,
 
 Everything here is a thin layer over the headless path the CLI and the
 experiment tools already use (``lib/cli.py``, ``DSim.run_tuning_simulation``,
-``lib/analysis/``). DSim builds Qt objects even headless, so the first
-:func:`load` creates an offscreen QApplication if the process has none; no
-window is ever shown.
+``lib/analysis/``). It needs no QApplication and runs without PyQt6
+installed; no window is ever shown.
 
 Run from the repository root (DiaBloS installs no importable package).
 Workspace variables belong to the diagram: each :class:`Diagram` owns its own

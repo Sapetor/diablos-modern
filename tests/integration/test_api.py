@@ -261,14 +261,22 @@ def test_failed_run_raises_simulation_error():
 
 
 def test_cold_start_without_a_qapplication():
-    """A fresh interpreter with no Qt set up runs a diagram and exits cleanly."""
+    """A fresh interpreter with no Qt set up runs a diagram and exits cleanly.
+
+    It creates no QApplication and leaves the Qt/matplotlib environment alone
+    (a notebook's later plotting must not be forced offscreen). Until
+    2026-11-21 load() built an offscreen QApplication.
+    """
     code = (
+        "import os\n"
         "from lib.api import load\n"
         f"res = load({FIRST_ORDER!r}).run(t=2.0)\n"
-        "from PyQt6.QtGui import QGuiApplication\n"
-        "print(res.engine, QGuiApplication.platformName(), round(float(res['output'][-1]), 4))\n"
+        "from PyQt6.QtCore import QCoreApplication\n"
+        "print(res.engine, QCoreApplication.instance() is None,"
+        " os.environ.get('QT_QPA_PLATFORM'), os.environ.get('MPLBACKEND'),"
+        " round(float(res['output'][-1]), 4))\n"
     )
-    env = {k: v for k, v in os.environ.items() if k != "QT_QPA_PLATFORM"}
+    env = {k: v for k, v in os.environ.items() if k not in ("QT_QPA_PLATFORM", "MPLBACKEND")}
     proc = subprocess.run(
         [sys.executable, "-c", code],
         cwd=REPO,
@@ -278,4 +286,4 @@ def test_cold_start_without_a_qapplication():
         timeout=120,
     )
     assert proc.returncode == 0, proc.stderr[-2000:]
-    assert proc.stdout.split()[-3:] == ["compiled", "offscreen", "0.3935"]
+    assert proc.stdout.split()[-5:] == ["compiled", "True", "None", "None", "0.3935"]

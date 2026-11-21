@@ -40,30 +40,41 @@ import sys
 
 import numpy as np
 
-# Strong process-lifetime reference to the QApplication. Without this the Python
-# wrapper is collected when run_diagram returns while the DSim's QWidgets still
-# exist, and PyQt crashes tearing the C++ objects down at interpreter shutdown
-# (exit code 9 on the Windows venv).
+
+# Strong process-lifetime reference to the opt-in QApplication (see
+# _maybe_headless_qapp). Without it the Python wrapper can be collected while
+# Qt objects still exist, and PyQt crashes tearing them down at shutdown.
 _QAPP = None
 
 
-def _ensure_headless_qapp():
-    """Create an offscreen QApplication if none exists.
+def configure_headless_process():
+    """Select headless Qt/matplotlib backends. For process entry points only.
 
-    Kept when PyQt6 is installed so block code that still touches Qt behaves
-    as in the GUI; without PyQt6 the engine runs on lib.qt_types' stand-ins
-    and no QApplication is needed. Force the offscreen platform so no window ever
-    appears (mirrors tests/conftest.py). Must run before QApplication is built.
+    The CLI and the Monte Carlo / sweep worker processes call this. Library
+    entry points (``new_headless_dsim``, ``lib.api.load``) do not: forcing
+    ``QT_QPA_PLATFORM=offscreen`` or ``MPLBACKEND=Agg`` inside a user's
+    notebook would break their own plotting and Qt windows later on.
     """
-    global _QAPP
     from lib.qt_setup import configure_qt_env
 
     configure_qt_env(headless=True)
-    try:
-        from PyQt6.QtWidgets import QApplication
-    except ImportError:
-        # No PyQt6: the engine runs on lib.qt_types' pure-Python stand-ins.
+
+
+def _maybe_headless_qapp():
+    """Create an offscreen QApplication only when ``DIABLOS_HEADLESS_QAPP=1``.
+
+    The engine builds no Qt object that needs one (it uses lib.qt_types, and
+    QFont/QPixmap are created only by the GUI), so by default none is made;
+    before 2026-11-21 every headless DSim was built under one. The opt-in is
+    for third-party user blocks that construct a QPixmap/QFont/QWidget
+    outside ``draw_icon``, which Qt refuses (and aborts on) without an
+    application.
+    """
+    global _QAPP
+    if os.environ.get("DIABLOS_HEADLESS_QAPP") != "1":
         return None
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PyQt6.QtWidgets import QApplication
 
     _QAPP = QApplication.instance() or QApplication(["diablos-run"])
     return _QAPP
@@ -84,13 +95,16 @@ def _file_sim_params(filepath):
 
 
 def new_headless_dsim():
-    """Return an empty ``DSim`` built under an offscreen QApplication.
+    """Return an empty ``DSim`` for a headless run (no QApplication needed).
 
     The DSim owns a fresh, empty workspace (``dsim.workspace``), so a headless
     run never inherits another diagram's variables -- nor the GUI's default
     ``WorkspaceManager()`` -- and never leaks its own into them.
     """
-    _ensure_headless_qapp()
+    from lib.qt_setup import configure_qt_env
+
+    configure_qt_env()  # pins pyqtgraph's binding; changes nothing else
+    _maybe_headless_qapp()
 
     from lib.lib import DSim
 
@@ -415,6 +429,7 @@ def _main_export_python(args):
 
 def main(argv=None):
     """CLI entry point. Returns a process exit code."""
+    configure_headless_process()
     args = build_parser().parse_args(argv)
 
     if args.command == "export-python":

@@ -100,9 +100,9 @@ class RateTransitionBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw rate transition icon (two different rates merging)."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Draw slow rate (wide steps) on left
         path.moveTo(0.1, 0.7)
         path.lineTo(0.3, 0.7)

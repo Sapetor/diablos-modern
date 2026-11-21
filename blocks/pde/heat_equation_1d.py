@@ -144,9 +144,9 @@ class HeatEquation1DBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw heat equation icon - temperature profile curve."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Draw a decaying temperature profile curve
         path.moveTo(0.1, 0.8)
         path.cubicTo(0.3, 0.3, 0.5, 0.4, 0.7, 0.5)

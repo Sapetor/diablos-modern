@@ -6,7 +6,7 @@ beyond its coloured rounded rectangle, so this module pins two things:
 
 1. every class returned by :func:`lib.block_loader.load_blocks` overrides
    ``draw_icon`` (it is not ``BaseBlock``'s method object); and
-2. calling it paints something -- the returned ``QPainterPath`` is mapped with
+2. calling it paints something -- the returned ``IconPath`` (replayed onto a QPainterPath) is mapped with
    the same transform ``BlockRenderer.draw_block`` uses and stroked onto a
    ``QPixmap``, which must come back with pixels that differ from the fill.
 
@@ -18,10 +18,11 @@ set cannot grow silently.
 
 import pytest
 from PyQt6.QtCore import QRect
-from PyQt6.QtGui import QColor, QPainter, QPainterPath, QPixmap, QPen, QTransform
+from PyQt6.QtGui import QColor, QPainter, QPixmap, QPen, QTransform
 
 from blocks.base_block import BaseBlock
 from lib.block_loader import load_blocks
+from lib.icon_path import IconPath, to_qpainterpath
 
 # Blocks whose icon is painter-drawn text in BlockRenderer._draw_icon_text.
 # They override draw_icon (returning None) to document that on purpose.
@@ -62,7 +63,7 @@ _CLASSES = _block_classes()
 
 @pytest.fixture(autouse=True)
 def _qt(qapp):
-    """draw_icon builds QPainterPath objects, which need a QApplication."""
+    """Rendering icons onto a QPixmap needs a QApplication."""
     return qapp
 
 
@@ -128,8 +129,9 @@ class TestIconsPaint:
             if path is None:
                 assert block.block_name in LEGACY_TEXT_ICONS
                 continue
-            assert isinstance(path, QPainterPath)
+            assert isinstance(path, IconPath), "built-in blocks return a toolkit-neutral IconPath"
             assert not path.isEmpty(), f"{block.block_name}: empty icon path"
+            path = to_qpainterpath(path)
             image = _render(path, rect)
             assert _painted_pixels(image) > 0, (
                 f"{block.block_name}: icon painted nothing at {rect.width()}x{rect.height()}"
@@ -142,7 +144,7 @@ class TestIconsPaint:
         path = block.draw_icon(BLOCK_RECTS[0])
         if path is None:
             return
-        bounds = path.boundingRect()
+        bounds = to_qpainterpath(path).boundingRect()
         assert -0.1 <= bounds.left() <= 1.1, f"{block.block_name}: {bounds}"
         assert -0.1 <= bounds.top() <= 1.1, f"{block.block_name}: {bounds}"
         assert -0.1 <= bounds.right() <= 1.1, f"{block.block_name}: {bounds}"

@@ -67,9 +67,9 @@ class VectorGainBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw a gain triangle fed by a two-line vector bus."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Gain triangle
         path.moveTo(0.26, 0.08)
         path.lineTo(0.80, 0.50)

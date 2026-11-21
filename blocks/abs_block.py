@@ -45,9 +45,9 @@ class AbsBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw |u|: the V-shaped rectifier characteristic over a baseline."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Baseline (input axis)
         path.moveTo(0.05, 0.82)
         path.lineTo(0.95, 0.82)

@@ -117,9 +117,9 @@ class RootFinderBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw a curve crossing the axis with its Newton tangent."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Axis
         path.moveTo(0.04, 0.60)
         path.lineTo(0.96, 0.60)

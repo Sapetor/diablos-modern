@@ -40,9 +40,9 @@ class TestBodePhaseBlock:
             assert block.execute(t, {0: np.array([t])}, params) == {}
 
     def test_draw_icon_returns_path(self):
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
         block = BodePhaseBlock()
         path = block.draw_icon(None)
-        assert isinstance(path, QPainterPath)
+        assert isinstance(path, IconPath)
         assert not path.isEmpty()

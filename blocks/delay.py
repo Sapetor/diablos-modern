@@ -61,9 +61,9 @@ class DelayBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw a sampled staircase and the same staircase shifted N samples."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Input: sampled ramp-up (upper band)
         path.moveTo(0.04, 0.42)
         path.lineTo(0.18, 0.42)

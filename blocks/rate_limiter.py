@@ -51,9 +51,9 @@ class RateLimiterBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw rate limiter icon in normalized 0-1 coordinates."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Step response with slew limit
         path.moveTo(0.15, 0.75)
         path.lineTo(0.35, 0.75)

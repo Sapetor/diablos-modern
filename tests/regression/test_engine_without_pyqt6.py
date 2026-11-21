@@ -35,17 +35,23 @@ _BLOCK_QT = textwrap.dedent(
 )
 
 
-def _run_without_qt(body, timeout=300):
-    env = dict(os.environ, MPLBACKEND="Agg")
+@pytest.fixture(scope="module")
+def no_qt_path(tmp_path_factory):
+    """A directory whose sitecustomize.py blocks PyQt6. Put on PYTHONPATH, it
+    applies to every interpreter started with that environment, including the
+    spawned worker processes of a parallel Monte Carlo run."""
+    d = tmp_path_factory.mktemp("no_qt")
+    (d / "sitecustomize.py").write_text(_BLOCK_QT)
+    return str(d)
+
+
+def _run_without_qt(body=None, timeout=300, argv=None, no_qt=None, expect_ok=True):
+    env = dict(os.environ, MPLBACKEND="Agg", PYTHONPATH=no_qt)
     env.pop("DIABLOS_PURE_TYPES", None)
-    out = subprocess.run(
-        [sys.executable, "-c", _BLOCK_QT + textwrap.dedent(body)],
-        cwd=REPO,
-        env=env,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-    )
+    cmd = [sys.executable] + (argv if argv else ["-c", textwrap.dedent(body)])
+    out = subprocess.run(cmd, cwd=REPO, env=env, capture_output=True, text=True, timeout=timeout)
+    if not expect_ok:
+        return out
     assert out.returncode == 0, out.stderr[-4000:]
     return json.loads(out.stdout.strip().splitlines()[-1])
 
@@ -68,7 +74,7 @@ def _traces(path):
 
 @pytest.mark.regression
 @pytest.mark.slow
-def test_examples_match_a_qt_run_without_pyqt6():
+def test_examples_match_a_qt_run_without_pyqt6(no_qt_path):
     paths = [os.path.join("examples", name) for name in EXAMPLES]
     result = _run_without_qt(
         f"""
@@ -82,7 +88,8 @@ def test_examples_match_a_qt_run_without_pyqt6():
             out[path] = {{k: list(map(float, v)) for k, v in sig["signals"].items()}}
         out["_qt_loaded"] = sorted(m for m in sys.modules if m.split(".")[0] in ("PyQt6", "pyqtgraph"))
         print(json.dumps(out))
-        """
+        """,
+        no_qt=no_qt_path,
     )
     assert result.pop("_qt_loaded") == []
     for path in paths:
@@ -97,7 +104,7 @@ def test_examples_match_a_qt_run_without_pyqt6():
 
 
 @pytest.mark.regression
-def test_engine_and_analysis_import_and_build_without_pyqt6():
+def test_engine_and_analysis_import_and_build_without_pyqt6(no_qt_path):
     result = _run_without_qt(
         """
         import json
@@ -115,7 +122,8 @@ def test_engine_and_analysis_import_and_build_without_pyqt6():
             "rect": [block.rect.left(), block.rect.top(), block.rect.width(), block.rect.height()],
             "ports": len(block.out_coords),
         }))
-        """
+        """,
+        no_qt=no_qt_path,
     )
     assert result["has_qt"] is False
     assert result["blocks"] == 3 and result["lines"] == 3
@@ -124,7 +132,7 @@ def test_engine_and_analysis_import_and_build_without_pyqt6():
 
 @pytest.mark.regression
 @pytest.mark.slow
-def test_monte_carlo_runs_without_pyqt6():
+def test_monte_carlo_runs_without_pyqt6(no_qt_path):
     result = _run_without_qt(
         """
         import json
@@ -132,8 +140,108 @@ def test_monte_carlo_runs_without_pyqt6():
         from lib.cli import load_diagram
 
         dsim, params = load_diagram("examples/first_order_step_response.diablos")
-        res = MonteCarloRunner(dsim).run(3, master_seed=1, sim_time=1.0, sim_dt=0.01)
-        print(json.dumps({"ok": res is not None}))
+        serial = MonteCarloRunner(dsim).run(3, master_seed=1, sim_time=1.0, sim_dt=0.01)
+        pooled = MonteCarloRunner(dsim).run(3, master_seed=1, sim_time=1.0, sim_dt=0.01, workers=2)
+        import numpy as np
+        same = serial["n_ok"] == pooled["n_ok"] == 3 and all(
+            np.array_equal(serial["signals"][k]["mean"], pooled["signals"][k]["mean"])
+            for k in serial["signals"]
+        )
+        print(json.dumps({"ok": bool(serial["signals"]), "same": bool(same)}))
+        """,
+        no_qt=no_qt_path,
+    )
+    assert result["ok"] and result["same"]
+
+
+@pytest.mark.regression
+def test_headless_run_creates_no_qapplication_when_pyqt6_is_installed():
+    """The CLI used to build an offscreen QApplication for every headless DSim."""
+    env = dict(os.environ, MPLBACKEND="Agg")
+    out = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            textwrap.dedent(
+                """
+                from lib.cli import run_diagram
+                from PyQt6.QtCore import QCoreApplication
+
+                dsim = run_diagram("examples/first_order_step_response.diablos")
+                print(QCoreApplication.instance() is None, len(dsim.timeline) > 0)
+                """
+            ),
+        ],
+        cwd=REPO,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
+    assert out.returncode == 0, out.stderr[-4000:]
+    assert out.stdout.split()[-2:] == ["True", "True"]
+
+
+@pytest.mark.regression
+@pytest.mark.slow
+def test_launcher_runs_headless_subcommands_without_pyqt6(no_qt_path, tmp_path):
+    """``diablos_modern.py run`` imported the whole GUI before dispatching."""
+    out_csv = str(tmp_path / "out.csv")
+    proc = _run_without_qt(
+        argv=[
+            "diablos_modern.py",
+            "run",
+            "examples/first_order_step_response.diablos",
+            "-o",
+            out_csv,
+        ],
+        no_qt=no_qt_path,
+        expect_ok=False,
+    )
+    assert proc.returncode == 0, proc.stderr[-4000:]
+    assert os.path.getsize(out_csv) > 0
+    gui = _run_without_qt(argv=["diablos_modern.py"], no_qt=no_qt_path, expect_ok=False)
+    assert gui.returncode == 1
+    assert "needs PyQt6" in gui.stderr
+
+
+@pytest.mark.regression
+def test_execution_init_does_not_open_a_dialog_headless(no_qt_path):
+    """The first-run settings dialog is for the GUI; a script has nobody to ask."""
+    result = _run_without_qt(
+        """
+        import json
+        from lib.cli import load_diagram
+
+        dsim, _ = load_diagram("examples/first_order_step_response.diablos")
+        print(json.dumps({"reviewed": dsim.settings_reviewed, "ok": dsim.execution_init()}))
+        """,
+        no_qt=no_qt_path,
+    )
+    assert result == {"reviewed": False, "ok": True}
+
+
+@pytest.mark.regression
+def test_forced_stand_ins_work_with_pyqt6_installed():
+    """DIABLOS_PURE_TYPES=1 with PyQt6 present used to drop every block: the
+    theme manager's real QColor failed the stand-in type check."""
+    env = dict(os.environ, MPLBACKEND="Agg", DIABLOS_PURE_TYPES="1")
+    code = textwrap.dedent(
+        """
+        import json
+        from lib import qt_types
+        from lib.analysis.resim import harvest_scope_signals
+        from lib.cli import load_diagram, run_diagram
+
+        dsim, _ = load_diagram("examples/first_order_step_response.diablos")
+        sig = harvest_scope_signals(run_diagram("examples/first_order_step_response.diablos"))
+        print(json.dumps({"has_qt": qt_types.HAS_QT, "blocks": len(dsim.blocks_list),
+                          "signals": sorted(sig["signals"])}))
         """
     )
-    assert result["ok"]
+    out = subprocess.run(
+        [sys.executable, "-c", code], cwd=REPO, env=env, capture_output=True, text=True, timeout=300
+    )
+    assert out.returncode == 0, out.stderr[-4000:]
+    result = json.loads(out.stdout.strip().splitlines()[-1])
+    assert result["has_qt"] is False and result["blocks"] == 3 and result["signals"]

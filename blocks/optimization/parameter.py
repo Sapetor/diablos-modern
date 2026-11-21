@@ -96,9 +96,9 @@ class ParameterBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw parameter icon - P with adjustment slider."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Draw "P" letter
         path.moveTo(0.25, 0.8)
         path.lineTo(0.25, 0.2)

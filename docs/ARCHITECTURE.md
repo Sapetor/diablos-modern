@@ -222,7 +222,7 @@ class BaseBlock(ABC):
     hidden = True                   # Plain class attribute: keep out of the palette/menus
 
     def draw_icon(self, block_rect):  # Optional: custom icon
-        """Return QPainterPath in 0-1 normalized coordinates, or None for fallback."""
+        """Return an IconPath (lib.icon_path) in 0-1 normalized coordinates, or None."""
         ...
 ```
 
@@ -403,6 +403,18 @@ semantics otherwise. Anything that needs a `QGuiApplication` (`QFont`,
 `lib/` must import these types from `lib.qt_types`, never from PyQt6 at module
 level; `tests/regression/test_engine_without_pyqt6.py` runs examples with
 PyQt6 made unimportable and compares the traces with a normal run.
+
+The block library imports no Qt at all: `draw_icon` returns an `IconPath`
+(`lib/icon_path.py`), a recorder of `QPainterPath`-style calls that the block
+renderer replays onto a real `QPainterPath` (built-in icons are cached per
+class and size; a user block's `draw_icon` is called on every paint, since it
+may depend on instance state). A headless run creates no `QApplication`, with
+or without PyQt6 installed; set `DIABLOS_HEADLESS_QAPP=1` for a third-party
+block that builds a `QPixmap`/`QFont` outside `draw_icon`. Only process entry
+points (the CLI, Monte Carlo/sweep worker processes) select the offscreen Qt
+and `Agg` matplotlib backends; `lib.api.load()` in a notebook leaves the
+environment alone. `DSim.execution_init()` opens the settings dialog only when
+a Qt application is running.
 
 ### 4. File Save/Load Flow
 ```

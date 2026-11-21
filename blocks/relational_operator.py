@@ -69,9 +69,9 @@ class RelationalOperatorBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw a comparison chevron fed by two input stubs."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Input stubs
         path.moveTo(0.04, 0.24)
         path.lineTo(0.22, 0.24)

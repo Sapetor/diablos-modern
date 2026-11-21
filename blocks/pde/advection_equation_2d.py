@@ -150,9 +150,9 @@ class AdvectionEquation2DBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw 2D advection icon - arrows showing flow."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
 
         # Draw flow arrows
         for row in [0.3, 0.5, 0.7]:

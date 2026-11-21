@@ -29,6 +29,7 @@ from modern_ui.themes.theme_manager import (
 )
 from lib.engine.block_params import runtime_params
 from lib.i18n import tr
+from lib.icon_path import to_qpainterpath
 from lib.models.block_shape import resolve_block_shape
 
 logger = logging.getLogger(__name__)
@@ -588,8 +589,12 @@ class BlockRenderer:
                 return _SUBSYSTEM_ICON_PATH
             return _EMPTY_PATH
 
+        # Built-in icons are pure functions of the rect (tested), so they are
+        # memoized per (class, geometry). A user block's draw_icon may read
+        # instance state, so it is called every time instead.
+        cacheable = type(instance).__module__.startswith("blocks.")
         key = (type(instance),) + _geometry_key(block)
-        cached = _ICON_SOURCE_CACHE.get(key)
+        cached = _ICON_SOURCE_CACHE.get(key) if cacheable else None
         if cached is not None:
             return cached
 
@@ -597,7 +602,9 @@ class BlockRenderer:
         try:
             custom_path = instance.draw_icon(block.rect)
             if custom_path is not None:
-                path = custom_path
+                # Built-in blocks return a toolkit-neutral IconPath; an older
+                # user block may still return a QPainterPath (passed through).
+                path = to_qpainterpath(custom_path)
         except Exception as e:
             # Log once per block type at warning; subsequent identical
             # failures drop to debug to avoid per-frame log spam. The block
@@ -611,7 +618,7 @@ class BlockRenderer:
             # frozen in for the lifetime of that geometry.
             return path
 
-        return _cache_put(_ICON_SOURCE_CACHE, key, path)
+        return _cache_put(_ICON_SOURCE_CACHE, key, path) if cacheable else path
 
     def _draw_soft_shadow(self, block, painter: QPainter, shape: Optional[str] = None) -> None:
         """Draw a soft, multi-layer drop shadow behind the block.

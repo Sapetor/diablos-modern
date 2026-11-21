@@ -72,9 +72,9 @@ class UDPSendBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Waves leaving an antenna."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         path.moveTo(0.25, 0.85)
         path.lineTo(0.25, 0.40)
         path.moveTo(0.15, 0.30)

@@ -125,9 +125,9 @@ class CostFunctionBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw cost function icon - J with target."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         # Draw "J" letter (cost function symbol)
         path.moveTo(0.55, 0.2)
         path.lineTo(0.35, 0.2)

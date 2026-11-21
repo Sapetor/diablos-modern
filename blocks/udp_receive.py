@@ -86,9 +86,9 @@ class UDPReceiveBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Waves arriving at an antenna."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
         path.moveTo(0.75, 0.85)
         path.lineTo(0.75, 0.40)
         path.moveTo(0.65, 0.30)

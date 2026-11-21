@@ -128,8 +128,11 @@ bands, which need every trace. The result dictionaries are the ones the Analysis
 
 ## Notes
 
-- The first `load` creates an offscreen Qt application if the process has none.
-  No window ever opens, so it works over SSH and in CI.
+- The API needs no Qt application and runs without PyQt6 installed (numpy and
+  scipy are enough). No window ever opens, so it works over SSH and in CI, and
+  it leaves your own Qt and matplotlib setup alone. If a third-party block
+  builds Qt objects in its constructor, set `DIABLOS_HEADLESS_QAPP=1` to give
+  it an offscreen Qt application.
 - Workspace variables belong to the diagram. `sim.set_variable("K", 2.0)` sets
   one, `sim.variables` lists them and `sim.workspace` is the underlying store
   (it can also `load_from_file`). Each `load` or `from_builder` starts with an

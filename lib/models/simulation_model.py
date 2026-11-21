@@ -81,12 +81,16 @@ class SimulationModel:
         """Theme-aware fill colour for a block category."""
         from lib.theming.categories import category_theme_key
 
-        try:
-            from lib.theming.theme_manager import theme_manager
-        except ImportError:
-            # Headless without PyQt6: colours are cosmetic, and a loaded
-            # diagram re-derives them from the palette (see FileService).
+        from lib import qt_types
+
+        if not qt_types.HAS_QT:
+            # Running on the pure-Python stand-ins (no PyQt6, or
+            # DIABLOS_PURE_TYPES=1): the theme manager's colours are real Qt
+            # objects, which must not mix with the stand-ins. Colours are
+            # cosmetic, and a loaded diagram re-derives them from the palette.
             return QColor(128, 128, 128)
+        from lib.theming.theme_manager import theme_manager
+
         return theme_manager.get_color(category_theme_key(category))
 
     def load_all_blocks(

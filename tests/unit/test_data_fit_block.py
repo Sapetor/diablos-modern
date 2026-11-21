@@ -83,10 +83,10 @@ class TestDataFitContract:
 
     def test_draw_icon_returns_a_painter_path(self, qapp):
         from PyQt6.QtCore import QRect
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
         path = DataFitBlock().draw_icon(QRect(0, 0, 100, 60))
-        assert isinstance(path, QPainterPath)
+        assert isinstance(path, IconPath)
         assert not path.isEmpty()
 
 

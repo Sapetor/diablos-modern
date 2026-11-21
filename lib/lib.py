@@ -20,6 +20,19 @@ from lib.managers.subsystem_manager import SubsystemManager
 logger = logging.getLogger(__name__)
 
 
+def _gui_running() -> bool:
+    """True when a Qt application exists, i.e. a dialog can be shown.
+
+    A headless script (no PyQt6, or no QApplication) has nobody to ask, so
+    ``execution_init`` must not open the settings dialog there.
+    """
+    try:
+        from PyQt6.QtCore import QCoreApplication
+    except ImportError:
+        return False
+    return QCoreApplication.instance() is not None
+
+
 class DSim:
     """
     Class that manages the simulation interface and main functions.
@@ -802,8 +815,9 @@ class DSim:
             # opt-in "ask before every run" preference, on every run; otherwise
             # the stored duration is used as-is.
             if ask is None:
-                ask = bool(getattr(self, "ask_before_run", False)) or not getattr(
-                    self, "settings_reviewed", True
+                ask = _gui_running() and (
+                    bool(getattr(self, "ask_before_run", False))
+                    or not getattr(self, "settings_reviewed", True)
                 )
             self.execution_time = self.execution_init_time() if ask else self.sim_time
             self.last_init_cancelled = self.execution_time == -1

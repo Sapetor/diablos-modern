@@ -143,9 +143,9 @@ class HeatEquation2DBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw 2D heat equation icon - grid with gradient."""
-        from PyQt6.QtGui import QPainterPath
+        from lib.icon_path import IconPath
 
-        path = QPainterPath()
+        path = IconPath()
 
         # Draw grid pattern
         for i in range(4):
