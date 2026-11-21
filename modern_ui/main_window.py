@@ -532,28 +532,11 @@ class ModernDiaBloSWindow(QMainWindow):
         self.view_actions_manager.toggle_minimap()
 
     def _set_scaling(self, factor):
-        import json
-        from lib.app_paths import user_data_path
+        """Store the UI scale for the next launch (see lib/ui_scale.py)."""
+        from lib.ui_scale import store_ui_scale
 
-        # The *user* copy of the config, never the bundled one: config/ inside a
-        # PyInstaller bundle is read-only.
-        config_path = user_data_path("config/default_config.json")
-        try:
-            with open(config_path, "r") as f:
-                config = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            config = {}
-
-        if "display" not in config:
-            config["display"] = {}
-        config["display"]["scaling_factor"] = factor
-
-        try:
-            with open(config_path, "w") as f:
-                json.dump(config, f, indent=2)
-        except OSError as exc:
+        if not store_ui_scale(factor):
             # Don't claim a restart will apply something that was never stored.
-            logger.error("Could not write %s: %s", config_path, exc)
             self.status_message.setText(tr("Could not save the UI scaling setting"))
             return
 

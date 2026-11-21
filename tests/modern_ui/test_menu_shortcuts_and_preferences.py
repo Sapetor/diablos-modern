@@ -320,6 +320,19 @@ class TestPreferencesDialog:
         dialog.scale_combo.setCurrentIndex(dialog.scale_combo.findData(1.5))
         assert seen == [1.5]
 
+    def test_set_scaling_stores_qsettings_not_the_config_file(self, window, monkeypatch, tmp_path):
+        """It used to rewrite config/default_config.json, which in a source
+        checkout is the bundled default (how 125% leaked into the repo)."""
+        from lib.app_paths import user_data_path
+        from lib.ui_scale import stored_ui_scale
+
+        monkeypatch.setenv("DIABLOS_SETTINGS_INI", str(tmp_path / "s.ini"))
+        cfg = user_data_path("config/default_config.json")
+        before = open(cfg, encoding="utf-8").read()
+        window._set_scaling(1.25)
+        assert stored_ui_scale() == 1.25
+        assert open(cfg, encoding="utf-8").read() == before
+
     def test_routing_updates_canvas_default(self, window, dialog):
         dialog.routing_combo.setCurrentIndex(dialog.routing_combo.findData("orthogonal"))
         assert window.default_routing_mode == "orthogonal"

@@ -208,9 +208,9 @@ def test_layout_survives_the_app_stylesheet(qapp, window):
 
 @pytest.mark.parametrize("factor", [1.25, 1.5])
 def test_overlay_follows_the_ui_scale(qapp, window, factor):
-    """UI scale sets the app font (10pt * factor, see setup_application). The
-    overlay's text and cards used fixed TYPE point sizes, so they stayed at
-    100% whatever the scale."""
+    """The overlay's text and cards follow a larger app font. They used fixed
+    TYPE point sizes, so they stayed small when the old UI scale (which only
+    enlarged the app font) was raised. UI scale is QT_SCALE_FACTOR now."""
     from PyQt6.QtGui import QFont
 
     overlay = window.canvas.welcome_overlay

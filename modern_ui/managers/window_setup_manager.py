@@ -60,6 +60,10 @@ class WindowSetupManager:
             # Set minimum size
             min_width = max(int(target_width * 0.70), config.window_min_width)
             min_height = max(int(target_height * 0.70), config.window_min_height)
+            # Never larger than the screen: at a 150% UI scale a 1440x900
+            # laptop has 960x600 logical pixels, less than the fixed minimums.
+            min_width = min(min_width, window.screen_geometry.width())
+            min_height = min(min_height, window.screen_geometry.height())
 
             window.setMinimumSize(min_width, min_height)
             window.resize(target_width, target_height)

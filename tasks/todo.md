@@ -84,15 +84,14 @@ Fixed the same day: undo/redo, between-run state, MC seeds, nested MC/sweep
 (pickers + top-level root), selectable PID anti-windup (clamping default),
 label clipping / port-label overlap / stale status + Properties counts, block
 None/empty-input hardening and param docs. Still open:
-- [ ] **UI scale only resizes the app font (found 2026-10-10).** Preferences >
-  UI scale sets the app font to 10pt * factor and nothing else. Widgets whose
-  QSS sets a point size from the TYPE tokens ignore it: menu bar, palette rows
-  and headers, Properties panel, transport, toolbar icons. Only default-font
-  widgets grow (status pill, zoom readout, search pill, filter box, "Main", the
-  status-bar file name), so 150% looks patchy rather than scaled. Needs a decision:
-  a true global scale (e.g. `QT_SCALE_FACTOR` set before `QApplication`, which
-  also scales the canvas and every pixel literal and stacks with Windows DPI) or
-  font-ratio scaling in every TYPE consumer (as the welcome overlay now does).
+- [x] **UI scale only resized the app font (found 2026-10-10, fixed
+  2026-11-20).** UI scale is now Qt's global `QT_SCALE_FACTOR`, set from the
+  QSettings key `ui/scale` before the QApplication is built
+  (`lib/ui_scale.py`), so every font, icon, pixel metric and the canvas scale
+  alike; the app font stays 10pt. The old `display.scaling_factor` config key
+  is gone (in a checkout it was the bundled file, which is how 125% leaked into
+  the shipped default); a packaged build migrates a previous choice from its
+  user config. Tests: `tests/unit/test_ui_scale.py`.
 
 ### Open items from the external review of 35e7ad2 (2026-10-28)
 Fixed on `fix/file-integrity-and-trust`: transactional load (`"sim_data": null`

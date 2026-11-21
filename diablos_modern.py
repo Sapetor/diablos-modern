@@ -124,6 +124,12 @@ def setup_application():
     """Setup application-wide settings and styling."""
     # Qt6 scales for high DPI unconditionally; the Qt5 opt-in attributes
     # (AA_EnableHighDpiScaling / AA_UseHighDpiPixmaps) no longer exist.
+    # UI scale (File > Preferences): Qt reads QT_SCALE_FACTOR when the
+    # QApplication is built, so set it first.
+    from lib.ui_scale import apply_ui_scale
+
+    apply_ui_scale()
+
     # Create application
     app = QApplication(sys.argv)
 
@@ -139,29 +145,13 @@ def setup_application():
     app.setApplicationVersion(__version__)
     app.setOrganizationName("DiaBloS Project")
 
-    # Load config and set font
-    try:
-        from lib.app_paths import resource_path, user_data_path
-
-        # Read the user-writable config first (where _set_scaling persists the
-        # scaling factor), falling back to the bundled default. Previously this
-        # read only the read-only bundled resource, so a user's saved scaling
-        # never took effect in frozen/packaged builds despite the restart prompt.
-        user_cfg = user_data_path("config/default_config.json")
-        cfg_path = (
-            user_cfg if os.path.exists(user_cfg) else resource_path("config/default_config.json")
-        )
-        with open(cfg_path, "r") as f:
-            config = json.load(f)
-        scaling_factor = config.get("display", {}).get("scaling_factor", 1.0)
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
-        scaling_factor = 1.0
-
-    # Use platform-appropriate font
+    # Platform-appropriate font. Always 10pt: the UI scale preference is
+    # applied as QT_SCALE_FACTOR (see lib/ui_scale.py), which scales this and
+    # every other size alike.
     if sys.platform == "darwin":
-        font = QFont(".AppleSystemUIFont", int(10 * scaling_factor))
+        font = QFont(".AppleSystemUIFont", 10)
     else:
-        font = QFont("Segoe UI", int(10 * scaling_factor))
+        font = QFont("Segoe UI", 10)
     font.setHintingPreference(QFont.HintingPreference.PreferDefaultHinting)
     app.setFont(font)
 

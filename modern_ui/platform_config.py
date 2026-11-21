@@ -28,11 +28,18 @@ class PlatformConfig:
         screen = QApplication.primaryScreen()
         if screen is None:
             raise RuntimeError("PlatformConfig requires an active QApplication with a display")
-        self.device_ratio = screen.devicePixelRatio()
+        # The heuristics below describe the physical screen, so take the UI
+        # scale (QT_SCALE_FACTOR, lib/ui_scale.py) back out: otherwise 150% on
+        # a standard screen reads as high-DPI and widens the Properties panel
+        # a second time, on top of the scale itself.
+        from lib.ui_scale import qt_scale_factor
+
+        ui_scale = qt_scale_factor()
+        self.device_ratio = screen.devicePixelRatio() / ui_scale
 
         screen_geometry = screen.availableGeometry()
-        self.logical_width = screen_geometry.width()
-        self.logical_height = screen_geometry.height()
+        self.logical_width = round(screen_geometry.width() * ui_scale)
+        self.logical_height = round(screen_geometry.height() * ui_scale)
 
         # Platform detection
         self.is_macos = platform.system() == "Darwin"

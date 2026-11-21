@@ -902,7 +902,9 @@ Everything here lives in the **View** menu. The first three are written to
 - **Block Palette** picks the block colour scheme: *Solarized*, *Tailwind* or
   *Catppuccin Frappé*.
 - **Solid Block Fills** switches blocks between tinted and solid fills.
-- **UI Scale** offers 100%, 125% and 150% for high-DPI screens.
+- **UI Scale** offers 100%, 125% and 150%. It enlarges the whole interface
+  (text, icons, panels and the canvas) and takes effect after a restart. It
+  multiplies the scaling your operating system already applies to the screen.
 - **Default Connection Routing** chooses *Bezier (Curved)* or
   *Orthogonal (Manhattan)* for new connections. Right-click an existing
   connection → **Routing** to change just that one (see [Wires](#wires)).

@@ -154,15 +154,16 @@ class WelcomeOverlay(QWidget):
         lay.addWidget(t)
         lay.addWidget(d)
         lay.addStretch(1)
-        # Height follows the font (so it scales with UI scale), not a pixel literal.
+        # Height follows the font, not a pixel literal.
         line = t.fontMetrics().lineSpacing()
         btn.setMinimumHeight(line * 5 + SPACE["lg"] * 2)
         return btn
 
     def _apply_styling(self, *_):
         c = theme_manager.get_color
-        # UI scale only sets the app font (10pt * factor in setup_application);
-        # the TYPE tokens are fixed points, so scale them by the same ratio.
+        # Follow the app font: the TYPE tokens are fixed points, so scale them
+        # by its ratio to the 10pt base. (The UI scale preference itself is
+        # QT_SCALE_FACTOR now, which scales everything, the app font stays 10pt.)
         # Clamped at 1 so a smaller platform default never shrinks the overlay.
         scale = max(1.0, QApplication.font().pointSizeF() / TYPE["body_strong"])
         pt = {k: round(v * scale, 1) for k, v in TYPE.items()}
@@ -173,7 +174,7 @@ class WelcomeOverlay(QWidget):
         # The app-wide QPushButton rule (min-height 28px, min-width 64px,
         # padding) outranks setMinimumSize() on a styled widget, which squashed
         # the cards. Size them here, from the card title's font metrics so they
-        # still follow the UI scale.
+        # still follow the app font.
         title_font = QFont(self.font())
         title_font.setPointSizeF(pt["body_strong"])
         card_h = QFontMetrics(title_font).lineSpacing() * 5 + SPACE["lg"] * 2

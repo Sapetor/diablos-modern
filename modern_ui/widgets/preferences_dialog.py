@@ -23,7 +23,6 @@ Ask before every run      ``lib.sim_prefs`` (QSettings ``simulation/ask_before_r
 Changes apply immediately, as the menu entries did; the dialog just has Close.
 """
 
-import json
 import logging
 
 from PyQt6.QtWidgets import (
@@ -41,11 +40,12 @@ from PyQt6.QtWidgets import (
 )
 
 from lib.i18n import SYSTEM_LANGUAGE, available_languages, stored_language_setting, tr, tr_noop
+from lib.ui_scale import CHOICES as UI_SCALE_CHOICES
 from modern_ui.themes.theme_manager import PALETTE_DISPLAY_NAMES, ThemeType, theme_manager
 
 logger = logging.getLogger(__name__)
 
-SCALE_CHOICES = (1.0, 1.25, 1.5)
+SCALE_CHOICES = UI_SCALE_CHOICES
 ROUTING_CHOICES = (
     ("bezier", tr_noop("Bezier (Curved)")),
     ("orthogonal", tr_noop("Orthogonal (Manhattan)")),
@@ -53,14 +53,10 @@ ROUTING_CHOICES = (
 
 
 def _stored_scaling() -> float:
-    """The scaling factor the app will use on next start (user config, else 1.0)."""
-    from lib.app_paths import user_data_path
+    """The scaling factor the app will use on next start."""
+    from lib.ui_scale import stored_ui_scale
 
-    try:
-        with open(user_data_path("config/default_config.json"), "r") as f:
-            return float(json.load(f).get("display", {}).get("scaling_factor", 1.0))
-    except (OSError, ValueError, TypeError):
-        return 1.0
+    return stored_ui_scale()
 
 
 def _note(text: str) -> QLabel:
