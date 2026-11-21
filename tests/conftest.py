@@ -213,6 +213,29 @@ def sample_line(qapp):
     return line
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _no_background_autosave():
+    """Stop every main window's 2-minute autosave timer.
+
+    The timer saves to the real ``config/.autosave.diablos`` (the checkout in
+    dev mode), so a test window alive for over two minutes of a long suite
+    left a stray autosave there, and the next real launch offered to
+    "recover" a test diagram. Autosave tests call ``_auto_save()`` directly
+    with their own path.
+    """
+    from modern_ui.main_window import ModernDiaBloSWindow
+
+    original = ModernDiaBloSWindow.__init__
+
+    def init(self, *args, **kwargs):
+        original(self, *args, **kwargs)
+        self.autosave_timer.stop()
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(ModernDiaBloSWindow, "__init__", init)
+        yield
+
+
 @pytest.fixture
 def temp_diagram_file(tmp_path):
     """Provide a temporary file path for diagram testing."""
