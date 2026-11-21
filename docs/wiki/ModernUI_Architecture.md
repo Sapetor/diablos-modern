@@ -4,7 +4,7 @@
 The Modern UI is built with PyQt6 and follows a component-based architecture.
 
 ## Theme System
-Themes are managed by the `ThemeManager` in `modern_ui/themes/theme_manager.py`.
+Themes are managed by the `ThemeManager` in `src/diablos/gui/themes/theme_manager.py`.
 *   **Access**: Use `theme_manager.get_current_theme()` to retrieve the active color dictionary.
 *   **Colors**: Define semantic names like `text_primary`, `accent_primary`, `block_control`.
 *   **Switching**: Emits `theme_changed` signal when toggled. All modern widgets subscribe to this or check it during paint events.

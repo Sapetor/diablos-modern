@@ -6,8 +6,8 @@ import pytest
 from PyQt6.QtCore import QPoint, QSize
 from PyQt6.QtGui import QIcon
 
-from modern_ui.widgets import modern_palette
-from modern_ui.widgets.modern_toolbar import _make_icon
+from diablos.gui.widgets import modern_palette
+from diablos.gui.widgets.modern_toolbar import _make_icon
 
 pytestmark = pytest.mark.qt
 

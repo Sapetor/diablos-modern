@@ -1,5 +1,5 @@
 """Tests for the Monte-Carlo background worker
-(modern_ui/widgets/monte_carlo_worker.py).
+(src/diablos/gui/widgets/monte_carlo_worker.py).
 
 Builds a tiny stochastic diagram (reusing the _params/_load helper pattern from
 tests/unit/test_monte_carlo.py), then drives the worker by calling ``run()``
@@ -10,8 +10,8 @@ can assert exactly what progress/finished carry without an event loop.
 
 import pytest
 
-from lib.diagram_builder import DiagramBuilder
-from modern_ui.widgets.monte_carlo_worker import MonteCarloWorker
+from diablos.core.diagram_builder import DiagramBuilder
+from diablos.gui.widgets.monte_carlo_worker import MonteCarloWorker
 
 
 _BLOCK_INSTANCES = None
@@ -20,7 +20,7 @@ _BLOCK_INSTANCES = None
 def _params(block_type, **overrides):
     global _BLOCK_INSTANCES
     if _BLOCK_INSTANCES is None:
-        from lib.block_loader import load_blocks
+        from diablos.core.block_loader import load_blocks
 
         _BLOCK_INSTANCES = {}
         for cls in load_blocks():
@@ -39,8 +39,8 @@ def _params(block_type, **overrides):
 
 
 def _load(builder, tmp_path, name):
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     path = tmp_path / name
     builder.save(str(path))

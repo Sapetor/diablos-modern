@@ -8,7 +8,7 @@ class TestTransportDelay:
 
     def test_block_properties(self):
         """Test basic block properties and metadata."""
-        from blocks.transport_delay import TransportDelayBlock
+        from diablos.blocks.transport_delay import TransportDelayBlock
 
         block = TransportDelayBlock()
         assert block.block_name == "TransportDelay"
@@ -21,7 +21,7 @@ class TestTransportDelay:
 
     def test_zero_delay_passthrough(self):
         """With delay=0, output should equal input after buffer builds."""
-        from blocks.transport_delay import TransportDelayBlock
+        from diablos.blocks.transport_delay import TransportDelayBlock
 
         block = TransportDelayBlock()
         params = {"delay_time": 0.0, "initial_value": 0.0, "_init_start_": True}
@@ -42,7 +42,7 @@ class TestTransportDelay:
 
     def test_constant_delay(self):
         """Signal should arrive after delay time."""
-        from blocks.transport_delay import TransportDelayBlock
+        from diablos.blocks.transport_delay import TransportDelayBlock
 
         block = TransportDelayBlock()
         delay = 0.1
@@ -69,7 +69,7 @@ class TestTransportDelay:
 
     def test_initial_value_before_delay(self):
         """Before delay elapses, should return initial_value."""
-        from blocks.transport_delay import TransportDelayBlock
+        from diablos.blocks.transport_delay import TransportDelayBlock
 
         block = TransportDelayBlock()
         initial_val = 5.0
@@ -88,7 +88,7 @@ class TestTransportDelay:
 
     def test_interpolation_accuracy(self):
         """Test linear interpolation for sub-timestep delays."""
-        from blocks.transport_delay import TransportDelayBlock
+        from diablos.blocks.transport_delay import TransportDelayBlock
 
         block = TransportDelayBlock()
         delay = 0.05  # 50ms delay
@@ -114,7 +114,7 @@ class TestTransportDelay:
 
     def test_ramp_signal(self):
         """Test with linearly increasing input."""
-        from blocks.transport_delay import TransportDelayBlock
+        from diablos.blocks.transport_delay import TransportDelayBlock
 
         block = TransportDelayBlock()
         delay = 0.1
@@ -140,7 +140,7 @@ class TestTransportDelay:
 
     def test_buffer_pruning(self):
         """Verify buffer doesn't grow unbounded."""
-        from blocks.transport_delay import TransportDelayBlock
+        from diablos.blocks.transport_delay import TransportDelayBlock
 
         block = TransportDelayBlock()
         delay = 0.1
@@ -161,7 +161,7 @@ class TestTransportDelay:
 
     def test_step_response(self):
         """Test classic step response with delay."""
-        from blocks.transport_delay import TransportDelayBlock
+        from diablos.blocks.transport_delay import TransportDelayBlock
 
         block = TransportDelayBlock()
         delay = 0.1
@@ -190,7 +190,7 @@ class TestTransportDelay:
 
     def test_vector_input(self):
         """Test with vector-valued inputs."""
-        from blocks.transport_delay import TransportDelayBlock
+        from diablos.blocks.transport_delay import TransportDelayBlock
 
         block = TransportDelayBlock()
         delay = 0.05
@@ -222,7 +222,7 @@ class TestTransportDelay:
 
     def test_negative_delay_clamped_to_zero(self):
         """Negative delay should be clamped to zero."""
-        from blocks.transport_delay import TransportDelayBlock
+        from diablos.blocks.transport_delay import TransportDelayBlock
 
         block = TransportDelayBlock()
         params = {"delay_time": -0.1, "initial_value": 0.0, "_init_start_": True}
@@ -236,7 +236,7 @@ class TestTransportDelay:
 
     def test_initialization_flag(self):
         """Test that _init_start_ flag properly resets buffers."""
-        from blocks.transport_delay import TransportDelayBlock
+        from diablos.blocks.transport_delay import TransportDelayBlock
 
         block = TransportDelayBlock()
         params = {"delay_time": 0.1, "initial_value": 0.0, "_init_start_": True}
@@ -256,7 +256,7 @@ class TestTransportDelay:
 
     def test_sine_wave_delay(self):
         """Test delay on sinusoidal signal."""
-        from blocks.transport_delay import TransportDelayBlock
+        from diablos.blocks.transport_delay import TransportDelayBlock
 
         block = TransportDelayBlock()
         delay = 0.1
@@ -282,7 +282,7 @@ class TestTransportDelay:
 
     def test_no_input_uses_initial_value(self):
         """When no input is provided, should use initial_value."""
-        from blocks.transport_delay import TransportDelayBlock
+        from diablos.blocks.transport_delay import TransportDelayBlock
 
         block = TransportDelayBlock()
         params = {"delay_time": 0.1, "initial_value": 7.5, "_init_start_": True}
@@ -293,7 +293,7 @@ class TestTransportDelay:
 
     def test_buffer_consistency(self):
         """Verify time and value buffers stay synchronized."""
-        from blocks.transport_delay import TransportDelayBlock
+        from diablos.blocks.transport_delay import TransportDelayBlock
 
         block = TransportDelayBlock()
         params = {"delay_time": 0.1, "initial_value": 0.0, "_init_start_": True}

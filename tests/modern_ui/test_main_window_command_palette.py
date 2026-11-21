@@ -28,7 +28,7 @@ import pytest
 
 @pytest.fixture(scope="module")
 def window(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     yield w
@@ -89,11 +89,11 @@ class TestSetupCommandPalette:
     def test_block_commands_match_menu_blocks(self, window):
         """One command per *visible* block.
 
-        Blocks flagged ``hidden`` (``blocks/external.py``) are filtered out with
+        Blocks flagged ``hidden`` (``src/diablos/blocks/external.py``) are filtered out with
         the same helper the palette uses, so the count is the visible subset,
         not the full menu_blocks list.
         """
-        from modern_ui.widgets.modern_palette import visible_menu_blocks
+        from diablos.gui.widgets.modern_palette import visible_menu_blocks
 
         cmds = _commands(window)
         block_cmds = [c for c in cmds if c["type"] == "block"]

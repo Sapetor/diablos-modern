@@ -12,8 +12,8 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
-from lib.engine.simulation_engine import SimulationEngine
-from lib.lib import DSim
+from diablos.core.engine.simulation_engine import SimulationEngine
+from diablos.core.lib import DSim
 
 
 class _RaisingBlock:

@@ -1,11 +1,11 @@
-"""Headless CLI (``lib/cli.py``) — run a diagram and export Scope traces."""
+"""Headless CLI (``src/diablos/core/cli.py``) — run a diagram and export Scope traces."""
 
 import json
 
 import numpy as np
 import pytest
 
-from lib import cli
+from diablos.core import cli
 
 
 def _step_gain_scope(sim_time=1.0, sim_dt=0.1, gain=2.0, step=1.0):
@@ -167,7 +167,7 @@ def make_ode_diagram(tmp_path):
 class TestCliRun:
     def test_run_diagram_returns_finished_dsim(self, qapp, diagram):
         dsim = cli.run_diagram(diagram, sim_time=1.0, sim_dt=0.1)
-        from lib.analysis.resim import harvest_scope_signals
+        from diablos.core.analysis.resim import harvest_scope_signals
 
         result = harvest_scope_signals(dsim)
         assert result is not None and result["signals"]
@@ -290,7 +290,7 @@ class TestCliHonorsFileSolverSettings:
 
     def test_the_run_is_still_numerically_right(self, qapp, make_ode_diagram):
         # Integral of a unit step over [0, 1] is 1.0, whichever method ran.
-        from lib.analysis.resim import harvest_scope_signals
+        from diablos.core.analysis.resim import harvest_scope_signals
 
         path = make_ode_diagram(solver_method="BDF")
         result = harvest_scope_signals(cli.run_diagram(path, sim_time=1.0, sim_dt=0.1))
@@ -380,7 +380,7 @@ class TestVerifyFlag:
         assert "VERIFICATION PASSED" in printed
 
     def test_failed_check_exits_with_code_3(self, qapp, diagram, tmp_path, monkeypatch, capsys):
-        from lib.engine import verification_report as vr
+        from diablos.core.engine import verification_report as vr
 
         failed = vr.VerificationReport(text="✗ VERIFICATION FAILED", passed=False, has_data=True)
         monkeypatch.setattr(vr, "build_verification_report", lambda blocks: failed)

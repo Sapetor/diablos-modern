@@ -8,10 +8,10 @@ from types import SimpleNamespace
 import pytest
 from PyQt6.QtCore import QRect
 
-from lib.simulation.block import DBlock
-from lib.simulation.connection import DLine
-from modern_ui.managers.clipboard_manager import ClipboardManager
-from modern_ui.managers.history_manager import HistoryManager
+from diablos.core.simulation.block import DBlock
+from diablos.core.simulation.connection import DLine
+from diablos.gui.managers.clipboard_manager import ClipboardManager
+from diablos.gui.managers.history_manager import HistoryManager
 
 
 @pytest.fixture(autouse=True)

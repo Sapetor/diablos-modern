@@ -57,7 +57,7 @@ class TestStateReset:
 
     def test_adam_two_runs_identical(self):
         """Adam moment vectors and step counter must reset between runs."""
-        from blocks.optimization_primitives.adam import AdamBlock
+        from diablos.blocks.optimization_primitives.adam import AdamBlock
 
         grad = np.array([1.0, -0.5])
         inputs_seq = [{0: grad}] * 15
@@ -69,7 +69,7 @@ class TestStateReset:
 
     def test_momentum_two_runs_identical(self):
         """Momentum velocity must reset between runs."""
-        from blocks.optimization_primitives.momentum import MomentumBlock
+        from diablos.blocks.optimization_primitives.momentum import MomentumBlock
 
         grad = np.array([2.0, 1.0])
         inputs_seq = [{0: grad}] * 15
@@ -81,7 +81,7 @@ class TestStateReset:
 
     def test_state_variable_two_runs_identical(self):
         """StateVariable _state_ must reset to initial_value between runs."""
-        from blocks.optimization_primitives.state_variable import StateVariableBlock
+        from diablos.blocks.optimization_primitives.state_variable import StateVariableBlock
 
         ramp = [np.array([float(i), float(i)]) for i in range(1, 11)]
         inputs_seq = [{}] + [{0: v} for v in ramp[:9]]
@@ -93,7 +93,7 @@ class TestStateReset:
 
     def test_state_variable_restart_at_initial(self):
         """After reset, StateVariable must restart from initial_value, not terminal state."""
-        from blocks.optimization_primitives.state_variable import StateVariableBlock
+        from diablos.blocks.optimization_primitives.state_variable import StateVariableBlock
 
         block = StateVariableBlock()
 
@@ -166,7 +166,7 @@ class TestStateReset:
 
     def test_adam_no_stale_moments_after_reset(self):
         """Verify Adam first-step output matches after a params-reuse reset."""
-        from blocks.optimization_primitives.adam import AdamBlock
+        from diablos.blocks.optimization_primitives.adam import AdamBlock
 
         grad = np.array([1.0])
 

@@ -8,8 +8,8 @@ particularly for blocks with multiple input/output ports.
 import pytest
 from PyQt6.QtCore import QRect
 
-from lib.simulation.block import DBlock
-from blocks.subsystem import Subsystem
+from diablos.core.simulation.block import DBlock
+from diablos.blocks.subsystem import Subsystem
 
 
 @pytest.fixture

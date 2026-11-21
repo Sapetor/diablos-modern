@@ -1,0 +1,114 @@
+"""
+ResidualNorm Block
+
+Computes the norm of a vector for convergence checking.
+‖F‖ is used to monitor convergence of optimization/root-finding algorithms.
+"""
+
+import logging
+import numpy as np
+from diablos.blocks.base_block import BaseBlock
+from diablos.blocks.input_helpers import get_vector
+
+logger = logging.getLogger(__name__)
+
+
+class ResidualNormBlock(BaseBlock):
+    """
+    Computes the norm of a vector.
+
+    Used for convergence monitoring in optimization:
+    - ‖∇f‖ < tol indicates gradient descent convergence
+    - ‖F(x)‖ < tol indicates root-finding convergence
+    - ‖x_{k+1} - x_k‖ < tol indicates iterate convergence
+    """
+
+    @property
+    def block_name(self):
+        return "ResidualNorm"
+
+    @property
+    def category(self):
+        return "Optimization Primitives"
+
+    @property
+    def color(self):
+        return "gray"
+
+    @property
+    def b_type(self):
+        """Feedthrough block - direct input to output."""
+        return 2
+
+    @property
+    def doc(self):
+        return (
+            "Computes the norm of a vector for convergence checking."
+            "\n\nParameters:"
+            "\n- norm_type: '2' (Euclidean), '1' (Manhattan), 'inf' (max abs)"
+            "\n\nInput: Vector F (residual, gradient, or difference)"
+            "\nOutput: Scalar ‖F‖"
+            "\n\nUse with a Scope to monitor convergence."
+        )
+
+    @property
+    def params(self):
+        return {
+            "norm_type": {
+                "type": "choice",
+                "default": "2",
+                "options": ["1", "2", "inf"],
+                "doc": "Norm type: 1 (Manhattan), 2 (Euclidean), inf (max)",
+            },
+        }
+
+    @property
+    def inputs(self):
+        return [{"name": "F", "type": "vector"}]
+
+    @property
+    def outputs(self):
+        return [{"name": "norm", "type": "float"}]
+
+    def draw_icon(self, block_rect):
+        """Draw a vector arrow between double norm bars."""
+        from diablos.core.icon_path import IconPath
+
+        path = IconPath()
+        # Left double bar
+        path.moveTo(0.08, 0.12)
+        path.lineTo(0.08, 0.88)
+        path.moveTo(0.20, 0.12)
+        path.lineTo(0.20, 0.88)
+        # Right double bar
+        path.moveTo(0.80, 0.12)
+        path.lineTo(0.80, 0.88)
+        path.moveTo(0.92, 0.12)
+        path.lineTo(0.92, 0.88)
+        # Vector inside
+        path.moveTo(0.32, 0.72)
+        path.lineTo(0.68, 0.30)
+        path.moveTo(0.56, 0.30)
+        path.lineTo(0.68, 0.30)
+        path.lineTo(0.68, 0.42)
+        return path
+
+    def execute(self, time, inputs, params, **kwargs):
+        try:
+            F = get_vector(inputs, 0).astype(float)
+            norm_type = params.get("norm_type", "2")
+
+            if norm_type == "1":
+                norm = np.linalg.norm(F, ord=1)
+            elif norm_type == "2":
+                norm = np.linalg.norm(F, ord=2)
+            elif norm_type == "inf":
+                norm = np.linalg.norm(F, ord=np.inf)
+            else:
+                norm = np.linalg.norm(F, ord=2)
+
+            return {0: float(norm), "E": False}
+
+        except Exception as e:
+            logger.error(f"ResidualNorm error: {e}")
+            return {0: 0.0, "E": True, "error": str(e)}

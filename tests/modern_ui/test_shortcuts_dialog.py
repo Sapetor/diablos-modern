@@ -19,7 +19,7 @@ def _qt(qapp):
 
 @pytest.fixture
 def dialog():
-    from modern_ui.widgets.shortcuts_dialog import KeyboardShortcutsDialog
+    from diablos.gui.widgets.shortcuts_dialog import KeyboardShortcutsDialog
 
     d = KeyboardShortcutsDialog()
     yield d
@@ -32,13 +32,13 @@ class TestKeyboardShortcutsDialog:
         assert dialog.windowTitle() == "Keyboard Shortcuts"
 
     def test_catalogue_has_expected_groups(self):
-        from modern_ui.widgets.shortcuts_dialog import SHORTCUT_GROUPS
+        from diablos.gui.widgets.shortcuts_dialog import SHORTCUT_GROUPS
 
         titles = [title for title, _ in SHORTCUT_GROUPS]
         assert titles == ["File", "Edit", "Simulation", "View", "Help", "Canvas"]
 
     def test_catalogue_entries_are_label_key_pairs(self):
-        from modern_ui.widgets.shortcuts_dialog import SHORTCUT_GROUPS
+        from diablos.gui.widgets.shortcuts_dialog import SHORTCUT_GROUPS
 
         for _title, entries in SHORTCUT_GROUPS:
             assert entries  # each group is non-empty
@@ -49,7 +49,7 @@ class TestKeyboardShortcutsDialog:
                 assert isinstance(key, str)  # may be empty (no binding)
 
     def test_f1_help_binding_present(self):
-        from modern_ui.widgets.shortcuts_dialog import SHORTCUT_GROUPS
+        from diablos.gui.widgets.shortcuts_dialog import SHORTCUT_GROUPS
 
         help_entries = dict(e for _t, group in SHORTCUT_GROUPS for e in group)
         assert help_entries.get("Keyboard shortcuts") == "F1"

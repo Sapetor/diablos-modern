@@ -10,7 +10,7 @@ effect is present and carries the requested elevation token.
 import pytest
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 
-from modern_ui.themes.theme_manager import ELEVATION
+from diablos.gui.themes.theme_manager import ELEVATION
 
 
 @pytest.fixture(autouse=True)
@@ -21,7 +21,7 @@ def _qt(qapp):
 
 class TestCommandPaletteElevation:
     def test_card_has_drop_shadow(self):
-        from modern_ui.widgets.command_palette import CommandPalette
+        from diablos.gui.widgets.command_palette import CommandPalette
 
         palette = CommandPalette()
         try:
@@ -31,7 +31,7 @@ class TestCommandPaletteElevation:
             palette.deleteLater()
 
     def test_card_uses_e3_elevation(self):
-        from modern_ui.widgets.command_palette import CommandPalette
+        from diablos.gui.widgets.command_palette import CommandPalette
 
         palette = CommandPalette()
         try:
@@ -46,7 +46,7 @@ class TestCommandPaletteElevation:
 
 class TestErrorPanelElevation:
     def test_panel_has_drop_shadow(self):
-        from modern_ui.widgets.error_panel import ErrorPanel
+        from diablos.gui.widgets.error_panel import ErrorPanel
 
         panel = ErrorPanel()
         try:
@@ -56,7 +56,7 @@ class TestErrorPanelElevation:
             panel.deleteLater()
 
     def test_panel_uses_e2_elevation(self):
-        from modern_ui.widgets.error_panel import ErrorPanel
+        from diablos.gui.widgets.error_panel import ErrorPanel
 
         panel = ErrorPanel()
         try:

@@ -1,7 +1,7 @@
 """Wires are tinted with their sample rate (same scale as the block dot).
 
 The engine resolves rates only when a run starts, so the canvas repeats the
-propagation rule in ``modern_ui/renderers/sample_time_colors.py``.
+propagation rule in ``src/diablos/gui/renderers/sample_time_colors.py``.
 """
 
 import types
@@ -10,7 +10,7 @@ import pytest
 from PyQt6.QtCore import QPoint
 from PyQt6.QtTest import QTest
 
-from modern_ui.renderers.sample_time_colors import (
+from diablos.gui.renderers.sample_time_colors import (
     block_sample_times,
     rate_color,
     wire_sample_times,
@@ -57,7 +57,7 @@ class TestPropagation:
 
 @pytest.fixture
 def window(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     w.resize(1200, 800)

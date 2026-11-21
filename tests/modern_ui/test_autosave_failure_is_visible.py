@@ -13,14 +13,14 @@ a dialog would interrupt editing on a loop.
 import pytest
 from PyQt6.QtCore import QPoint
 
-from lib.i18n import tr
+from diablos.core.i18n import tr
 
 AUTOSAVE_FAILED = "Auto-save failed — could not write the recovery file"
 
 
 @pytest.fixture
 def window(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     # A 2-minute timer firing mid-test would re-enter _auto_save.

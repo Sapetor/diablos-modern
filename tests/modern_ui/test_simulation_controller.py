@@ -15,8 +15,8 @@ import types
 import pytest
 from PyQt6.QtWidgets import QApplication
 
-from modern_ui.controllers import simulation_controller as sc
-from modern_ui.controllers.simulation_controller import SimulationController
+from diablos.gui.controllers import simulation_controller as sc
+from diablos.gui.controllers.simulation_controller import SimulationController
 
 
 def _block(name="stub0"):
@@ -371,7 +371,7 @@ class TestStopInterruptsACompiledRun:
     def test_stop_ends_a_long_compiled_run_promptly(self, make_controller, states, statuses):
         from PyQt6.QtCore import QPoint
 
-        from lib.lib import DSim
+        from diablos.core.lib import DSim
 
         dsim = DSim()
         menu = {b.fn_name: b for b in dsim.menu_blocks}

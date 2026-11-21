@@ -19,7 +19,7 @@ from PyQt6.QtCore import QPoint
 
 @pytest.fixture(scope="module")
 def window(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     yield w
@@ -79,10 +79,10 @@ class _FakeWorker:
 @pytest.fixture
 def fake_workers(monkeypatch):
     _FakeWorker.instances = []
-    import modern_ui.widgets.monte_carlo_worker as mc_mod
-    import modern_ui.widgets.parameter_sweep_worker as sw_mod
-    import modern_ui.widgets.monte_carlo_dialog as mc_dlg
-    import modern_ui.widgets.parameter_sweep_dialog as sw_dlg
+    import diablos.gui.widgets.monte_carlo_worker as mc_mod
+    import diablos.gui.widgets.parameter_sweep_worker as sw_mod
+    import diablos.gui.widgets.monte_carlo_dialog as mc_dlg
+    import diablos.gui.widgets.parameter_sweep_dialog as sw_dlg
 
     monkeypatch.setattr(mc_mod, "MonteCarloWorker", _FakeWorker)
     monkeypatch.setattr(sw_mod, "ParameterSweepWorker", _FakeWorker)

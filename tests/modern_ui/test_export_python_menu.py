@@ -55,7 +55,7 @@ def _export_submenu(window):
 
 @pytest.mark.unit
 def test_export_python_action_is_wired(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     window = ModernDiaBloSWindow()
     try:
@@ -71,8 +71,8 @@ def test_export_python_action_is_wired(qapp):
 @pytest.mark.unit
 def test_empty_diagram_informs_and_does_not_prompt(qapp, monkeypatch):
     import PyQt6.QtWidgets as qtw
-    from modern_ui.main_window import ModernDiaBloSWindow
-    import modern_ui.tools.file_dialogs as file_dialogs
+    from diablos.gui.main_window import ModernDiaBloSWindow
+    import diablos.gui.tools.file_dialogs as file_dialogs
 
     window = ModernDiaBloSWindow()
     try:
@@ -92,8 +92,8 @@ def test_empty_diagram_informs_and_does_not_prompt(qapp, monkeypatch):
 
 @pytest.mark.unit
 def test_writes_a_compilable_script(qapp, monkeypatch, tmp_path):
-    from modern_ui.main_window import ModernDiaBloSWindow
-    import modern_ui.tools.file_dialogs as file_dialogs
+    from diablos.gui.main_window import ModernDiaBloSWindow
+    import diablos.gui.tools.file_dialogs as file_dialogs
 
     window = ModernDiaBloSWindow()
     try:
@@ -112,8 +112,8 @@ def test_writes_a_compilable_script(qapp, monkeypatch, tmp_path):
 @pytest.mark.unit
 def test_unsupported_blocks_warn_and_write_nothing(qapp, monkeypatch, tmp_path):
     import PyQt6.QtWidgets as qtw
-    from modern_ui.main_window import ModernDiaBloSWindow
-    import modern_ui.tools.file_dialogs as file_dialogs
+    from diablos.gui.main_window import ModernDiaBloSWindow
+    import diablos.gui.tools.file_dialogs as file_dialogs
 
     window = ModernDiaBloSWindow()
     try:

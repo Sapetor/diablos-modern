@@ -7,7 +7,7 @@ Internal params (leading underscore) are exempt.
 
 import pytest
 
-from lib.block_loader import load_builtin_blocks
+from diablos.core.block_loader import load_builtin_blocks
 
 # Blocks exempt from the check (none today; add a class name with a reason).
 DOC_SKIP: set = set()

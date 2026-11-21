@@ -25,9 +25,9 @@ def _run(fn, params, sim_time=0.5, sim_dt=0.02):
     import tempfile
     from pathlib import Path
 
-    from lib.analysis.resim import harvest_scope_signals
-    from lib.cli import load_diagram
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.analysis.resim import harvest_scope_signals
+    from diablos.core.cli import load_diagram
+    from diablos.core.diagram_builder import DiagramBuilder
 
     b = DiagramBuilder(sim_time=sim_time, sim_dt=sim_dt)
     s = b.add_block(
@@ -67,7 +67,7 @@ class TestDerivativeUsesTheCurrentInput:
 @pytest.mark.regression
 class TestRatedPidActsAtItsInstant:
     def test_builder_marks_pid_as_feedthrough(self, qapp):
-        from lib.diagram_builder import BLOCK_DEFAULTS
+        from diablos.core.diagram_builder import BLOCK_DEFAULTS
 
         assert BLOCK_DEFAULTS["PID"]["b_type"] == 2
 

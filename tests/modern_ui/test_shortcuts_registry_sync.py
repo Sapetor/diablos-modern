@@ -18,8 +18,8 @@ import pytest
 
 from PyQt6.QtWidgets import QLabel
 
-from modern_ui.managers.command_palette_manager import palette_command_groups
-from modern_ui.widgets.shortcuts_dialog import (
+from diablos.gui.managers.command_palette_manager import palette_command_groups
+from diablos.gui.widgets.shortcuts_dialog import (
     KeyboardShortcutsDialog,
     SHORTCUT_GROUPS,
     build_shortcut_groups,

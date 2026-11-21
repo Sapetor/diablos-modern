@@ -151,7 +151,7 @@ is currently empty; the three defects it was created for are below.
 ### Fixed
 
 * **A single monotone state crossing tripped the chattering guard.**
-  `lib/engine/zero_crossing.py` restarted each segment at the located root plus
+  `src/diablos/core/engine/zero_crossing.py` restarted each segment at the located root plus
   a nudge in *time* and carried the state across unchanged, so a guard written
   on the state (`Saturation`'s `u - max`, where `u` is an integrator output) was
   still exactly zero at the new segment start; scipy's `find_active_events`
@@ -172,7 +172,7 @@ is currently empty; the three defects it was created for are below.
   switch 2.766e-8 → 2.766e-8).
 
 * **`Integrator` crashed under `TUSTIN` and `BWD_EULER` on a 0-d input.**
-  `blocks/sine.py` returns `np.array(scalar)` (shape `()`) — so do
+  `src/diablos/blocks/sine.py` returns `np.array(scalar)` (shape `()`) — so do
   `WaveGenerator`, `Noise` and `Chirp` — and the integrator's promotion guard
   only tested `isinstance(x, (float, int))`, so its shape check rewrote
   `params['mem']` as a 0-d array while `params['mem_list'][0]` had been
@@ -190,7 +190,7 @@ is currently empty; the three defects it was created for are below.
   so the lag dominates the trapezoidal rule's own second order.
 
 * **The interpreted PID's derivative branch never saw a step in its input.**
-  `blocks/pid.py` filtered the finite difference `(e[k] - e[k-1])/dt` with
+  `src/diablos/blocks/pid.py` filtered the finite difference `(e[k] - e[k-1])/dt` with
   `_prev_e` seeded from the first error sample, so `de = 0` at `t0` and the
   filtered derivative's entire response to the reference step was lost — an
   O(1) error that did not shrink with `dt` (0.2866 / 0.2843 / 0.2834 / 0.2831 at

@@ -9,7 +9,7 @@ the accumulation must live entirely in the passed-in ``params`` dict.
 import numpy as np
 import pytest
 
-from blocks.agent_scope import AgentScopeBlock
+from diablos.blocks.agent_scope import AgentScopeBlock
 
 
 @pytest.mark.unit

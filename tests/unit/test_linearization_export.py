@@ -1,5 +1,5 @@
 """Headless tests for the Qt-free linearization exporter
-(``lib/analysis/linearization_export.py``).
+(``src/diablos/core/analysis/linearization_export.py``).
 
 The formatter must round-trip A/B/C/D at FULL precision (repr-level, not the
 display's %.4g), emit valid code in the empty-B/C/D and no-transfer-function
@@ -12,7 +12,7 @@ import types
 import numpy as np
 import pytest
 
-from lib.analysis import linearization_export as lx
+from diablos.core.analysis import linearization_export as lx
 
 
 # --------------------------------------------------------------------- helpers

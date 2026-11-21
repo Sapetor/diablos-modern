@@ -11,7 +11,7 @@ These tests pin the clamping behavior so the runaway can't return.
 import pytest
 from PyQt6.QtCore import QPoint, QPointF, Qt
 
-from modern_ui.managers.zoom_pan_manager import ZoomPanManager
+from diablos.gui.managers.zoom_pan_manager import ZoomPanManager
 
 
 class _FakeCanvas:

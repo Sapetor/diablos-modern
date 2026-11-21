@@ -4,7 +4,7 @@ TranFn, StateSpace, PID, Integrator and Derivative given ``sampling_time > 0``
 run only at their sample instants in the interpreter, discretized over
 ``dtime = Ts``, and hold their output in between. They used to send the whole
 diagram to the interpreter; they now compile as sampled holders
-(``lib/engine/compiler_kernels/discrete.py``) whose update is the block's own
+(``src/diablos/core/engine/compiler_kernels/discrete.py``) whose update is the block's own
 ``execute()``, so with only sources upstream the compiled trace equals the
 interpreter's exactly.
 """
@@ -54,8 +54,8 @@ def _source_value(src, t):
 def _oracle(fn, params, sources, ts, t_out):
     """The block's own execute() at k*Ts on the exact inputs, held to the next
     instant: what a sampled block outputs by definition."""
-    from blocks.derivative import DerivativeBlock
-    from blocks.pid import PIDBlock
+    from diablos.blocks.derivative import DerivativeBlock
+    from diablos.blocks.pid import PIDBlock
 
     block = {"PID": PIDBlock, "Deriv": DerivativeBlock}[fn]()
     p = {**params, "sampling_time": ts, "dtime": ts, "_init_start_": True}
@@ -71,7 +71,7 @@ def _oracle(fn, params, sources, ts, t_out):
 
 def _open_loop(fn, params, sources, ts=0.1, sim_time=2.0, sim_dt=0.02):
     """sources -> rated block (sampling_time=ts) -> Scope."""
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     b = DiagramBuilder(sim_time=sim_time, sim_dt=sim_dt)
     blk = b.add_block(
@@ -123,7 +123,7 @@ class TestRatedBlocksMatchTheInterpreter:
 
 def _rated_loop(ctrl_fn, ctrl_params, ts=0.1, sim_time=6.0, sim_dt=0.01):
     """Step -> e -> rated controller -> 2/((s+1)(s+2)) -> feedback; Scope y, u."""
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     b = DiagramBuilder(sim_time=sim_time, sim_dt=sim_dt)
     r = b.add_block("Step", 0, 0, name="r", params={"value": 1.0, "delay": 0.93, "type": "up"})
@@ -168,7 +168,7 @@ class TestRatedBlocksInLoops:
     def test_an_inherited_rate_integrates_over_the_inherited_period(self, qapp, tmp_path):
         """ramp -> ZOH(0.2) -> TranFn(sampling_time=0) inherits 0.2 s, and its
         holder discretizes over dtime = 0.2, as the interpreter does."""
-        from lib.diagram_builder import DiagramBuilder
+        from diablos.core.diagram_builder import DiagramBuilder
 
         b = DiagramBuilder(sim_time=2.0, sim_dt=0.05)
         r = b.add_block("Ramp", 0, 0, name="r", params={"slope": 1.0, "delay": 0.0})
@@ -248,7 +248,7 @@ class TestFixedStepHybrid:
     def test_instants_off_the_grid_end_a_shortened_step(self, qapp, tmp_path):
         """Ts = 0.15 on a dt = 0.1 grid: every other instant falls between
         grid points, and the fixed step must stop there."""
-        from lib.diagram_builder import DiagramBuilder
+        from diablos.core.diagram_builder import DiagramBuilder
 
         b = DiagramBuilder(sim_time=1.2, sim_dt=0.1)
         s = b.add_block(

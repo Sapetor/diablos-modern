@@ -25,7 +25,7 @@ import pytest
 
 @pytest.fixture(scope="module")
 def window(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     yield w
@@ -154,7 +154,7 @@ class TestBatchGuard:
     def test_tick_does_not_step_while_a_batch_worker_runs(
         self, window, monkeypatch, stub_canvas_dsim
     ):
-        from modern_ui.controllers import simulation_controller as sc
+        from diablos.gui.controllers import simulation_controller as sc
 
         stub = stub_canvas_dsim(_StubDSim())
         monkeypatch.setattr(window.canvas, "is_simulation_running", lambda: True)

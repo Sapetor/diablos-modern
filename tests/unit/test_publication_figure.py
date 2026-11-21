@@ -1,5 +1,5 @@
 """
-Tests for build_publication_figure (lib/plotting/publication_figure.py).
+Tests for build_publication_figure (src/diablos/core/plotting/publication_figure.py).
 
 Pure matplotlib (no Qt / no qapp): the module builds a Figure directly, so
 these tests run headless under MPLBACKEND=Agg (forced by tests/conftest.py).
@@ -8,7 +8,7 @@ these tests run headless under MPLBACKEND=Agg (forced by tests/conftest.py).
 import numpy as np
 import pytest
 
-from lib.plotting.publication_figure import build_publication_figure
+from diablos.core.plotting.publication_figure import build_publication_figure
 
 
 def _traces():

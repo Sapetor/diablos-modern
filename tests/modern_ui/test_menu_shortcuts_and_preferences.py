@@ -12,8 +12,8 @@ from PyQt6.QtGui import QAction, QKeySequence
 from PyQt6.QtTest import QTest
 from PyQt6.QtWidgets import QApplication
 
-from lib import i18n
-from modern_ui.main_window import ModernDiaBloSWindow
+from diablos.core import i18n
+from diablos.gui.main_window import ModernDiaBloSWindow
 
 
 @pytest.fixture
@@ -184,7 +184,7 @@ class TestShortcutOwnership:
     def test_canvas_no_longer_double_handles_ctrl_keys(self, window):
         import inspect
 
-        from modern_ui.widgets.modern_canvas import ModernCanvas
+        from diablos.gui.widgets.modern_canvas import ModernCanvas
 
         src = inspect.getsource(ModernCanvas.keyPressEvent)
         for stale in ("Key_Z", "Key_Y", "Key_C", "Key_V", "Key_A", "Key_G", "Key_F5"):
@@ -218,7 +218,7 @@ class TestShortcutOwnership:
 @pytest.mark.qt
 class TestShortcutsDialogLive:
     def test_dialog_is_generated_from_actions(self, window):
-        from modern_ui.widgets.shortcuts_dialog import build_live_shortcut_groups
+        from diablos.gui.widgets.shortcuts_dialog import build_live_shortcut_groups
 
         groups = dict(build_live_shortcut_groups(window))
         assert "Library" not in groups  # no keys there
@@ -262,7 +262,7 @@ class TestCommandPaletteReach:
 class TestPreferencesDialog:
     @pytest.fixture
     def dialog(self, window):
-        from modern_ui.widgets.preferences_dialog import PreferencesDialog
+        from diablos.gui.widgets.preferences_dialog import PreferencesDialog
 
         d = PreferencesDialog(window)
         yield d
@@ -273,7 +273,7 @@ class TestPreferencesDialog:
         assert titles == ["Appearance", "Language", "Editing", "Simulation"]
 
     def test_solid_fills_uses_the_appearance_manager_path(self, window, dialog, monkeypatch):
-        from modern_ui.themes.theme_manager import theme_manager
+        from diablos.gui.themes.theme_manager import theme_manager
 
         saved = []
         monkeypatch.setattr(window.appearance_manager, "save_preferences", lambda: saved.append(1))
@@ -286,7 +286,7 @@ class TestPreferencesDialog:
             theme_manager.set_solid_fills(original)
 
     def test_palette_and_theme_persist_through_the_same_calls(self, window, dialog, monkeypatch):
-        from modern_ui.themes.theme_manager import PALETTE_DISPLAY_NAMES, theme_manager
+        from diablos.gui.themes.theme_manager import PALETTE_DISPLAY_NAMES, theme_manager
 
         saved = []
         monkeypatch.setattr(window.appearance_manager, "save_preferences", lambda: saved.append(1))
@@ -323,8 +323,8 @@ class TestPreferencesDialog:
     def test_set_scaling_stores_qsettings_not_the_config_file(self, window, monkeypatch, tmp_path):
         """It used to rewrite config/default_config.json, which in a source
         checkout is the bundled default (how 125% leaked into the repo)."""
-        from lib.app_paths import user_data_path
-        from lib.ui_scale import stored_ui_scale
+        from diablos.core.app_paths import user_data_path
+        from diablos.core.ui_scale import stored_ui_scale
 
         monkeypatch.setenv("DIABLOS_SETTINGS_INI", str(tmp_path / "s.ini"))
         cfg = user_data_path("config/default_config.json")
@@ -345,7 +345,7 @@ class TestPreferencesDialog:
     ):
         from PyQt6.QtCore import QSettings
 
-        from lib import sim_prefs
+        from diablos.core import sim_prefs
 
         store = QSettings(str(tmp_path / "prefs.ini"), QSettings.Format.IniFormat)
         monkeypatch.setattr(sim_prefs, "ui_settings", lambda: store)

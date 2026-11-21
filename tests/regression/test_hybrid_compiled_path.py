@@ -3,8 +3,8 @@
 ZeroOrderHold, DiscreteTranFn and DiscreteStateSpace used to send the whole
 diagram to the fixed-step interpreter. They now compile: the solver integrates
 adaptively between sample instants and the blocks' own updates run at each
-instant (``lib/engine/compiler_kernels/discrete.py``, ``breakpoints`` in
-``lib/engine/zero_crossing.solve_with_events``). The interpreter is exact on
+instant (``src/diablos/core/engine/compiler_kernels/discrete.py``, ``breakpoints`` in
+``src/diablos/core/engine/zero_crossing.solve_with_events``). The interpreter is exact on
 these diagrams (cont2discrete for a held input), so it is the reference.
 """
 
@@ -13,8 +13,8 @@ import pytest
 
 
 def _run(builder, tmp_path, sim_time, sim_dt, fast=True, solver=None, twice=False):
-    from lib.analysis.resim import harvest_scope_signals
-    from lib.cli import load_diagram
+    from diablos.core.analysis.resim import harvest_scope_signals
+    from diablos.core.cli import load_diagram
 
     path = tmp_path / "hybrid.diablos"
     builder.save(str(path))
@@ -42,7 +42,7 @@ _DSS = ("DiscreteStateSpace", {"A": [[0.5]], "B": [[1.0]], "C": [[1.0]], "D": [[
 
 def _staircase(sim_time=1.0, sim_dt=0.1, discrete=_DTF):
     """ramp -> ZOH(0.2) -> y[k] = 0.5 y[k-1] + u[k-1] (inherited rate) -> scope."""
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     b = DiagramBuilder(sim_time=sim_time, sim_dt=sim_dt)
     r = b.add_block("Ramp", 0, 0, name="r", params={"slope": 1.0, "delay": 0.0})
@@ -63,7 +63,7 @@ def _sampled_loop(saturate=False, sim_time=6.0, sim_dt=0.01):
     feedback and the scope, so located zero-crossing events and sample
     instants share one solve.
     """
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     b = DiagramBuilder(sim_time=sim_time, sim_dt=sim_dt)
     r = b.add_block("Step", 0, 0, name="r", params={"value": 1.0, "delay": 0.93, "type": "up"})
@@ -127,7 +127,7 @@ class TestHybridMatchesInterpreter:
             assert np.max(np.abs(a - b)) < 1e-7, label
 
     def test_two_rates_share_one_schedule(self, qapp, tmp_path):
-        from lib.diagram_builder import DiagramBuilder
+        from diablos.core.diagram_builder import DiagramBuilder
 
         b = DiagramBuilder(sim_time=1.2, sim_dt=0.05)
         s = b.add_block(
@@ -177,7 +177,7 @@ class TestHybridFallbacks:
         assert dsim.engine.get_compile_fallback_reason() is None
 
     def test_unresolved_rate_keeps_the_interpreter(self, qapp, tmp_path):
-        from lib.diagram_builder import DiagramBuilder
+        from diablos.core.diagram_builder import DiagramBuilder
 
         b = DiagramBuilder(sim_time=0.5, sim_dt=0.1)
         r = b.add_block("Ramp", 0, 0, name="r", params={"slope": 1.0, "delay": 0.0})
@@ -196,8 +196,8 @@ class TestHybridFallbacks:
         assert "unresolved" in dsim.engine.get_compile_fallback_reason()
 
     def test_linearizer_still_refuses_a_sampled_loop(self, qapp, tmp_path):
-        from lib.analysis.linearizer import Linearizer
-        from lib.cli import load_diagram
+        from diablos.core.analysis.linearizer import Linearizer
+        from diablos.core.cli import load_diagram
 
         path = tmp_path / "loop.diablos"
         _sampled_loop().save(str(path))

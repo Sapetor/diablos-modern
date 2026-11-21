@@ -1,4 +1,4 @@
-"""Unit tests for the shared Kahn topological-order helper (lib.engine.topo).
+"""Unit tests for the shared Kahn topological-order helper (diablos.core.engine.topo).
 
 Used by SimulationEngine.detect_algebraic_loops (cycle detection) and the
 compiled replay sort (feedthrough ordering).
@@ -6,7 +6,7 @@ compiled replay sort (feedthrough ordering).
 
 import pytest
 
-from lib.engine.topo import kahn_topological_order
+from diablos.core.engine.topo import kahn_topological_order
 
 
 @pytest.mark.unit

@@ -1,6 +1,6 @@
 """Pixel-identity and behaviour tests for the renderer paint-object caches.
 
-``modern_ui/renderers/block_renderer.py`` memoizes the objects it used to
+``src/diablos/gui/renderers/block_renderer.py`` memoizes the objects it used to
 rebuild for every block on every frame (outline + shadow QPainterPaths, the
 body/port gradients, pens, the icon path from ``draw_icon``, the icon
 QTransform and the label fonts). The contract those caches must honour is
@@ -25,11 +25,11 @@ import pytest
 from PyQt6.QtCore import QPoint, QRect
 from PyQt6.QtGui import QImage, QPainter
 
-from lib.lib import DSim
-from lib.simulation.block import DBlock
-from lib.simulation.connection import DLine
-from modern_ui.renderers import block_renderer as br
-from modern_ui.themes.theme_manager import theme_manager
+from diablos.core.lib import DSim
+from diablos.core.simulation.block import DBlock
+from diablos.core.simulation.connection import DLine
+from diablos.gui.renderers import block_renderer as br
+from diablos.gui.themes.theme_manager import theme_manager
 
 pytestmark = pytest.mark.qt
 
@@ -103,7 +103,7 @@ def _block_class(block_fn):
     """
     global _BLOCK_CLASSES
     if _BLOCK_CLASSES is None:
-        from lib.block_loader import load_blocks
+        from diablos.core.block_loader import load_blocks
 
         _BLOCK_CLASSES = {}
         for cls in load_blocks():
@@ -157,7 +157,7 @@ def _build_dsim():
 
 @pytest.fixture
 def canvas(qapp):
-    from modern_ui.widgets.modern_canvas import ModernCanvas
+    from diablos.gui.widgets.modern_canvas import ModernCanvas
 
     widget = ModernCanvas(_build_dsim())
     widget.resize(CANVAS_W, CANVAS_H)
@@ -226,7 +226,7 @@ class TestCachedRenderIsPixelIdentical:
 
     def test_theme_change_repaints_with_new_colors(self, canvas):
         """The get_color memo must be invalidated when the theme changes."""
-        from modern_ui.themes.theme_manager import ThemeType
+        from diablos.gui.themes.theme_manager import ThemeType
 
         original = theme_manager.current_theme
         try:

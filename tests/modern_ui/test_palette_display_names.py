@@ -4,8 +4,8 @@ import pytest
 from PyQt6.QtCore import QPoint, QSettings
 from PyQt6.QtWidgets import QMainWindow
 
-from modern_ui.widgets import modern_palette as mp
-from modern_ui.widgets.modern_palette import CompactBlockRow, ModernBlockPalette
+from diablos.gui.widgets import modern_palette as mp
+from diablos.gui.widgets.modern_palette import CompactBlockRow, ModernBlockPalette
 
 
 @pytest.fixture(autouse=True)
@@ -26,7 +26,7 @@ def _isolated_settings(tmp_path, monkeypatch):
 
 @pytest.fixture
 def palette():
-    from lib.lib import DSim
+    from diablos.core.lib import DSim
 
     dsim = DSim()
     pal = ModernBlockPalette(dsim)
@@ -89,7 +89,7 @@ def test_collapse_all_and_expand_all(palette):
 
 def test_enter_adds_first_match_and_clears_filter(palette):
     win = QMainWindow()
-    from modern_ui.widgets.modern_canvas import ModernCanvas
+    from diablos.gui.widgets.modern_canvas import ModernCanvas
 
     canvas = ModernCanvas(palette.dsim)
     win.setCentralWidget(canvas)
@@ -154,7 +154,7 @@ def test_long_names_never_widen_the_palette(palette):
 
 
 def block_label_in_tooltip(row):
-    from modern_ui.widgets.modern_palette import block_label
+    from diablos.gui.widgets.modern_palette import block_label
 
     return row.toolTip().splitlines()[0] == block_label(row.menu_block)
 
@@ -162,7 +162,7 @@ def block_label_in_tooltip(row):
 def test_block_match_rank_tiers():
     import types
 
-    from modern_ui.widgets.modern_palette import block_match_rank
+    from diablos.gui.widgets.modern_palette import block_match_rank
 
     def mb(display, fn):
         return types.SimpleNamespace(

@@ -69,8 +69,8 @@ def _ensure_qapp():
 
 
 def _load_dsim(filename):
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     WorkspaceManager._instance = None
     dsim = DSim()

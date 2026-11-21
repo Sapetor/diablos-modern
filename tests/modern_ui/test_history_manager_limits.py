@@ -13,8 +13,8 @@ from PyQt6.QtCore import QPoint
 
 @pytest.fixture
 def canvas(qapp):
-    from lib.lib import DSim
-    from modern_ui.widgets.modern_canvas import ModernCanvas
+    from diablos.core.lib import DSim
+    from diablos.gui.widgets.modern_canvas import ModernCanvas
 
     dsim = DSim()
     c = ModernCanvas(dsim)

@@ -23,9 +23,9 @@ pytestmark = pytest.mark.regression
 def _run_compiled(diagram, tmp_path):
     """Write ``diagram`` to a temp .diablos, run the compiled path, and return
     ``{'timeline', 'signals'}`` from the Scopes."""
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
-    from lib.analysis.resim import harvest_scope_signals
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
+    from diablos.core.analysis.resim import harvest_scope_signals
 
     path = tmp_path / "analytic.diablos"
     path.write_text(json.dumps(diagram))

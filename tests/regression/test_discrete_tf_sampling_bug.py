@@ -36,7 +36,7 @@ from PyQt6.QtCore import QPoint
 
 def _build_step_dtf_scope(num, den, sampling_time, sim_time=1.0, sim_dt=0.1):
     """Wire Step -> DiscreteTranFn -> Scope and run the headless loop."""
-    from lib.lib import DSim
+    from diablos.core.lib import DSim
 
     dsim = DSim()
 

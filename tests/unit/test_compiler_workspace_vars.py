@@ -29,7 +29,7 @@ from PyQt6.QtGui import QColor
 
 def _make_block(block_fn, sid, username, in_ports, out_ports, params, b_type=2):
     """Create a DBlock with minimal boilerplate (mirrors test_feedthrough_bug)."""
-    from lib.simulation.block import DBlock
+    from diablos.core.simulation.block import DBlock
 
     return DBlock(
         block_fn=block_fn,
@@ -45,7 +45,7 @@ def _make_block(block_fn, sid, username, in_ports, out_ports, params, b_type=2):
 
 
 def _make_line(sid, src, srcport, dst, dstport):
-    from lib.simulation.connection import DLine
+    from diablos.core.simulation.connection import DLine
 
     return DLine(
         sid=sid,
@@ -68,7 +68,7 @@ def workspace_with_pi_coeffs():
     ``plant_num = [1.0]``
     ``plant_den = [1.0, 1.0]``
     """
-    from lib.workspace import WorkspaceManager
+    from diablos.core.workspace import WorkspaceManager
 
     # Save existing singleton state so we don't pollute other tests.
     prev_instance = WorkspaceManager._instance
@@ -90,8 +90,8 @@ def workspace_with_pi_coeffs():
 
 def _compile_and_solve(blocks, lines, t_end=20.0):
     """Resolve exec_params (mirroring SimulationEngine), then compile and solve."""
-    from lib.engine.system_compiler import SystemCompiler
-    from lib.workspace import WorkspaceManager
+    from diablos.core.engine.system_compiler import SystemCompiler
+    from diablos.core.workspace import WorkspaceManager
     from scipy.integrate import solve_ivp
 
     wm = WorkspaceManager()
@@ -260,7 +260,7 @@ class TestCompilerWorkspaceVars:
 @pytest.fixture
 def workspace_with_hyst_high():
     """Install a workspace variable for the Hysteresis high output and restore."""
-    from lib.workspace import WorkspaceManager
+    from diablos.core.workspace import WorkspaceManager
 
     prev_instance = WorkspaceManager._instance
     WorkspaceManager._instance = None

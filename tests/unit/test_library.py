@@ -1,4 +1,4 @@
-"""Unit tests for user block libraries (``lib/library.py``).
+"""Unit tests for user block libraries (``src/diablos/core/library.py``).
 
 Three things are pinned down here:
 
@@ -16,7 +16,7 @@ import os
 import pytest
 from PyQt6.QtCore import QRect
 
-from lib.library import (
+from diablos.core.library import (
     LIBRARY_ENV_VAR,
     LIBRARY_FORMAT_VERSION,
     LIBRARY_SECTION,
@@ -29,7 +29,7 @@ from lib.library import (
     slugify,
     write_library_file,
 )
-from lib.masks import MASK_KEY, get_mask, set_mask
+from diablos.core.masks import MASK_KEY, get_mask, set_mask
 
 VEHICLE_MASK = {
     "name": "Vehicle",
@@ -52,7 +52,7 @@ def model(qapp):
     once per test churns enough Qt objects to destabilise later widget tests in
     a full-suite run, so the model is built once and cleared between tests.
     """
-    from lib.models.simulation_model import SimulationModel
+    from diablos.core.models.simulation_model import SimulationModel
 
     instance = SimulationModel()
     yield instance
@@ -70,8 +70,8 @@ def _clear_model(model):
 @pytest.fixture
 def masked_subsystem(qapp):
     """A Subsystem carrying the Vehicle mask and one inner TranFn."""
-    from blocks.subsystem import Subsystem
-    from lib.simulation.block import DBlock
+    from diablos.blocks.subsystem import Subsystem
+    from diablos.core.simulation.block import DBlock
 
     subsys = Subsystem(block_name="Vehicle", sid=1, coords=QRect(100, 100, 120, 90))
     subsys.name = "Subsystem1"
@@ -93,7 +93,7 @@ def masked_subsystem(qapp):
 
 
 def _serialize(model, block):
-    from lib.services.file_service import FileService
+    from diablos.core.services.file_service import FileService
 
     return FileService(model)._serialize_block(block)
 
@@ -226,8 +226,8 @@ def test_higher_priority_folder_wins(tmp_path, monkeypatch, qapp, model, masked_
 @pytest.mark.file_io
 def test_masked_subsystem_survives_a_diagram_save_load(tmp_path, qapp, model, masked_subsystem):
     """A saved diagram keeps the mask, its values and the library ref."""
-    from lib.library import attach_library_ref
-    from lib.services.file_service import FileService
+    from diablos.core.library import attach_library_ref
+    from diablos.core.services.file_service import FileService
 
     attach_library_ref(masked_subsystem, {"id": "vehicle", "file": "vehicle.diablos"})
     masked_subsystem.params["m"] = 1200.0

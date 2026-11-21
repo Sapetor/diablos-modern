@@ -18,8 +18,8 @@ import pytest
 from PyQt6.QtGui import QPixmap, QPainter, QColor, QFont
 from PyQt6.QtCore import QRect, QPoint
 
-from modern_ui.renderers.block_renderer import BlockRenderer, _SOFT_SHADOW_LAYERS
-from modern_ui.themes.theme_manager import theme_manager
+from diablos.gui.renderers.block_renderer import BlockRenderer, _SOFT_SHADOW_LAYERS
+from diablos.gui.themes.theme_manager import theme_manager
 
 
 @pytest.fixture(autouse=True)

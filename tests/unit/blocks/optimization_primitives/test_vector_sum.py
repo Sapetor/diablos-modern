@@ -1,7 +1,7 @@
 """Tests for VectorSum block."""
 
 import numpy as np
-from blocks.optimization_primitives.vector_sum import VectorSumBlock
+from diablos.blocks.optimization_primitives.vector_sum import VectorSumBlock
 
 
 class TestVectorSumBlock:

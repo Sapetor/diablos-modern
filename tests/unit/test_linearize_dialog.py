@@ -1,5 +1,5 @@
 """
-Tests for LinearizeDialog (modern_ui/widgets/linearize_dialog.py).
+Tests for LinearizeDialog (src/diablos/gui/widgets/linearize_dialog.py).
 
 Builds a small diagram with DiagramBuilder (reusing the test_linearizer
 pattern), loads it into a DSim, constructs the dialog headlessly (no exec_()),
@@ -14,8 +14,8 @@ import pytest
 from PyQt6.QtWidgets import QDialog
 from PyQt6.QtCore import Qt
 
-from lib.diagram_builder import DiagramBuilder
-from modern_ui.widgets.linearize_dialog import LinearizeDialog
+from diablos.core.diagram_builder import DiagramBuilder
+from diablos.gui.widgets.linearize_dialog import LinearizeDialog
 
 
 _BLOCK_INSTANCES = None
@@ -25,7 +25,7 @@ def _params(block_type, **overrides):
     """Full flat params for a block (class defaults + overrides)."""
     global _BLOCK_INSTANCES
     if _BLOCK_INSTANCES is None:
-        from lib.block_loader import load_blocks
+        from diablos.core.block_loader import load_blocks
 
         _BLOCK_INSTANCES = {}
         for cls in load_blocks():
@@ -45,8 +45,8 @@ def _params(block_type, **overrides):
 
 def _load(builder, tmp_path, name):
     """Save a built diagram and load it into a fresh DSim."""
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     path = tmp_path / name
     builder.save(str(path))

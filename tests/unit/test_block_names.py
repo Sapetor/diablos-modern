@@ -1,4 +1,4 @@
-"""Unit tests for lib.engine.block_names.canonical_fn.
+"""Unit tests for diablos.core.engine.block_names.canonical_fn.
 
 These pin the canonical dispatch names and prove that the extracted helper is
 behavior-equivalent to the four inline normalization ladders it replaces.
@@ -6,7 +6,7 @@ behavior-equivalent to the four inline normalization ladders it replaces.
 
 import pytest
 
-from lib.engine.block_names import canonical_fn
+from diablos.core.engine.block_names import canonical_fn
 
 
 def _legacy_full_ladder(block_fn):

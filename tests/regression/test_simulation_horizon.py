@@ -31,7 +31,7 @@ from PyQt6.QtCore import QPoint
 
 def _run(fast, sim_time, sim_dt):
     """Step -> Integrator -> Scope, run through the app's own batch entry point."""
-    from lib.lib import DSim
+    from diablos.core.lib import DSim
 
     dsim = DSim()
     menu = {b.fn_name: b for b in dsim.menu_blocks}

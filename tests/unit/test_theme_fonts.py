@@ -1,4 +1,4 @@
-"""Font-helper tests for :mod:`lib.theming.theme_manager`.
+"""Font-helper tests for :mod:`diablos.core.theming.theme_manager`.
 
 ``get_ui_font`` / ``get_mono_font`` build a QFont from a whole fallback stack:
 the ``QFont(family)`` constructor pins the first entry (what ``family()``
@@ -10,7 +10,7 @@ longer a guarded legacy branch -- these tests pin both halves of the result.
 import pytest
 from PyQt6.QtGui import QFont
 
-from lib.theming import theme_manager as tm
+from diablos.core.theming import theme_manager as tm
 
 
 @pytest.mark.unit

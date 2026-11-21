@@ -1,0 +1,575 @@
+"""
+Canvas Renderer Module
+Responsible for drawing canvas elements like grid, selection rectangle, and overlays.
+Separates rendering logic from the ModernCanvas widget.
+"""
+
+import logging
+from PyQt6.QtGui import QPainter, QPen, QColor, QPainterPath, QPolygonF
+from PyQt6.QtCore import Qt, QPoint, QPointF, QRect, QRectF
+from diablos.gui.themes.theme_manager import theme_manager, font_metrics, text_width
+from diablos.core.i18n import tr
+from diablos.core.simulation.connection import bezier_path
+
+logger = logging.getLogger(__name__)
+
+# Grid dot sizes (scene px). The small dots are batched through drawPoints(),
+# whose pen WIDTH is the dot diameter; the large dots stay drawEllipse(), which
+# takes a radius. Both match the sizes the grid has always drawn (r = 1 and 2).
+_SMALL_DOT_DIAMETER = 2.0
+_LARGE_DOT_RADIUS = 2
+
+
+def compute_alignment_guides(moving_rect, other_rects, threshold=4):
+    """Compute smart-alignment snap offsets and guide lines for a dragged block.
+
+    Pure geometry helper (no Qt painting, no canvas state) so the load-bearing
+    snapping logic stays trivially unit-testable. Everything is in CANVAS
+    coordinates — the caller is responsible for converting any screen-space
+    threshold into canvas units (e.g. dividing by the zoom factor) before
+    passing it in.
+
+    For each of the moving block's three vertical edges (left / center-x /
+    right) we look for the nearest matching vertical edge among ``other_rects``
+    within ``threshold``; likewise for the three horizontal edges (top /
+    middle-y / bottom). At most ONE x-snap and ONE y-snap are chosen — whichever
+    candidate sits closest to its target — mirroring how Figma / draw.io pick a
+    single guide per axis instead of stacking several.
+
+    Args:
+        moving_rect: ``(x, y, w, h)`` of the block being dragged (top-left origin).
+        other_rects: iterable of ``(x, y, w, h)`` for every other block.
+        threshold: max distance (canvas px) at which an edge snaps.
+
+    Returns:
+        ``(snap_dx, snap_dy, guide_lines)`` where ``snap_dx``/``snap_dy`` are the
+        offsets to add to the moving block's position so the chosen edges align
+        exactly, and ``guide_lines`` is a list of ``((x1, y1), (x2, y2))``
+        segments (canvas coords) spanning the involved blocks.
+    """
+    mx, my, mw, mh = moving_rect
+
+    # Candidate edge positions on the moving block, keyed by axis role. The
+    # value is the canvas coordinate of that edge in the relevant axis.
+    moving_x_edges = {"left": mx, "center": mx + mw / 2.0, "right": mx + mw}
+    moving_y_edges = {"top": my, "middle": my + mh / 2.0, "bottom": my + mh}
+
+    # Track the single best snap per axis: (abs_distance, signed_offset, ...).
+    best_x = None  # (dist, offset, moving_edge_pos, other_rect)
+    best_y = None
+
+    for ox, oy, ow, oh in other_rects:
+        other_x_edges = (ox, ox + ow / 2.0, ox + ow)
+        other_y_edges = (oy, oy + oh / 2.0, oy + oh)
+
+        # X axis: compare every moving vertical edge to every other one.
+        for m_edge in moving_x_edges.values():
+            for o_edge in other_x_edges:
+                dist = abs(o_edge - m_edge)
+                if dist <= threshold and (best_x is None or dist < best_x[0]):
+                    best_x = (dist, o_edge - m_edge, m_edge + (o_edge - m_edge), (ox, oy, ow, oh))
+
+        # Y axis: compare every moving horizontal edge to every other one.
+        for m_edge in moving_y_edges.values():
+            for o_edge in other_y_edges:
+                dist = abs(o_edge - m_edge)
+                if dist <= threshold and (best_y is None or dist < best_y[0]):
+                    best_y = (dist, o_edge - m_edge, m_edge + (o_edge - m_edge), (ox, oy, ow, oh))
+
+    snap_dx = best_x[1] if best_x else 0.0
+    snap_dy = best_y[1] if best_y else 0.0
+
+    # Build guide lines using the SNAPPED moving rect so the line sits exactly
+    # on the shared edge. Each guide spans from the topmost to the bottommost
+    # (vertical guide) / leftmost to rightmost (horizontal guide) of the two
+    # blocks involved, so it visually connects them.
+    guide_lines = []
+    sx, sy = mx + snap_dx, my + snap_dy
+
+    if best_x is not None:
+        gx = best_x[2]
+        _, oy, _, oh = best_x[3]
+        y1 = min(sy, oy)
+        y2 = max(sy + mh, oy + oh)
+        guide_lines.append(((gx, y1), (gx, y2)))
+
+    if best_y is not None:
+        gy = best_y[2]
+        ox, _, ow, _ = best_y[3]
+        x1 = min(sx, ox)
+        x2 = max(sx + mw, ox + ow)
+        guide_lines.append(((x1, gy), (x2, gy)))
+
+    return snap_dx, snap_dy, guide_lines
+
+
+class CanvasRenderer:
+    """Renderer for general canvas elements."""
+
+    def draw_grid(self, painter: QPainter, rect: QRect, width: int, height: int, visible: bool):
+        """Draw an infinite-feeling grid covering the currently visible scene area.
+
+        ``rect`` is the visible region in scene coordinates (i.e. after the
+        caller has applied any pan/zoom transform to the painter). ``width``
+        and ``height`` are accepted for back-compat but ignored.
+        """
+        if not visible:
+            return
+
+        if not painter or not painter.isActive():
+            return
+
+        painter.save()
+        try:
+            small_grid_size = 20
+            large_grid_size = 100
+
+            # Copy before mutating alpha so we never corrupt shared theme state
+            # if get_color ever starts caching its QColor instances.
+            small_dot_color = QColor(theme_manager.get_color("grid_dots"))
+            large_dot_color = QColor(theme_manager.get_color("grid_dots"))
+            large_dot_color.setAlpha(180)
+
+            # Snap iteration bounds to multiples of the grid spacing so dots
+            # stay anchored in scene space as the user pans.
+            def _snap_down(v, step):
+                return (int(v) // step) * step
+
+            # Effective device-pixel spacing of the small-dot grid. The caller
+            # applies the pan/zoom transform to ``painter`` before calling us,
+            # so m11() is the scene-unit -> device-pixel scale (the zoom). When
+            # zoomed out far enough that the small dots are only a few device
+            # pixels apart, drawing them produces a near-solid field of dots and
+            # an unbounded O(W*H) number of drawEllipse calls per frame for no
+            # visual benefit. Skip the small-dot grid below a density threshold;
+            # the large-grid dots (5x the spacing) still provide orientation.
+            #
+            # ~6 device px is below where individual small dots remain visually
+            # distinct, so at normal/high zoom (spacing >= 6px) behaviour is
+            # identical to before.
+            min_small_dot_spacing_px = 6.0
+            small_dot_spacing_px = small_grid_size * abs(painter.transform().m11())
+            draw_small_dots = small_dot_spacing_px >= min_small_dot_spacing_px
+
+            x1 = int(rect.right()) + small_grid_size
+            y1 = int(rect.bottom()) + small_grid_size
+
+            # The small-dot field is the expensive half of the grid: a screenful
+            # is a few thousand dots and one drawEllipse() per dot dominated the
+            # frame (~5 ms of a ~17 ms paint at 1200x900). They are now emitted
+            # as a single batched drawPoints() with a wide pen, which renders
+            # each point as a disc/square of the pen width centred on the point.
+            #
+            # Cap style: Qt's raster engine strokes ROUND-capped points one path
+            # at a time, which measured ~1.7x SLOWER than the drawEllipse loop it
+            # replaces; the flat cap takes the fast batched path (~3.5x faster
+            # than the original). At the 2 px size of a small dot the two are
+            # visually indistinguishable -- an antialiased r=1 circle already
+            # covers the same 2x2 pixel footprint -- so the flat cap is used.
+            #
+            # The LARGE dots are 4 px and few (one per 100 px), where the square
+            # vs. circle difference would be visible and the cost is negligible,
+            # so they keep the exact drawEllipse rendering.
+            if draw_small_dots:
+                x0 = _snap_down(rect.left(), small_grid_size)
+                y0 = _snap_down(rect.top(), small_grid_size)
+
+                small_points = QPolygonF(
+                    [
+                        QPointF(x, y)
+                        for x in range(x0, x1, small_grid_size)
+                        for y in range(y0, y1, small_grid_size)
+                        if x % large_grid_size != 0 or y % large_grid_size != 0
+                    ]
+                )
+                if not small_points.isEmpty():
+                    painter.setBrush(Qt.BrushStyle.NoBrush)
+                    painter.setPen(
+                        QPen(
+                            small_dot_color,
+                            _SMALL_DOT_DIAMETER,
+                            Qt.PenStyle.SolidLine,
+                            Qt.PenCapStyle.SquareCap,
+                        )
+                    )
+                    painter.drawPoints(small_points)
+
+            # Set NoPen unconditionally so the large-dot loop below renders
+            # identically whether or not the small dots were drawn.
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(large_dot_color)
+            lx0 = _snap_down(rect.left(), large_grid_size)
+            ly0 = _snap_down(rect.top(), large_grid_size)
+            for x in range(lx0, x1, large_grid_size):
+                for y in range(ly0, y1, large_grid_size):
+                    painter.drawEllipse(QPoint(x, y), _LARGE_DOT_RADIUS, _LARGE_DOT_RADIUS)
+
+        except Exception as e:
+            logger.error(f"Error drawing grid: {str(e)}", exc_info=True)
+        finally:
+            painter.restore()
+
+    def draw_selection_rect(self, painter: QPainter, start: QPoint, end: QPoint):
+        """Draw the selection rectangle."""
+        if not start or not end:
+            return
+
+        if not painter or not painter.isActive():
+            return
+
+        painter.save()
+        try:
+            # Calculate normalized rectangle
+            x1 = min(start.x(), end.x())
+            y1 = min(start.y(), end.y())
+            x2 = max(start.x(), end.x())
+            y2 = max(start.y(), end.y())
+
+            selection_rect = QRect(x1, y1, x2 - x1, y2 - y1)
+
+            # Draw semi-transparent fill (copy before mutating alpha)
+            fill_color = QColor(theme_manager.get_color("selection_rectangle"))
+            fill_color.setAlpha(50)
+            painter.fillRect(selection_rect, fill_color)
+
+            # Draw border
+            border_pen = QPen(
+                theme_manager.get_color("selection_rectangle"), 2, Qt.PenStyle.DashLine
+            )
+            painter.setPen(border_pen)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawRect(selection_rect)
+        finally:
+            painter.restore()
+
+    def draw_alignment_guides(self, painter: QPainter, guide_lines):
+        """Draw smart-alignment guide lines emitted by ``compute_alignment_guides``.
+
+        ``guide_lines`` is a list of ``((x1, y1), (x2, y2))`` segments in CANVAS
+        coordinates; the caller must have the painter under the same pan/zoom
+        transform as the blocks so the guides land on the shared edges. Lines
+        are a thin (1px cosmetic) accent stroke, matching the selection accent.
+        """
+        if not guide_lines:
+            return
+
+        if not painter or not painter.isActive():
+            return
+
+        painter.save()
+        try:
+            # Cosmetic pen (width 0) -> always 1 device px regardless of zoom,
+            # so the guide stays crisp and hairline at any scale.
+            pen = QPen(theme_manager.get_color("selection_rectangle"), 0, Qt.PenStyle.SolidLine)
+            pen.setCosmetic(True)
+            painter.setPen(pen)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            for (x1, y1), (x2, y2) in guide_lines:
+                painter.drawLine(int(x1), int(y1), int(x2), int(y2))
+        finally:
+            painter.restore()
+
+    @staticmethod
+    def preview_path(
+        start: QPoint, end: QPoint, routing_mode: str = "bezier", reverse: bool = False
+    ) -> QPainterPath:
+        """Path of the in-progress wire from the anchored port to the cursor.
+
+        ``start`` is the port the drag began on and ``end`` the cursor (or the
+        snapped target port). With ``reverse`` the drag began on an *input*
+        port, so the wire is oriented cursor -> port to keep the same shape it
+        will have once committed. The bezier branch shares ``bezier_path``
+        with DLine so the committed wire matches the preview exactly; the
+        orthogonal branch mirrors DLine's simple forward L-route (stub,
+        vertical, stub).
+        """
+        src, dst = (end, start) if reverse else (start, end)
+        if routing_mode != "orthogonal":
+            return bezier_path(src, dst)
+        path = QPainterPath(QPointF(src))
+        if src.x() <= dst.x():
+            mid_x = (src.x() + dst.x()) // 2
+            path.lineTo(QPointF(mid_x, src.y()))
+            path.lineTo(QPointF(mid_x, dst.y()))
+        else:
+            # Feedback layout: stub out, drop halfway, come back in.
+            mid_y = (src.y() + dst.y()) // 2
+            path.lineTo(QPointF(src.x() + 20, src.y()))
+            path.lineTo(QPointF(src.x() + 20, mid_y))
+            path.lineTo(QPointF(dst.x() - 20, mid_y))
+            path.lineTo(QPointF(dst.x() - 20, dst.y()))
+        path.lineTo(QPointF(dst))
+        return path
+
+    def draw_temp_line(
+        self,
+        painter: QPainter,
+        start: QPoint,
+        end: QPoint,
+        is_valid_target: bool,
+        routing_mode: str = "bezier",
+        reverse: bool = False,
+        is_invalid_target: bool = False,
+    ):
+        """Draw the temporary connection line during drag-and-drop.
+
+        Colour encodes the drop target: accent while free-dragging, success
+        green over a port the wire may connect to, error red over a port it
+        may not (already wired, same block, ...).
+        """
+        if not painter or not painter.isActive():
+            return
+
+        if is_invalid_target:
+            line_color = theme_manager.get_color("connection_error")
+        elif is_valid_target:
+            line_color = theme_manager.get_color("success")  # Green for valid
+        else:
+            line_color = theme_manager.get_color("accent_primary")  # Blue for dragging
+
+        painter.save()
+        try:
+            # Enable antialiasing for smooth preview
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+
+            # Draw with solid line (not dashed) to avoid shadow artifacts
+            pen = QPen(line_color, 2, Qt.PenStyle.SolidLine)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            painter.setPen(pen)
+
+            # Explicitly set no brush to prevent fill artifacts
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+
+            painter.drawPath(self.preview_path(start, end, routing_mode, reverse))
+
+            # Draw endpoint indicator
+            painter.setBrush(line_color)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawEllipse(
+                end,
+                5 if (is_valid_target or is_invalid_target) else 4,
+                5 if (is_valid_target or is_invalid_target) else 4,
+            )
+        finally:
+            painter.restore()
+
+    # Base alpha of the hovered-port glow halo. The outer halo breathes via the
+    # canvas phase (when a pulse_alpha callable is supplied); the inner center
+    # stays at full strength so the port itself reads as a solid target.
+    _PORT_GLOW_BASE_ALPHA = 100
+    _PORT_CENTER_ALPHA = 180
+
+    def draw_hover_effects(
+        self,
+        painter: QPainter,
+        hovered_port=None,
+        hovered_block=None,
+        hovered_line=None,
+        pulse_alpha=None,
+    ):
+        """Draw hover effects for ports, blocks, and connections.
+
+        ``pulse_alpha`` is an optional ``callable(base_alpha) -> int`` (the
+        canvas's ``glow_pulse_alpha``) used to gently modulate the hovered-port
+        glow's alpha by the canvas animation phase. When ``None`` the glow uses
+        its flat base alpha, so the renderer stays usable standalone.
+        """
+        if not painter or not painter.isActive():
+            return
+
+        painter.save()
+        try:
+            # Draw hovered port (highest priority)
+            if hovered_port:
+                block, port_idx, is_output = hovered_port
+                port_list = block.out_coords if is_output else block.in_coords
+                if port_idx < len(port_list):
+                    port_pos = port_list[port_idx]
+
+                    # Draw pulsing glow around hovered port (copy before mutating
+                    # alpha). The phase-modulated alpha makes it breathe while
+                    # the canvas animation timer runs.
+                    glow_alpha = (
+                        pulse_alpha(self._PORT_GLOW_BASE_ALPHA)
+                        if callable(pulse_alpha)
+                        else self._PORT_GLOW_BASE_ALPHA
+                    )
+                    glow_color = QColor(theme_manager.get_color("accent_primary"))
+                    glow_color.setAlpha(glow_alpha)
+                    painter.setBrush(glow_color)
+                    painter.setPen(Qt.PenStyle.NoPen)
+                    painter.drawEllipse(port_pos, 12, 12)
+
+                    # Draw brighter center (copy before mutating alpha)
+                    center_color = QColor(theme_manager.get_color("accent_primary"))
+                    center_color.setAlpha(self._PORT_CENTER_ALPHA)
+                    painter.setBrush(center_color)
+                    painter.drawEllipse(port_pos, 8, 8)
+
+            # Draw hovered block outline
+            elif hovered_block and not getattr(hovered_block, "selected", False):
+                hover_color = QColor(theme_manager.get_color("accent_secondary"))
+                hover_color.setAlpha(120)
+
+                # Draw glowing outline
+                painter.setPen(QPen(hover_color, 2.5, Qt.PenStyle.SolidLine))
+                painter.setBrush(Qt.BrushStyle.NoBrush)
+
+                # Access block geometry - handle potential differences in block object
+                left = getattr(hovered_block, "left", 0)
+                top = getattr(hovered_block, "top", 0)
+                width = getattr(hovered_block, "width", 0)
+                height = getattr(hovered_block, "height", 0)
+
+                painter.drawRoundedRect(left - 2, top - 2, width + 4, height + 4, 8, 8)
+
+            # Draw hovered connection highlight
+            elif hovered_line and not getattr(hovered_line, "selected", False):
+                path = getattr(hovered_line, "path", None)
+                if path and not path.isEmpty():
+                    hover_color = QColor(theme_manager.get_color("accent_secondary"))
+                    hover_color.setAlpha(150)
+
+                    # Draw thicker line underneath
+                    painter.setPen(
+                        QPen(
+                            hover_color,
+                            3.5,
+                            Qt.PenStyle.SolidLine,
+                            Qt.PenCapStyle.RoundCap,
+                            Qt.PenJoinStyle.RoundJoin,
+                        )
+                    )
+                    painter.setBrush(Qt.BrushStyle.NoBrush)
+                    painter.drawPath(path)
+
+        except Exception as e:
+            logger.error(f"Error drawing hover effects: {str(e)}", exc_info=True)
+        finally:
+            painter.restore()
+
+    def draw_tag_hud(self, painter: QPainter, dsim_instance):
+        """Draw a compact HUD summarizing Goto/From tags."""
+        if not painter or not painter.isActive():
+            return
+        try:
+            # Only show if there is at least one routing block
+            tags = {}
+            # Access logic safely
+            blocks = getattr(dsim_instance, "blocks_list", [])
+
+            for block in blocks:
+                # Assuming block object has block_fn and params
+                block_fn = getattr(block, "block_fn", "")
+                params = getattr(block, "params", {})
+
+                if block_fn in ("Goto", "From"):
+                    tag = str(params.get("tag", "")).strip()
+                    entry = tags.setdefault(tag, {"goto": 0, "from": 0})
+                    if block_fn == "Goto":
+                        entry["goto"] += 1
+                    else:
+                        entry["from"] += 1
+
+            if not tags:
+                return
+
+            # Reset transform so HUD is screen-aligned
+            painter.save()
+            painter.resetTransform()
+
+            # Prepare text lines
+            lines = [tr("Routing tags")]
+            for tag, counts in sorted(tags.items()):
+                label = tag if tag else tr("(empty)")
+                lines.append(f"{label}: G{counts['goto']} → F{counts['from']}")
+
+            # Memoized per font rather than reconstructed on every frame.
+            fm = font_metrics(painter.font())
+            max_w = max(text_width(fm, line) for line in lines) + 12
+            line_h = fm.height() + 2
+            box_h = line_h * len(lines) + 8
+
+            # Position top-left margin
+            margin = 12
+            rect = QRect(margin, margin, max_w, box_h)
+
+            # Background (copy before mutating alpha)
+            bg = QColor(theme_manager.get_color("surface"))
+            bg.setAlpha(200)
+            painter.setBrush(bg)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawRoundedRect(rect, 6, 6)
+
+            # Text
+            painter.setPen(theme_manager.get_color("text_primary"))
+            y = margin + 6 + fm.ascent()
+            for line in lines:
+                painter.drawText(rect.left() + 6, y, line)
+                y += line_h
+
+            painter.restore()
+        except Exception as e:
+            logger.error(f"Error drawing tag HUD: {e}", exc_info=True)
+
+    def draw_validation_errors(self, painter: QPainter, blocks_with_errors, blocks_with_warnings):
+        """Draw visual indicators for validation errors."""
+        if not painter or not painter.isActive():
+            return
+        try:
+            painter.save()
+
+            # Note: The actual drawing of the indicator (red/orange dot/icon)
+            # might depend on block geometry.
+            # We iterate here but the drawing logic needs to know HOW to draw the indicator.
+            # Assuming _draw_block_error_indicator logic is needed here or we implement it.
+
+            # Since _draw_block_error_indicator was internal to Canvas, we should implement it here.
+
+            # Draw error indicators on blocks
+            for block in blocks_with_errors:
+                self._draw_error_indicator_on_block(painter, block, is_error=True)
+
+            for block in blocks_with_warnings:
+                if block not in blocks_with_errors:  # Don't double-draw
+                    self._draw_error_indicator_on_block(painter, block, is_error=False)
+
+            painter.restore()
+
+        except Exception as e:
+            logger.error(f"Error drawing validation errors: {str(e)}", exc_info=True)
+
+    def _draw_error_indicator_on_block(self, painter: QPainter, block, is_error: bool):
+        """Helper to draw error/warning icon on a block.
+
+        The badge is intentionally anchored to the block's top-right corner and
+        does not depend on the block's height, so it sits at a fixed offset from
+        the top edge regardless of block size.
+        """
+        # Calculate position (top-right corner of block); height is unused by design.
+        left = getattr(block, "left", 0)
+        top = getattr(block, "top", 0)
+        width = getattr(block, "width", 0)
+
+        indicator_size = 14
+        x = left + width - indicator_size / 2
+        y = top - indicator_size / 2
+
+        rect = QRectF(x, y, indicator_size, indicator_size)
+
+        color = theme_manager.get_color("error") if is_error else theme_manager.get_color("warning")
+
+        painter.setBrush(color)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawEllipse(rect)
+
+        # Draw symbol
+        painter.setPen(QColor("white"))
+        font = painter.font()
+        font.setBold(True)
+        font.setPixelSize(10)
+        painter.setFont(font)
+
+        text = "!" if is_error else "?"
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, text)

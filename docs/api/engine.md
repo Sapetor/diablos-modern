@@ -6,7 +6,7 @@ The simulation engine handles execution logic, ODE integration, and diagram anal
 
 Main engine class for simulation execution.
 
-::: lib.engine.simulation_engine.SimulationEngine
+::: diablos.core.engine.simulation_engine.SimulationEngine
     options:
       show_root_heading: true
       members:
@@ -21,7 +21,7 @@ Main engine class for simulation execution.
 
 Compiles block diagrams into efficient ODE systems.
 
-::: lib.engine.system_compiler.SystemCompiler
+::: diablos.core.engine.system_compiler.SystemCompiler
     options:
       show_root_heading: true
 
@@ -29,6 +29,6 @@ Compiles block diagrams into efficient ODE systems.
 
 Flattens hierarchical subsystems for simulation.
 
-::: lib.engine.flattener.Flattener
+::: diablos.core.engine.flattener.Flattener
     options:
       show_root_heading: true

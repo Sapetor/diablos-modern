@@ -34,8 +34,8 @@ def _diagram(tmp_path, method=None, kb=None, limit=1.0, name="d.diablos"):
 
 
 def _run(path, fast, dt, t_end=6.0):
-    from lib import cli
-    from lib.analysis.resim import harvest_scope_signals
+    from diablos.core import cli
+    from diablos.core.analysis.resim import harvest_scope_signals
 
     dsim = cli.run_diagram(path, sim_time=t_end, sim_dt=dt, use_fast_solver=fast)
     res = harvest_scope_signals(dsim)
@@ -45,7 +45,7 @@ def _run(path, fast, dt, t_end=6.0):
 @pytest.mark.unit
 class TestParamDeclaration:
     def test_choice_param_and_default(self):
-        from blocks.pid import PIDBlock
+        from diablos.blocks.pid import PIDBlock
 
         spec = PIDBlock().params
         assert spec["anti_windup"]["type"] == "choice"
@@ -57,7 +57,7 @@ class TestParamDeclaration:
 @pytest.mark.unit
 class TestInterpreterBlock:
     def _drive(self, method, dt, steps, **extra):
-        from blocks.pid import PIDBlock
+        from diablos.blocks.pid import PIDBlock
 
         blk = PIDBlock()
         params = {"Kp": 1.0, "Ki": 2.0, "Kd": 0.0, "u_min": -1.0, "u_max": 1.0}
@@ -106,8 +106,8 @@ class TestPathsAgree:
         assert errs[0] < 0.01
 
     def test_clamping_compiled_is_unchanged(self, qapp):
-        from lib import cli
-        from lib.analysis.resim import harvest_scope_signals
+        from diablos.core import cli
+        from diablos.core.analysis.resim import harvest_scope_signals
 
         dsim = cli.run_diagram(EXAMPLE, use_fast_solver=True)
         res = harvest_scope_signals(dsim)
@@ -135,7 +135,7 @@ class TestPathsAgree:
 @pytest.mark.unit
 class TestLoading:
     def test_old_diagram_without_param_loads_as_clamping(self, qapp, tmp_path):
-        from lib import cli
+        from diablos.core import cli
 
         path = _diagram(tmp_path, None)
         dsim, _ = cli.load_diagram(path)
@@ -149,7 +149,7 @@ class TestLoading:
 class TestCodegen:
     @pytest.mark.parametrize("method", METHODS)
     def test_exported_script_matches_compiled(self, qapp, tmp_path, method):
-        from lib import cli
+        from diablos.core import cli
 
         path = _diagram(tmp_path, method)
         script = str(tmp_path / "model_{}.py".format(method))

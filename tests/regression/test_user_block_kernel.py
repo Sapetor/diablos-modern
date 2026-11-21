@@ -5,7 +5,7 @@ fix a diagram containing *any* user block fell back to the interpreter even
 when the block's module registered ``@kernel(...)`` -- the documented way to
 contribute a compiled kernel (``docs/examples/custom_kernel_template.py``).
 
-Now a user block (``lib.user_blocks``) with a registered kernel is compilable,
+Now a user block (``diablos.core.user_blocks``) with a registered kernel is compilable,
 while the allowlist still gates built-ins (Impulse and Noise have kernels but
 are deliberately interpreted), and a user module can no longer replace a
 built-in kernel by registering under its name.
@@ -31,7 +31,7 @@ BASE_DIAGRAM = ROOT / "examples" / "optimization_data_fit_demo.diablos"
 @pytest.fixture
 def user_block_diagram(tmp_path, monkeypatch):
     """A user-blocks folder holding the kernel template, plus a diagram using it."""
-    from lib import user_blocks as ub
+    from diablos.core import user_blocks as ub
 
     blocks_dir = tmp_path / "user_blocks"
     blocks_dir.mkdir()
@@ -59,8 +59,8 @@ def user_block_diagram(tmp_path, monkeypatch):
 
 
 def _run(diagram, use_fast_solver):
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     previous = WorkspaceManager._instance
     WorkspaceManager._instance = None
@@ -84,7 +84,7 @@ def _run(diagram, use_fast_solver):
 
 @pytest.mark.qt
 def test_user_kernel_diagram_compiles(qapp, user_block_diagram):
-    from lib.engine.system_compiler import SystemCompiler
+    from diablos.core.engine.system_compiler import SystemCompiler
 
     calls = []
     original = SystemCompiler.compile_system
@@ -119,17 +119,17 @@ class TestKernelGate:
         return type("FakeDBlock", (), {"block_fn": block_fn, "block_instance": cls()})()
 
     def test_builtin_with_a_kernel_but_off_the_allowlist_stays_interpreted(self):
-        from blocks.noise import NoiseBlock
-        from lib.engine.compiler_kernels import get_kernel_builder
-        from lib.engine.system_compiler import SystemCompiler
+        from diablos.blocks.noise import NoiseBlock
+        from diablos.core.engine.compiler_kernels import get_kernel_builder
+        from diablos.core.engine.system_compiler import SystemCompiler
 
         assert get_kernel_builder("Noise") is not None
         assert not SystemCompiler._has_user_kernel(self._block("Noise", NoiseBlock))
 
     def test_user_block_without_a_kernel_is_not_compilable(self, monkeypatch):
-        from blocks.base_block import BaseBlock
-        from lib import user_blocks as ub
-        from lib.engine.system_compiler import SystemCompiler
+        from diablos.blocks.base_block import BaseBlock
+        from diablos.core import user_blocks as ub
+        from diablos.core.engine.system_compiler import SystemCompiler
 
         class NoKernelBlock(BaseBlock):
             block_name = "NoKernelXyz"
@@ -144,7 +144,7 @@ class TestKernelGate:
         assert not SystemCompiler._has_user_kernel(self._block("NoKernelXyz", NoKernelBlock))
 
     def test_a_user_module_cannot_replace_a_builtin_kernel(self):
-        from lib.engine.compiler_kernels import KERNEL_BUILDERS, kernel
+        from diablos.core.engine.compiler_kernels import KERNEL_BUILDERS, kernel
 
         builtin = KERNEL_BUILDERS["Gain"]
 

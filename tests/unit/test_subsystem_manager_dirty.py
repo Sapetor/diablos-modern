@@ -21,14 +21,14 @@ from PyQt6.QtCore import QPoint, QRect
 
 @pytest.fixture
 def dsim(qapp):
-    from lib.lib import DSim
+    from diablos.core.lib import DSim
 
     return DSim()
 
 
 def _subsystem_with_contents(dsim):
     """A Subsystem block registered in the model, holding one child block."""
-    from blocks.subsystem import Subsystem
+    from diablos.blocks.subsystem import Subsystem
 
     sub = Subsystem(block_name="Sub1", sid=1, coords=QRect(0, 0, 100, 80))
     sub.sub_blocks = []

@@ -99,8 +99,8 @@ kernel S1b runs compiled at PathSim-class accuracy and cost.
 case (`Algebraic loop detected involving blocks: [...]`), and the workaround a
 user would try was a one-step `Delay` in the feedback path. DiaBloS now
 solves the loop directly: first on the interpreter
-(`lib/engine/algebraic_loop.py`), and since phase 3 of the hybrid compiled path
-inside the compiled RHS (`lib/engine/compiled_loops.py`,
+(`src/diablos/core/engine/algebraic_loop.py`), and since phase 3 of the hybrid compiled path
+inside the compiled RHS (`src/diablos/core/engine/compiled_loops.py`,
 `docs/SOLVER_SEMANTICS.md` 4.4).
 
 | Loop | Exact y | DiaBloS compiled | DiaBloS interpreter | DiaBloS + Delay (old workaround) | PathSim |
@@ -122,7 +122,7 @@ linearization and Python export both work through them.
 Predecessor-following double integrators,
 `a_i = 1 (p_{i-1}(t-0.1) - p_i) + 2 (v_{i-1}(t-0.1) - v_i)`, leader `p0 = t`,
 20 s. Reference: method of steps with DOP853 at rtol 1e-12. Since `afaeb63`
-`TransportDelay` compiles by the method of steps (`lib/engine/compiled_delays.py`,
+`TransportDelay` compiles by the method of steps (`src/diablos/core/engine/compiled_delays.py`,
 `docs/SOLVER_SEMANTICS.md` 6.2); before that it forced the interpreter.
 
 | N (blocks) | DiaBloS compiled, dt=0.01 | DiaBloS compiled, dt=0.001 | DiaBloS interpreter, dt=0.01 (before) | PathSim rtol 1e-6 | PathSim rtol 1e-9 |

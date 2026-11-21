@@ -1,4 +1,4 @@
-"""Spline-interpolation tests for the DataFit block (blocks/optimization/data_fit.py).
+"""Spline-interpolation tests for the DataFit block (src/diablos/blocks/optimization/data_fit.py).
 
 Regression focus: when SciPy's ``UnivariateSpline`` could not be built the block
 fell back to linear interpolation inside a bare ``except Exception: pass``. The
@@ -14,7 +14,7 @@ import logging
 import numpy as np
 import pytest
 
-from blocks.optimization.data_fit import DataFitBlock
+from diablos.blocks.optimization.data_fit import DataFitBlock
 
 
 def _params(**ov):
@@ -69,7 +69,7 @@ class TestDataFitSplineFallback:
         block = DataFitBlock()
         params = _params(_name_="DF1")
 
-        with caplog.at_level(logging.WARNING, logger="blocks.optimization.data_fit"):
+        with caplog.at_level(logging.WARNING, logger="diablos.blocks.optimization.data_fit"):
             result = block.execute(0.5, {0: 0.0}, params)
 
         # Fell back to linear interpolation ...
@@ -93,7 +93,7 @@ class TestDataFitSplineFallback:
         block = DataFitBlock()
         params = _params()
 
-        with caplog.at_level(logging.WARNING, logger="blocks.optimization.data_fit"):
+        with caplog.at_level(logging.WARNING, logger="diablos.blocks.optimization.data_fit"):
             for k in range(5):
                 block.execute(k * 0.1, {0: 0.0}, params)
 

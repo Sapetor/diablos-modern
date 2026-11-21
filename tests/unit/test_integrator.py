@@ -12,7 +12,7 @@ class TestIntegratorBlock:
 
     def test_integrator_initial_condition(self):
         """Test integrator outputs initial condition at t=0."""
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         block = IntegratorBlock()
         params = {"init_conds": 5.0, "method": "FWD_EULER", "_init_start_": True}
@@ -25,7 +25,7 @@ class TestIntegratorBlock:
 
     def test_integrator_fwd_euler(self):
         """Test forward Euler integration accumulates correctly."""
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         block = IntegratorBlock()
         dtime = 0.1
@@ -44,7 +44,7 @@ class TestIntegratorBlock:
 
     def test_integrator_fwd_euler_accumulation(self):
         """Test forward Euler accumulates over multiple steps."""
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         block = IntegratorBlock()
         dtime = 0.1
@@ -68,7 +68,7 @@ class TestIntegratorBlock:
 
     def test_integrator_solve_ivp(self):
         """Test SOLVE_IVP integration method."""
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         block = IntegratorBlock()
         dtime = 0.1
@@ -88,7 +88,7 @@ class TestIntegratorBlock:
 
     def test_integrator_solve_ivp_accumulation(self):
         """Test SOLVE_IVP accumulates over multiple steps."""
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         block = IntegratorBlock()
         dtime = 0.1
@@ -112,7 +112,7 @@ class TestIntegratorBlock:
 
     def test_integrator_vector_input(self):
         """Test integrator handles vector inputs."""
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         block = IntegratorBlock()
         dtime = 0.1
@@ -135,7 +135,7 @@ class TestIntegratorBlock:
 
     def test_integrator_tustin(self):
         """Test Tustin (trapezoidal) integration."""
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         block = IntegratorBlock()
         dtime = 0.1
@@ -156,7 +156,7 @@ class TestIntegratorBlock:
 
     def test_integrator_negative_input(self):
         """Test integrator with negative input values."""
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         block = IntegratorBlock()
         dtime = 0.1
@@ -181,7 +181,7 @@ class TestIntegratorBlock:
 
     def test_integrator_zero_input(self):
         """Test integrator with zero input stays at initial condition."""
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         block = IntegratorBlock()
         dtime = 0.1
@@ -203,7 +203,7 @@ class TestIntegratorBlock:
 
     def test_integrator_output_only_mode(self):
         """Test output_only mode returns current value without integrating."""
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         block = IntegratorBlock()
         dtime = 0.1
@@ -242,13 +242,13 @@ class TestIntegratorMethodNames:
     """
 
     def test_option_list_offers_the_corrected_spelling(self):
-        from blocks.integrator import INTEGRATOR_METHODS
+        from diablos.blocks.integrator import INTEGRATOR_METHODS
 
         assert "RK4" in INTEGRATOR_METHODS
         assert "RK45" not in INTEGRATOR_METHODS
 
     def test_legacy_rk45_resolves_to_the_rk4_strategy(self):
-        from blocks.integrator import resolve_method
+        from diablos.blocks.integrator import resolve_method
 
         assert resolve_method("RK45") == "RK4"
         assert resolve_method("RK4") == "RK4"
@@ -257,7 +257,7 @@ class TestIntegratorMethodNames:
     def test_every_offered_option_is_its_own_canonical_name(self):
         """An option the dropdown offers must not itself be an alias, or the
         saved value and the strategy actually run would drift apart."""
-        from blocks.integrator import INTEGRATOR_METHODS, METHOD_ALIASES, resolve_method
+        from diablos.blocks.integrator import INTEGRATOR_METHODS, METHOD_ALIASES, resolve_method
 
         for option in INTEGRATOR_METHODS:
             assert resolve_method(option) == option
@@ -269,7 +269,7 @@ class TestIntegratorMethodNames:
 
     def test_rk4_takes_the_four_stage_path(self):
         """ "RK4" must set up the sub-step state for the four-stage schedule."""
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         block = IntegratorBlock()
         params = {"init_conds": 0.0, "method": "RK4", "_init_start_": True, "_name_": "I"}
@@ -281,7 +281,7 @@ class TestIntegratorMethodNames:
         assert np.isclose(params["aux"][0], 0.05)  # x_n + K1/2
 
     def test_rk4_and_legacy_rk45_produce_identical_state_over_a_full_cycle(self):
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         def run(method):
             block = IntegratorBlock()
@@ -294,7 +294,7 @@ class TestIntegratorMethodNames:
 
     def test_legacy_rk45_completes_a_step_after_four_stages(self):
         """A diagram saved before the rename still runs the full RK4 cycle."""
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         block = IntegratorBlock()
         params = {"init_conds": 0.0, "method": "RK45", "_init_start_": True, "_name_": "I"}
@@ -307,7 +307,7 @@ class TestIntegratorMethodNames:
         assert params["nb_loop"] == 0
 
     def test_unknown_method_returns_an_error_dict(self):
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         block = IntegratorBlock()
         params = {"init_conds": 0.0, "method": "MAGIC", "_init_start_": True, "_name_": "I"}
@@ -332,7 +332,7 @@ class TestIntegratorEulerVariants:
 
     @staticmethod
     def _run(method, inputs, dtime=0.1):
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         block = IntegratorBlock()
         params = {"init_conds": 0.0, "method": method, "_init_start_": True, "_name_": "I"}
@@ -364,7 +364,7 @@ class TestIntegratorEulerVariants:
         assert self._run("TUSTIN", u) == pytest.approx([0.05, 0.2, 0.45])
 
     def test_the_documented_behaviour_is_stated_in_the_block_doc(self):
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         doc = IntegratorBlock().doc
         assert "NOT" in doc and "implicit Euler" in doc

@@ -24,8 +24,8 @@ from PyQt6.QtWidgets import QApplication
 
 app = QApplication.instance() or QApplication(sys.argv)
 
-from lib.models.simulation_model import SimulationModel
-from lib.services.file_service import FileService
+from diablos.core.models.simulation_model import SimulationModel
+from diablos.core.services.file_service import FileService
 
 
 def resave_file(filepath):

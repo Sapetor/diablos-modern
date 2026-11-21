@@ -1,7 +1,7 @@
 """Regression test for File > New.
 
 ``ProjectManager.new_diagram`` -> ``DiagramService.new_diagram`` ->
-``DSim.new_diagram()``, a method ``lib/lib.py`` never defined -- so File > New
+``DSim.new_diagram()``, a method ``src/diablos/core/lib.py`` never defined -- so File > New
 raised ``AttributeError`` and did nothing.
 """
 
@@ -12,7 +12,7 @@ from PyQt6.QtCore import QPoint
 @pytest.mark.unit
 class TestNewDiagram:
     def test_resets_the_diagram(self, qapp):
-        from lib.lib import DSim
+        from diablos.core.lib import DSim
 
         dsim = DSim()
         menu = {b.fn_name: b for b in dsim.menu_blocks}

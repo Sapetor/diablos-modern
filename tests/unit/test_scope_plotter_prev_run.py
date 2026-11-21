@@ -1,5 +1,5 @@
 """
-Tests for ScopePlotter's previous-run stash (lib/plotting/scope_plotter.py).
+Tests for ScopePlotter's previous-run stash (src/diablos/core/plotting/scope_plotter.py).
 
 Two successive pyqtPlotScope calls with fresh timelines must thread the first
 run's flattened scope data into the second SignalPlot as ``previous_run``,
@@ -16,7 +16,7 @@ import types
 import numpy as np
 import pytest
 
-from lib.plotting.scope_plotter import ScopePlotter
+from diablos.core.plotting.scope_plotter import ScopePlotter
 
 
 class _StubScopeBlock:
@@ -160,7 +160,7 @@ class TestScopePlotterPrevRun:
 
     def test_dsim_clear_all_resets_held_runs(self, qapp):
         """DSim.clear_all (File > New) must drop the held-run stash."""
-        from lib.lib import DSim
+        from diablos.core.lib import DSim
 
         dsim = DSim()
         dsim.scope_plotter._prev_run = {"sig": 1}
@@ -173,7 +173,7 @@ class TestScopePlotterPrevRun:
 
     def test_dsim_deserialize_resets_held_runs(self, qapp):
         """Loading a diagram (File > Open) must drop the held-run stash."""
-        from lib.lib import DSim
+        from diablos.core.lib import DSim
 
         dsim = DSim()
         dsim.scope_plotter._prev_run = {"sig": 1}

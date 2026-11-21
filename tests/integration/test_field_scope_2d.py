@@ -17,7 +17,7 @@ class TestFieldScope2D:
 
     def test_field_scope_2d_initialization(self):
         """Test FieldScope2D initializes storage correctly."""
-        from blocks.pde.field_processing_2d import FieldScope2DBlock
+        from diablos.blocks.pde.field_processing_2d import FieldScope2DBlock
 
         block = FieldScope2DBlock()
         params = {
@@ -39,7 +39,7 @@ class TestFieldScope2D:
 
     def test_field_scope_2d_collects_snapshots(self):
         """Test FieldScope2D collects field snapshots over time."""
-        from blocks.pde.field_processing_2d import FieldScope2DBlock
+        from diablos.blocks.pde.field_processing_2d import FieldScope2DBlock
 
         block = FieldScope2DBlock()
         params = {
@@ -61,7 +61,7 @@ class TestFieldScope2D:
 
     def test_field_scope_2d_sample_interval(self):
         """Test FieldScope2D respects sample_interval parameter."""
-        from blocks.pde.field_processing_2d import FieldScope2DBlock
+        from diablos.blocks.pde.field_processing_2d import FieldScope2DBlock
 
         block = FieldScope2DBlock()
         params = {
@@ -84,7 +84,7 @@ class TestFieldScope2D:
 
     def test_field_scope_2d_preserves_shape(self):
         """Test FieldScope2D preserves field shape correctly."""
-        from blocks.pde.field_processing_2d import FieldScope2DBlock
+        from diablos.blocks.pde.field_processing_2d import FieldScope2DBlock
 
         block = FieldScope2DBlock()
         params = {"sample_interval": 1, "_init_start_": True}
@@ -100,7 +100,7 @@ class TestFieldScope2D:
 
     def test_field_scope_2d_time_mapping(self):
         """Test time values are correctly stored for slider mapping."""
-        from blocks.pde.field_processing_2d import FieldScope2DBlock
+        from diablos.blocks.pde.field_processing_2d import FieldScope2DBlock
 
         block = FieldScope2DBlock()
         params = {"sample_interval": 1, "_init_start_": True}
@@ -126,7 +126,7 @@ class TestFieldProbe2D:
 
     def test_field_probe_2d_center(self):
         """Test probing center of a field."""
-        from blocks.pde.field_processing_2d import FieldProbe2DBlock
+        from diablos.blocks.pde.field_processing_2d import FieldProbe2DBlock
 
         block = FieldProbe2DBlock()
         params = {"x_position": 0.5, "y_position": 0.5, "position_mode": "normalized"}
@@ -141,7 +141,7 @@ class TestFieldProbe2D:
 
     def test_field_probe_2d_corner(self):
         """Test probing corner of a field."""
-        from blocks.pde.field_processing_2d import FieldProbe2DBlock
+        from diablos.blocks.pde.field_processing_2d import FieldProbe2DBlock
 
         block = FieldProbe2DBlock()
         params = {"x_position": 0.0, "y_position": 0.0, "position_mode": "normalized"}
@@ -155,7 +155,7 @@ class TestFieldProbe2D:
 
     def test_field_probe_2d_interpolation(self):
         """Test bilinear interpolation between nodes."""
-        from blocks.pde.field_processing_2d import FieldProbe2DBlock
+        from diablos.blocks.pde.field_processing_2d import FieldProbe2DBlock
 
         block = FieldProbe2DBlock()
         params = {"x_position": 0.5, "y_position": 0.5, "position_mode": "normalized"}
@@ -171,7 +171,7 @@ class TestFieldProbe2D:
 
     def test_field_probe_2d_absolute_mode(self):
         """Test absolute position mode."""
-        from blocks.pde.field_processing_2d import FieldProbe2DBlock
+        from diablos.blocks.pde.field_processing_2d import FieldProbe2DBlock
 
         block = FieldProbe2DBlock()
         params = {
@@ -196,7 +196,7 @@ class TestFieldSlice:
 
     def test_field_slice_horizontal(self):
         """Test horizontal slice (constant y)."""
-        from blocks.pde.field_processing_2d import FieldSliceBlock
+        from diablos.blocks.pde.field_processing_2d import FieldSliceBlock
 
         block = FieldSliceBlock()
         params = {
@@ -215,7 +215,7 @@ class TestFieldSlice:
 
     def test_field_slice_vertical(self):
         """Test vertical slice (constant x)."""
-        from blocks.pde.field_processing_2d import FieldSliceBlock
+        from diablos.blocks.pde.field_processing_2d import FieldSliceBlock
 
         block = FieldSliceBlock()
         params = {
@@ -234,7 +234,7 @@ class TestFieldSlice:
 
     def test_field_slice_edge(self):
         """Test slicing at edge positions."""
-        from blocks.pde.field_processing_2d import FieldSliceBlock
+        from diablos.blocks.pde.field_processing_2d import FieldSliceBlock
 
         block = FieldSliceBlock()
 

@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from blocks.network_channel import NetworkChannelBlock
+from diablos.blocks.network_channel import NetworkChannelBlock
 
 
 def _fresh_params(**overrides):

@@ -1,4 +1,4 @@
-"""Unit tests for the Nyquist analysis-marker block (blocks/nyquist.py).
+"""Unit tests for the Nyquist analysis-marker block (src/diablos/blocks/nyquist.py).
 
 ``NyquistBlock`` is a marker: it is dropped on the canvas, wired to a dynamic
 block, and the plot is produced from the right-click menu. During simulation it
@@ -10,7 +10,7 @@ diagram. Before this file the block had no test.
 import numpy as np
 import pytest
 
-from blocks.nyquist import NyquistBlock
+from diablos.blocks.nyquist import NyquistBlock
 
 
 @pytest.mark.unit
@@ -78,7 +78,7 @@ class TestNyquistBlockExecution:
 
     def test_draw_icon_returns_a_painter_path(self, qapp):
         from PyQt6.QtCore import QRect
-        from lib.icon_path import IconPath
+        from diablos.core.icon_path import IconPath
 
         path = NyquistBlock().draw_icon(QRect(0, 0, 100, 60))
         assert isinstance(path, IconPath)

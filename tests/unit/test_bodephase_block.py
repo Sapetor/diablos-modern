@@ -9,7 +9,7 @@ return an empty dict regardless of input. Mirrors the BodeMag coverage in
 import numpy as np
 import pytest
 
-from blocks.bodephase import BodePhaseBlock
+from diablos.blocks.bodephase import BodePhaseBlock
 
 
 @pytest.mark.unit
@@ -40,7 +40,7 @@ class TestBodePhaseBlock:
             assert block.execute(t, {0: np.array([t])}, params) == {}
 
     def test_draw_icon_returns_path(self):
-        from lib.icon_path import IconPath
+        from diablos.core.icon_path import IconPath
 
         block = BodePhaseBlock()
         path = block.draw_icon(None)

@@ -20,7 +20,7 @@ from PyQt6.QtCore import QPoint
 
 @pytest.fixture
 def dsim(qapp):
-    from lib.lib import DSim
+    from diablos.core.lib import DSim
 
     sim = DSim()
     menu = {b.fn_name: b for b in sim.menu_blocks}
@@ -83,7 +83,7 @@ class TestTransactionalLoad:
 @pytest.mark.unit
 class TestAtomicSave:
     def test_a_failed_write_keeps_the_previous_file(self, dsim, tmp_path, monkeypatch):
-        from lib.services import file_service
+        from diablos.core.services import file_service
 
         target = tmp_path / "d.diablos"
         assert dsim.save(filepath=str(target)) == 0
@@ -100,7 +100,7 @@ class TestAtomicSave:
 
     @pytest.mark.skipif(os.name == "nt", reason="Windows has no POSIX permission bits")
     def test_the_replacement_keeps_the_file_mode(self, tmp_path):
-        from lib.services.file_service import atomic_write_json
+        from diablos.core.services.file_service import atomic_write_json
 
         target = tmp_path / "d.diablos"
         target.write_text("{}", encoding="utf-8")
@@ -113,7 +113,7 @@ class TestAtomicSave:
 @pytest.mark.unit
 class TestFailedRecoveryKeepsTheAutosave:
     def _manager(self, tmp_path, load_result):
-        from modern_ui.managers.project_manager import ProjectManager
+        from diablos.gui.managers.project_manager import ProjectManager
 
         pm = ProjectManager.__new__(ProjectManager)
         pm.autosave_path = str(tmp_path / ".autosave.diablos")

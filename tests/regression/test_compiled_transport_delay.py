@@ -4,7 +4,7 @@ The block used to send the whole diagram to the fixed-step interpreter, whose
 linear-interpolated buffer is first order: x' = -x(t - 1) came out 6e-3 off,
 and the PathSim platoon benchmark (S3) lost at N >= 20. Every k*tau is now a
 breakpoint and the delayed input is recorded from the accepted steps
-(``lib/engine/compiled_delays.py``).
+(``src/diablos/core/engine/compiled_delays.py``).
 """
 
 import numpy as np
@@ -13,8 +13,8 @@ from numpy.polynomial import polynomial as P
 
 
 def _run(builder, tmp_path, sim_time, sim_dt, fast=True, solver=None, twice=False):
-    from lib.analysis.resim import harvest_scope_signals
-    from lib.cli import load_diagram
+    from diablos.core.analysis.resim import harvest_scope_signals
+    from diablos.core.cli import load_diagram
 
     path = tmp_path / "delay.diablos"
     builder.save(str(path))
@@ -41,7 +41,7 @@ def _trace(data, label):
 
 
 def _delayed_source(src, src_params, tau=0.3, initial=0.5, sim_time=2.0, sim_dt=0.01):
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     b = DiagramBuilder(sim_time=sim_time, sim_dt=sim_dt)
     s = b.add_block(src, 0, 0, name="s", params=src_params)
@@ -56,7 +56,7 @@ def _delayed_source(src, src_params, tau=0.3, initial=0.5, sim_time=2.0, sim_dt=
 
 def _dde(sim_time=5.0, sim_dt=0.01):
     """x' = -x(t - 1), x = 1 on [-1, 0]."""
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     b = DiagramBuilder(sim_time=sim_time, sim_dt=sim_dt)
     g = b.add_block("Gain", 0, 0, name="g", params={"gain": -1.0})
@@ -122,8 +122,8 @@ class TestCompiledTransportDelay:
     def test_a_rerun_with_a_new_source_value_reads_the_new_history(self, qapp, tmp_path):
         """The rerun recompiles (source values are part of the compile key) and
         must not read the first run's history."""
-        from lib.analysis.resim import harvest_scope_signals
-        from lib.cli import load_diagram
+        from diablos.core.analysis.resim import harvest_scope_signals
+        from diablos.core.cli import load_diagram
 
         path = tmp_path / "sine.diablos"
         _delayed_source("Sine", {"amplitude": 1.0, "omega": 3.0, "init_angle": 0.0}).save(str(path))
@@ -144,7 +144,7 @@ class TestCompiledTransportDelay:
         it must see the held value of the segment before, not the fresh
         sample, or the RHS jumps inside the step.
         """
-        from lib.diagram_builder import DiagramBuilder
+        from diablos.core.diagram_builder import DiagramBuilder
 
         b = DiagramBuilder(sim_time=2.0, sim_dt=0.01)
         r = b.add_block("Ramp", 0, 0, name="r", params={"slope": 1.0, "delay": 0.0})
@@ -166,7 +166,7 @@ class TestCompiledTransportDelay:
 
     def test_sample_hits_count_only_sample_instants(self, qapp, tmp_path):
         """Delay breakpoints share the schedule but are not sample hits."""
-        from lib.diagram_builder import DiagramBuilder
+        from diablos.core.diagram_builder import DiagramBuilder
 
         b = DiagramBuilder(sim_time=1.0, sim_dt=0.01)
         s = b.add_block(
@@ -202,7 +202,7 @@ class TestCompiledTransportDelay:
 
     def test_events_and_delay_breakpoints_share_one_solve(self, qapp, tmp_path):
         """Delayed feedback through a Saturation: located events plus k*tau."""
-        from lib.diagram_builder import DiagramBuilder
+        from diablos.core.diagram_builder import DiagramBuilder
 
         def build():
             b = DiagramBuilder(sim_time=6.0, sim_dt=0.01)
@@ -259,8 +259,8 @@ class TestTransportDelayFallbacks:
         assert "not positive" in dsim.engine.get_compile_fallback_reason()
 
     def test_linearizer_refuses_a_delay(self, qapp, tmp_path):
-        from lib.analysis.linearizer import Linearizer
-        from lib.cli import load_diagram
+        from diablos.core.analysis.linearizer import Linearizer
+        from diablos.core.cli import load_diagram
 
         path = tmp_path / "dde.diablos"
         _dde().save(str(path))
@@ -275,7 +275,7 @@ class TestDelayHistory:
     def _history():
         from types import SimpleNamespace
 
-        from lib.engine.compiled_delays import DelayHistory
+        from diablos.core.engine.compiled_delays import DelayHistory
 
         h = DelayHistory()
         h.add("d", 0.1, 0.5, "u")
@@ -291,7 +291,7 @@ class TestDelayHistory:
         return h, SimpleNamespace(sol=Dense())
 
     def test_reads_the_recorded_segment_and_refuses_beyond_it(self):
-        from lib.engine.compiled_delays import CompiledDelayError
+        from diablos.core.engine.compiled_delays import CompiledDelayError
 
         h, sol = self._history()
         assert h.value(0, 0.0) == pytest.approx(0.5)  # initial at t0
@@ -303,7 +303,7 @@ class TestDelayHistory:
             h.value(0, 0.15)
 
     def test_reset_forgets_the_previous_run(self):
-        from lib.engine.compiled_delays import CompiledDelayError
+        from diablos.core.engine.compiled_delays import CompiledDelayError
 
         h, sol = self._history()
         h.finish(sol)

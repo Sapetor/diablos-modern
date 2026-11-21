@@ -1,7 +1,7 @@
 """Tests for Momentum block."""
 
 import numpy as np
-from blocks.optimization_primitives.momentum import MomentumBlock
+from diablos.blocks.optimization_primitives.momentum import MomentumBlock
 
 
 class TestMomentumBlock:

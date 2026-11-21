@@ -102,7 +102,7 @@ class TestAddLine:
         # Add two blocks
         simulation_model.blocks_list.append(sample_block)
 
-        from lib.simulation.block import DBlock
+        from diablos.core.simulation.block import DBlock
 
         block2 = DBlock(
             "TestBlock2",
@@ -140,7 +140,7 @@ class TestAddLine:
         """Test that adding a line sets dirty flag."""
         simulation_model.blocks_list.append(sample_block)
 
-        from lib.simulation.block import DBlock
+        from diablos.core.simulation.block import DBlock
 
         block2 = DBlock(
             "TestBlock2",
@@ -184,7 +184,7 @@ class TestRemoveBlock:
         """Test that removing a block also removes its connections."""
         simulation_model.blocks_list.append(sample_block)
 
-        from lib.simulation.block import DBlock
+        from diablos.core.simulation.block import DBlock
 
         block2 = DBlock(
             "TestBlock2",
@@ -304,7 +304,7 @@ class TestIsPortAvailable:
         """Test that is_port_available returns False for connected port."""
         simulation_model.blocks_list.append(sample_block)
 
-        from lib.simulation.block import DBlock
+        from diablos.core.simulation.block import DBlock
 
         block2 = DBlock(
             "TestBlock2",

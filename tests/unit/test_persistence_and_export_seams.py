@@ -4,13 +4,13 @@
   ``ModernDiaBloSWindow`` (``dsim.save(autosave=True, filepath=...)``) was dead
   code that would have raised ``TypeError``. ``FileService.save`` already
   accepted one; ``DSim.save`` now forwards it.
-* ``lib/services/file_service.py`` imported ``QFileDialog`` at module level,
+* ``src/diablos/core/services/file_service.py`` imported ``QFileDialog`` at module level,
   putting the widget toolkit in the persistence layer. The "ask the user for a
-  path" half moved to ``lib/services/file_dialogs.py`` (lazy Qt import).
-* ``lib/plotting/field_scope_mixin.py`` imported ``modern_ui`` (an inverted
+  path" half moved to ``src/diablos/core/services/file_dialogs.py`` (lazy Qt import).
+* ``src/diablos/core/plotting/field_scope_mixin.py`` imported ``modern_ui`` (an inverted
   dependency). The GUI now injects the dialog factory; the lazy import is only
   the fallback.
-* ``lib/export/python_codegen.py`` silently kept unresolved workspace variables
+* ``src/diablos/core/export/python_codegen.py`` silently kept unresolved workspace variables
   in the exported script. It now logs and collects a warning naming the block.
 """
 
@@ -29,7 +29,7 @@ import pytest
 @pytest.mark.unit
 class TestDsimSaveAcceptsFilepath:
     def test_save_writes_to_the_given_path_without_a_dialog(self, qapp, tmp_path, monkeypatch):
-        from lib.lib import DSim
+        from diablos.core.lib import DSim
         from PyQt6.QtCore import QPoint
 
         dsim = DSim()
@@ -37,7 +37,7 @@ class TestDsimSaveAcceptsFilepath:
         dsim.add_block(menu["step"], QPoint(100, 100))
 
         # A dialog here would mean the filepath was ignored.
-        import lib.services.file_dialogs as file_dialogs
+        import diablos.core.services.file_dialogs as file_dialogs
 
         def fail(*args, **kwargs):
             raise AssertionError("save(filepath=...) must not open a file dialog")
@@ -51,7 +51,7 @@ class TestDsimSaveAcceptsFilepath:
 
     def test_autosave_with_filepath_keeps_the_dirty_flag(self, qapp, tmp_path):
         """The _auto_save fallback branch must behave like the primary one."""
-        from lib.lib import DSim
+        from diablos.core.lib import DSim
         from PyQt6.QtCore import QPoint
 
         dsim = DSim()
@@ -75,7 +75,7 @@ class TestFileServiceHasNoWidgetImport:
     def test_module_source_does_not_import_qtwidgets(self):
         import pathlib
 
-        import lib.services.file_service as fs
+        import diablos.core.services.file_service as fs
 
         source = pathlib.Path(fs.__file__).read_text(encoding="utf-8")
         # QtCore.QRect stays (a block's coords *is* a QRect); QtWidgets must not
@@ -83,15 +83,15 @@ class TestFileServiceHasNoWidgetImport:
         assert "from PyQt6.QtWidgets import" not in source.split("def __getattr__")[0]
 
     def test_qfiledialog_is_still_reachable_for_back_compat(self):
-        """Existing tests monkeypatch lib.services.file_service.QFileDialog."""
+        """Existing tests monkeypatch diablos.core.services.file_service.QFileDialog."""
         from PyQt6.QtWidgets import QFileDialog
 
-        import lib.services.file_service as fs
+        import diablos.core.services.file_service as fs
 
         assert fs.QFileDialog is QFileDialog
 
     def test_unknown_attribute_still_raises(self):
-        import lib.services.file_service as fs
+        import diablos.core.services.file_service as fs
 
         with pytest.raises(AttributeError):
             fs.NoSuchThing
@@ -99,7 +99,7 @@ class TestFileServiceHasNoWidgetImport:
     def test_save_with_filepath_never_touches_the_dialog_module(
         self, file_service, tmp_path, monkeypatch
     ):
-        import lib.services.file_service as fs
+        import diablos.core.services.file_service as fs
 
         monkeypatch.setattr(
             fs, "prompt_save_path", lambda *a, **k: pytest.fail("dialog was opened")
@@ -109,7 +109,7 @@ class TestFileServiceHasNoWidgetImport:
         assert target.exists()
 
     def test_load_prompts_only_without_a_filepath(self, file_service, tmp_path, monkeypatch):
-        import lib.services.file_service as fs
+        import diablos.core.services.file_service as fs
 
         target = tmp_path / "roundtrip.diablos"
         file_service.save(filepath=str(target))
@@ -132,7 +132,7 @@ class TestFileServiceHasNoWidgetImport:
 @pytest.mark.unit
 class TestFieldScopeDialogInjection:
     def test_injected_factory_is_used_instead_of_importing_modern_ui(self, qapp, monkeypatch):
-        from lib.plotting import field_scope_mixin as fsm
+        from diablos.core.plotting import field_scope_mixin as fsm
 
         calls = []
 
@@ -155,7 +155,7 @@ class TestFieldScopeDialogInjection:
         assert calls == ["fieldscope1"]
 
     def test_module_level_registration_also_works(self, qapp, monkeypatch):
-        from lib.plotting import field_scope_mixin as fsm
+        from diablos.core.plotting import field_scope_mixin as fsm
 
         calls = []
         monkeypatch.setattr(
@@ -173,7 +173,7 @@ class TestFieldScopeDialogInjection:
         assert calls == ["fieldscope2"]
 
     def test_falls_back_to_the_lazy_import_when_nothing_is_injected(self, qapp, monkeypatch):
-        from lib.plotting import field_scope_mixin as fsm
+        from diablos.core.plotting import field_scope_mixin as fsm
 
         calls = []
         monkeypatch.setattr(fsm, "_default_animation_dialog", lambda e, n: calls.append(n))
@@ -194,7 +194,7 @@ class TestFieldScopeDialogInjection:
 @pytest.mark.unit
 class TestCodegenWarnsOnUnresolvedParams:
     def test_failed_resolution_names_the_block_and_params(self, monkeypatch, caplog):
-        from lib.export import python_codegen
+        from diablos.core.export import python_codegen
 
         class Boom:
             def resolve_params(self, params):
@@ -213,7 +213,7 @@ class TestCodegenWarnsOnUnresolvedParams:
         assert "gain2" in caplog.text
 
     def test_generator_exposes_a_warnings_channel(self):
-        from lib.export.python_codegen import PythonCodeGenerator
+        from diablos.core.export.python_codegen import PythonCodeGenerator
 
         generator = PythonCodeGenerator([], [])
         assert generator.warnings == []

@@ -2,7 +2,7 @@
 
 import pytest
 import numpy as np
-from blocks.optimization_primitives.objective_function import ObjectiveFunctionBlock
+from diablos.blocks.optimization_primitives.objective_function import ObjectiveFunctionBlock
 
 
 class TestObjectiveFunctionBlock:

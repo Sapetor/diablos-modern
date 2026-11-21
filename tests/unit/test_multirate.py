@@ -105,7 +105,7 @@ class TestRateTransitionBlock:
     @pytest.fixture
     def rate_transition(self):
         """Create a RateTransition block instance."""
-        from blocks.rate_transition import RateTransitionBlock
+        from diablos.blocks.rate_transition import RateTransitionBlock
 
         return RateTransitionBlock()
 
@@ -195,7 +195,7 @@ class TestFirstOrderHoldBlock:
     @pytest.fixture
     def foh(self):
         """Create a FirstOrderHold block instance."""
-        from blocks.first_order_hold import FirstOrderHoldBlock
+        from diablos.blocks.first_order_hold import FirstOrderHoldBlock
 
         return FirstOrderHoldBlock()
 
@@ -220,7 +220,7 @@ class TestRateMismatchValidation:
 
     def test_discrete_to_continuous_info(self):
         """Test that discrete→continuous generates INFO level message."""
-        from lib.diagram_validator import DiagramValidator, ErrorSeverity
+        from diablos.core.diagram_validator import DiagramValidator, ErrorSeverity
 
         # Create mock DSim with a discrete source and continuous destination
         mock_dsim = MagicMock()
@@ -265,7 +265,7 @@ class TestRateMismatchValidation:
 
     def test_non_integer_rate_ratio_warning(self):
         """Test that non-integer rate ratios generate WARNING."""
-        from lib.diagram_validator import DiagramValidator, ErrorSeverity
+        from diablos.core.diagram_validator import DiagramValidator, ErrorSeverity
 
         mock_dsim = MagicMock()
 
@@ -332,49 +332,49 @@ class TestBlockSamplingTimeParam:
 
     def test_integrator_has_sampling_time(self):
         """Test Integrator block has sampling_time param."""
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         block = IntegratorBlock()
         assert "sampling_time" in block.params
 
     def test_pid_has_sampling_time(self):
         """Test PID block has sampling_time param."""
-        from blocks.pid import PIDBlock
+        from diablos.blocks.pid import PIDBlock
 
         block = PIDBlock()
         assert "sampling_time" in block.params
 
     def test_transfer_function_has_sampling_time(self):
         """Test TransferFunction block has sampling_time param."""
-        from blocks.transfer_function import TransferFunctionBlock
+        from diablos.blocks.transfer_function import TransferFunctionBlock
 
         block = TransferFunctionBlock()
         assert "sampling_time" in block.params
 
     def test_statespace_has_sampling_time(self):
         """Test StateSpace block has sampling_time param."""
-        from blocks.statespace import StateSpaceBlock
+        from diablos.blocks.statespace import StateSpaceBlock
 
         block = StateSpaceBlock()
         assert "sampling_time" in block.params
 
     def test_derivative_has_sampling_time(self):
         """Test Derivative block has sampling_time param."""
-        from blocks.derivative import DerivativeBlock
+        from diablos.blocks.derivative import DerivativeBlock
 
         block = DerivativeBlock()
         assert "sampling_time" in block.params
 
     def test_rate_transition_has_output_sample_time(self):
         """Test RateTransition block has output_sample_time param."""
-        from blocks.rate_transition import RateTransitionBlock
+        from diablos.blocks.rate_transition import RateTransitionBlock
 
         block = RateTransitionBlock()
         assert "output_sample_time" in block.params
 
     def test_first_order_hold_has_sampling_time(self):
         """Test FirstOrderHold block has input_sample_time param."""
-        from blocks.first_order_hold import FirstOrderHoldBlock
+        from diablos.blocks.first_order_hold import FirstOrderHoldBlock
 
         block = FirstOrderHoldBlock()
         assert "input_sample_time" in block.params
@@ -406,8 +406,8 @@ class TestRateMismatchWithWorkspacePeriods:
         return [src, dst], [line]
 
     def _validate(self, blocks, lines, **variables):
-        from lib.diagram_validator import DiagramValidator
-        from lib.workspace import Workspace
+        from diablos.core.diagram_validator import DiagramValidator
+        from diablos.core.workspace import Workspace
 
         dsim = MagicMock()
         dsim.blocks_list, dsim.line_list = blocks, lines

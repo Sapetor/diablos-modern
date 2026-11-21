@@ -9,7 +9,7 @@ block guarded only ``sampling_time < 0`` (remapping the continuous marker to
 import numpy as np
 import pytest
 
-from blocks.first_order_hold import FirstOrderHoldBlock
+from diablos.blocks.first_order_hold import FirstOrderHoldBlock
 
 
 @pytest.mark.unit

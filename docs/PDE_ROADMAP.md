@@ -11,9 +11,9 @@ DiaBloS PDE blocks use **Method of Lines (MOL)**:
 - **Meshes**: Structured uniform grids only
 
 The spatial discretisation and BC math for every family live in
-`lib/engine/pde_ops.py`, which both the interpreter blocks (`blocks/pde/`) and
-the compiled kernels (`lib/engine/compiler_kernels/pde.py`) call. Initial
-conditions are single-sourced the same way through `lib/engine/pde_helpers.py`.
+`src/diablos/core/engine/pde_ops.py`, which both the interpreter blocks (`src/diablos/blocks/pde/`) and
+the compiled kernels (`src/diablos/core/engine/compiler_kernels/pde.py`) call. Initial
+conditions are single-sourced the same way through `src/diablos/core/engine/pde_helpers.py`.
 Adding a BC or an IC in one place therefore reaches both execution paths.
 
 ### Existing PDE Blocks
@@ -41,7 +41,7 @@ Adding a BC or an IC in one place therefore reaches both execution paths.
   freedom, so the effective period is `N·dx`, not `L = (N-1)·dx`. This matches
   the pre-existing advection convention and makes the discrete Laplacian
   circulant — which is what conserves total heat exactly.
-- Implemented in `lib/engine/pde_ops.py`, so the interpreter and compiled paths
+- Implemented in `src/diablos/core/engine/pde_ops.py`, so the interpreter and compiled paths
   are equivalent by construction. The non-periodic branches were left
   bit-identical so the pinned golden traces did not move.
 
@@ -61,7 +61,7 @@ Adding a BC or an IC in one place therefore reaches both execution paths.
   `'gaussian'`, `'uniform'`).
 - 2D: `'linear'`, `'step'`, `'random'`, `'checkerboard'`, `'radial'` (plus
   `'sinusoidal'`, `'gaussian'`, `'hot_spot'`).
-- `'random'` is seeded by a new `seed` param following the `blocks/noise.py`
+- `'random'` is seeded by a new `seed` param following the `src/diablos/blocks/noise.py`
   convention (`0` = entropy / not reproducible). The wave blocks build two
   fields from one seed, so the velocity field uses `companion_seed()` to stay
   independent of the displacement field.
@@ -98,7 +98,7 @@ by a ramped ambient temperature).
 
 **2.1 MeshBase Abstract Class**
 ```
-blocks/pde/mesh/
+src/diablos/blocks/pde/mesh/
 ├── __init__.py
 ├── mesh_base.py          # Abstract interface
 ├── rectangular_mesh.py   # Current behavior
@@ -118,9 +118,9 @@ class MeshBase:
 - Replace hardcoded `(i,j)` loops with mesh interface calls
 - Keep `RectangularMesh` as default (backward compatible)
 - Files affected:
-  - `blocks/pde/heat_equation_2d.py`
-  - `blocks/pde/wave_equation_2d.py`
-  - `blocks/pde/advection_equation_2d.py`
+  - `src/diablos/blocks/pde/heat_equation_2d.py`
+  - `src/diablos/blocks/pde/wave_equation_2d.py`
+  - `src/diablos/blocks/pde/advection_equation_2d.py`
 
 **2.3 Curvilinear Mesh Support**
 - Mapped coordinates for non-rectangular but structured grids
@@ -227,9 +227,9 @@ blocks/mesh/
 
 | Phase | Files |
 |-------|-------|
-| 1 | `blocks/pde/heat_equation_*.py`, `wave_equation_*.py`, `advection_*.py` |
-| 2 | New: `blocks/pde/mesh/`, modify all 2D PDE blocks |
-| 3 | New: `blocks/mesh/`, `lib/engine/system_compiler.py` (sparse support) |
+| 1 | `src/diablos/blocks/pde/heat_equation_*.py`, `wave_equation_*.py`, `advection_*.py` |
+| 2 | New: `src/diablos/blocks/pde/mesh/`, modify all 2D PDE blocks |
+| 3 | New: `blocks/mesh/`, `src/diablos/core/engine/system_compiler.py` (sparse support) |
 | 4 | New blocks, major engine changes |
 
 ---
@@ -280,7 +280,7 @@ blocks/mesh/
 **Recommended starting point**: Phase 1 is complete. Phase 2's mesh
 abstraction is the next step, and it inherits a useful precondition from Phase
 1: all spatial-operator and IC math is already funnelled through
-`lib/engine/pde_ops.py` and `lib/engine/pde_helpers.py`, so the mesh interface
+`src/diablos/core/engine/pde_ops.py` and `src/diablos/core/engine/pde_helpers.py`, so the mesh interface
 has exactly two seams to replace rather than one per block per execution path.
 
 ---

@@ -20,9 +20,9 @@ import pytest
 from PyQt6.QtCore import QRect
 from PyQt6.QtGui import QPixmap, QPainter, QColor
 
-from lib.lib import DSim
-from lib.simulation.block import DBlock
-from modern_ui.widgets.modern_canvas import ModernCanvas
+from diablos.core.lib import DSim
+from diablos.core.simulation.block import DBlock
+from diablos.gui.widgets.modern_canvas import ModernCanvas
 
 
 @pytest.fixture(autouse=True)

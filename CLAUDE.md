@@ -25,8 +25,8 @@ tasks/              TODO list (todo.md) and lessons learned (lessons.md)
 ### Simulation Data Flow
 
 1. **Canvas** -- user builds diagram (blocks + connections)
-2. **Save/Load** -- `.diablos` JSON format via `FileService` (`lib/services/file_service.py`)
-3. **Flattening** -- `Flattener` (`lib/engine/flattener.py`) expands nested subsystems into flat block list
+2. **Save/Load** -- `.diablos` JSON format via `FileService` (`src/diablos/core/services/file_service.py`)
+3. **Flattening** -- `Flattener` (`src/diablos/core/engine/flattener.py`) expands nested subsystems into flat block list
 4. **Init** -- `SimulationEngine.initialize_execution()` resolves hierarchy, detects algebraic loops
 5. **Compilation** (fast path) -- `SystemCompiler.compile_system()` converts diagram to ODE for `scipy.integrate.solve_ivp`
 6. **Execution** -- time-step loop calling `block.execute()` in hierarchy order, propagating outputs
@@ -36,23 +36,23 @@ tasks/              TODO list (todo.md) and lessons learned (lessons.md)
 
 Blocks execute in three groups: **sources -> middle (algebraic) -> D=0 state blocks**. State blocks (TranFn/StateSpace, Integrator, PID, RateLimiter, PDE) are classified by their feedthrough term D. Strictly-proper state blocks (D=0: strictly-proper TFs, Integrator, RateLimiter, PDE) run last so their derivative computations use correct inputs; feedthrough state blocks (D!=0, which always includes PID) execute with the algebraic middle group instead. See `system_compiler.py` (`_is_d0_state_block`, `STATE_FNS`, `_execution_groups`) and `tasks/lessons.md` for the full rationale.
 
-### Analysis & Experiment Subsystem (`lib/analysis/`)
+### Analysis & Experiment Subsystem (`src/diablos/core/analysis/`)
 
-Headless re-simulation and control-analysis tools that re-run a diagram without the GUI and aggregate results. The two runners share `lib/analysis/resim.py` (`harvest_scope_signals`, `OUTCOME_METRICS`) and snapshot/restore the original block params, so they never mutate the user's diagram:
+Headless re-simulation and control-analysis tools that re-run a diagram without the GUI and aggregate results. The two runners share `src/diablos/core/analysis/resim.py` (`harvest_scope_signals`, `OUTCOME_METRICS`) and snapshot/restore the original block params, so they never mutate the user's diagram:
 
-- `monte_carlo.py` (`MonteCarloRunner`) -- N-run seeded ensembles; each block exposing a `seed` param (e.g. `packet_loss.py`, `random_source.py`, `network_channel.py`, `noise.py`) gets a sub-seed from `derive_seed(master_seed, run_index, block_name)`, so the whole experiment is reproducible from one master seed. Driven off the GUI thread by `modern_ui/widgets/monte_carlo_worker.py`.
+- `monte_carlo.py` (`MonteCarloRunner`) -- N-run seeded ensembles; each block exposing a `seed` param (e.g. `packet_loss.py`, `random_source.py`, `network_channel.py`, `noise.py`) gets a sub-seed from `derive_seed(master_seed, run_index, block_name)`, so the whole experiment is reproducible from one master seed. Driven off the GUI thread by `src/diablos/gui/widgets/monte_carlo_worker.py`.
 - `parameter_sweep.py` (`ParameterSweepRunner`) -- deterministic 1-D/2-D sweeps over block params (response family / heatmap).
 - Both runners reduce each run as it finishes (`streaming.py`: Welford mean/std, min/max, per-run metrics; traces only with `keep_traces`, and never for 2-D sweeps) and execute through `parallel.py::run_indexed` -- `workers=1` in-process, `workers>1` a spawn `ProcessPoolExecutor` whose workers rebuild the diagram once from `serialize()` and receive per-run seeds/param values computed in the parent. Records are folded in run-index order, so results are bit-identical for any worker count.
 - `linearizer.py` (`Linearizer`) -- numeric Jacobian linearization (finite differences over the compiled ODE) yielding A/B/C/D; `control_system_analyzer.py` + `analyzers/` (`BodeAnalyzer`, `NyquistAnalyzer`, `RootLocusAnalyzer`, `LQRAnalyzer`) drive Bode/Nyquist/root-locus/LQR. Pole-zero data and step/impulse responses are produced separately by `analysis_controller.py` (from the linearized transfer function).
 
-GUI side: `modern_ui/controllers/analysis_controller.py` (linearize / trim via `find_trim` / step-impulse) and `tuning_controller.py`, with result windows in `modern_ui/widgets/` (`linearization_result_window.py`, `operating_point_window.py`, `ensemble_result_window.py`, `sweep_result_window.py`).
+GUI side: `src/diablos/gui/controllers/analysis_controller.py` (linearize / trim via `find_trim` / step-impulse) and `tuning_controller.py`, with result windows in `src/diablos/gui/widgets/` (`linearization_result_window.py`, `operating_point_window.py`, `ensemble_result_window.py`, `sweep_result_window.py`).
 
 ## Block Contract
 
-All blocks inherit from `BaseBlock` (`blocks/base_block.py`). The four required members are abstract `@property` methods (not plain class attributes):
+All blocks inherit from `BaseBlock` (`src/diablos/blocks/base_block.py`). The four required members are abstract `@property` methods (not plain class attributes):
 
 ```python
-class ScaleBlock(BaseBlock):               # class convention: <BlockName>Block (blocks/abs_block.py -> AbsBlock)
+class ScaleBlock(BaseBlock):               # class convention: <BlockName>Block (src/diablos/blocks/abs_block.py -> AbsBlock)
     @property
     def block_name(self):                  # User-facing name
         return "Scale"
@@ -83,11 +83,11 @@ Note: `PortDefinition` (in `base_block.py`) is a type alias for `Dict[str, str]`
 
 Optional overrides: `category` (port-requirement defaults: Sources make inputs optional, Sinks/Other make outputs optional -- via `requires_inputs`/`requires_outputs` in `base_block.py`), `requires_inputs`/`requires_outputs` (override directly when `category` isn't enough), `optional_inputs`, `optional_outputs`, `shape` (outline: `rect`/`triangle`/`circle`/`tag`, see `resolve_block_shape` in `block_renderer.py`), `draw_icon()`, `symbolic_execute()`.
 
-**Critical rule**: All block state that persists across time steps must be stored in `params` (e.g., `params['_t_old_']`), never on `self`. The engine's `reset_memblocks()` (`lib/engine/simulation_engine.py:713`) sets `_init_start_ = True` in each block's `params` and `exec_params` and clears stale `exec_params` accumulators (`_prev`, `mem`, `output`); it never touches instance attributes, so state stored on `self` survives resets invisibly and leaks between runs.
+**Critical rule**: All block state that persists across time steps must be stored in `params` (e.g., `params['_t_old_']`), never on `self`. The engine's `reset_memblocks()` (`src/diablos/core/engine/simulation_engine.py:713`) sets `_init_start_ = True` in each block's `params` and `exec_params` and clears stale `exec_params` accumulators (`_prev`, `mem`, `output`); it never touches instance attributes, so state stored on `self` survives resets invisibly and leaks between runs.
 
 ## Localization
 
-The UI is translated through `lib/i18n.py`: `tr("text", **fmt)` looks the
+The UI is translated through `src/diablos/core/i18n.py`: `tr("text", **fmt)` looks the
 **English source string** up in `locales/<code>.json` and falls back to it, so an
 untranslated string still renders. Resolution order is `explicit user setting
 (QSettings "ui/language", written by View > Language) > system locale (QLocale) >
@@ -110,8 +110,8 @@ untranslated string still renders. Resolution order is `explicit user setting
 ## Adding New Blocks
 
 1. Create `.py` file in `blocks/` (or a subdirectory with `__init__.py`)
-2. Inherit from `BaseBlock`, implement the required `@property` members and `execute()`. Class name convention is `<BlockName>Block` (block "Abs" in `blocks/abs_block.py` -> class `AbsBlock`).
-3. Run `python tools/sync_block_registry.py` to update `_BLOCK_MODULES` in `lib/block_loader.py`
+2. Inherit from `BaseBlock`, implement the required `@property` members and `execute()`. Class name convention is `<BlockName>Block` (block "Abs" in `src/diablos/blocks/abs_block.py` -> class `AbsBlock`).
+3. Run `python tools/sync_block_registry.py` to update `_BLOCK_MODULES` in `src/diablos/core/block_loader.py`
 
 The build script (`tools/build.sh`) runs the sync automatically. In dev mode, blocks are also discovered dynamically.
 
@@ -154,11 +154,11 @@ See [`docs/building.md`](docs/building.md) for PyInstaller packaging (macOS, Win
 
 Quick reference (macOS arm64, the recommended release env): `source ~/.venvs/diablos-arm64/bin/activate && ./tools/build.sh`. For Windows/Linux create a generic `.venv` (`python -m venv .venv`); see `docs/building.md` for full per-platform steps.
 
-Key files: `diablos.spec` (PyInstaller config), `lib/app_paths.py` (frozen vs dev path resolution), `lib/block_loader.py` (`_BLOCK_MODULES` static registry for frozen mode).
+Key files: `diablos.spec` (PyInstaller config), `src/diablos/core/app_paths.py` (frozen vs dev path resolution), `src/diablos/core/block_loader.py` (`_BLOCK_MODULES` static registry for frozen mode).
 
 ## Known Issues
 
-- `blocks/external.py` is a stub -- returns error dict (not implemented)
+- `src/diablos/blocks/external.py` is a stub -- returns error dict (not implemented)
 
 ## Key Dependencies
 

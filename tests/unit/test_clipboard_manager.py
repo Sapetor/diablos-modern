@@ -11,9 +11,9 @@ from PyQt6.QtCore import QRect, QPoint
 # Ensure we can import from the project
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from modern_ui.managers.clipboard_manager import ClipboardManager
-from lib.simulation.block import DBlock
-from lib.simulation.connection import DLine
+from diablos.gui.managers.clipboard_manager import ClipboardManager
+from diablos.core.simulation.block import DBlock
+from diablos.core.simulation.connection import DLine
 
 
 @pytest.fixture

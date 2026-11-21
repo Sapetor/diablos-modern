@@ -198,7 +198,7 @@ S1B = {
 
 
 def s1b_diablos_file(tmp, method):
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     p = S1B
     b = DiagramBuilder(sim_time=p["t_end"], sim_dt=1e-3)

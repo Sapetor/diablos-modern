@@ -14,8 +14,8 @@ from types import SimpleNamespace
 import pytest
 from PyQt6.QtCore import QPoint, QRect
 
-from lib.simulation.block import DBlock
-from modern_ui.managers.clipboard_manager import ClipboardManager
+from diablos.core.simulation.block import DBlock
+from diablos.gui.managers.clipboard_manager import ClipboardManager
 
 
 @pytest.fixture(autouse=True)
@@ -72,9 +72,9 @@ def _paste(flipped):
 
 
 def _round_trip(flipped):
-    from lib.lib import DSim
-    from lib.services.file_service import FileService
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.services.file_service import FileService
+    from diablos.core.workspace import WorkspaceManager
 
     WorkspaceManager._instance = None
     source = DSim()

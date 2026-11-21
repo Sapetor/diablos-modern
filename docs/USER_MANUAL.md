@@ -528,7 +528,7 @@ wires added/removed. Blocks inside subsystems are shown with their path
 
 Exit code 0 when the diagrams match, 1 when they differ, 2 on a read error.
 
-Both are also reachable as a module: `python -m lib.cli run diagram.diablos -o out.csv`.
+Both are also reachable as a module: `python -m diablos.core.cli run diagram.diablos -o out.csv`.
 
 ---
 

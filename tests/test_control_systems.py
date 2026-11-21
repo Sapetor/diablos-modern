@@ -18,7 +18,7 @@ sys.path.insert(0, os.getcwd())
 
 def test_integrator_block():
     """Test IntegratorBlock integrates signal correctly."""
-    from blocks.integrator import IntegratorBlock
+    from diablos.blocks.integrator import IntegratorBlock
 
     block = IntegratorBlock()
 
@@ -57,7 +57,7 @@ def test_integrator_block():
 
 def test_derivative_block():
     """Test DerivativeBlock calculates derivatives correctly."""
-    from blocks.derivative import DerivativeBlock
+    from diablos.blocks.derivative import DerivativeBlock
 
     block = DerivativeBlock()
 
@@ -89,7 +89,7 @@ def test_derivative_block():
 
 def test_pid_block():
     """Test PIDBlock controller behavior."""
-    from blocks.pid import PIDBlock
+    from diablos.blocks.pid import PIDBlock
 
     block = PIDBlock()
 
@@ -136,7 +136,7 @@ def test_pid_block():
 
 def test_mux_block():
     """Test MuxBlock combines multiple signals into vector."""
-    from blocks.mux import MuxBlock
+    from diablos.blocks.mux import MuxBlock
 
     block = MuxBlock()
 
@@ -152,7 +152,7 @@ def test_mux_block():
 
 def test_demux_block():
     """Test DemuxBlock splits vector into separate signals."""
-    from blocks.demux import DemuxBlock
+    from diablos.blocks.demux import DemuxBlock
 
     block = DemuxBlock()
 
@@ -168,7 +168,7 @@ def test_demux_block():
 
 def test_transfer_function_block():
     """Test DiscreteTransferFunctionBlock implements z-transform correctly."""
-    from blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
+    from diablos.blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
 
     block = DiscreteTransferFunctionBlock()
 
@@ -187,7 +187,7 @@ def test_transfer_function_block():
 
 def test_zero_order_hold():
     """Test ZeroOrderHoldBlock samples and holds signal."""
-    from blocks.zero_order_hold import ZeroOrderHoldBlock
+    from diablos.blocks.zero_order_hold import ZeroOrderHoldBlock
 
     block = ZeroOrderHoldBlock()
 
@@ -210,7 +210,7 @@ def test_zero_order_hold():
 
 def test_exponential_block():
     """Test ExponentialBlock computes a * exp(b * x)."""
-    from blocks.exponential import ExponentialBlock
+    from diablos.blocks.exponential import ExponentialBlock
 
     block = ExponentialBlock()
 
@@ -235,7 +235,7 @@ def test_exponential_block():
 
 def test_selector_block():
     """Test SelectorBlock selects elements from vector."""
-    from blocks.selector import SelectorBlock
+    from diablos.blocks.selector import SelectorBlock
 
     block = SelectorBlock()
 

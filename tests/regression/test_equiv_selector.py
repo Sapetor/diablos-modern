@@ -2,9 +2,9 @@
 
 The interpreter path (``block.execute()`` time-step loop) and the compiled path
 (``SystemCompiler`` -> ``solve_ivp``) implement Selector element extraction
-independently: the interpreter runs ``blocks/selector.py``'s ``_parse_indices``,
+independently: the interpreter runs ``src/diablos/blocks/selector.py``'s ``_parse_indices``,
 while the compiled path runs the pre-parsed kernel in
-``lib/engine/compiler_kernels/nonlinear.py`` (``build_selector``). This test pins
+``src/diablos/core/engine/compiler_kernels/nonlinear.py`` (``build_selector``). This test pins
 that both pick the *same* vector elements and produce matching scope
 trajectories.
 
@@ -151,8 +151,8 @@ def _scope_traces(dsim):
 
 
 def _run(diagram_path, use_fast):
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     WorkspaceManager._instance = None
     dsim = DSim()

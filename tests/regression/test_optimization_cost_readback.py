@@ -29,7 +29,7 @@ EXAMPLE = Path(__file__).parent.parent.parent / "examples" / "optimization_basic
 
 
 def _load(sim_time=2.0):
-    from lib.lib import DSim
+    from diablos.core.lib import DSim
 
     dsim = DSim()
     dsim.pyqtPlotScope = lambda: None
@@ -45,14 +45,14 @@ def _load(sim_time=2.0):
 @pytest.mark.regression
 class TestRuntimeParamsSelection:
     def test_prefers_the_dict_blocks_write_to(self, qapp):
-        from lib.engine.optimization_engine import OptimizationEngine
+        from diablos.core.engine.optimization_engine import OptimizationEngine
 
         block = type("B", (), {"params": {"a": 1}, "exec_params": {"a": 2}})()
         assert OptimizationEngine.runtime_params(block) is block.exec_params
 
     def test_falls_back_before_the_run(self, qapp):
         """exec_params does not exist until the diagram is initialised."""
-        from lib.engine.optimization_engine import OptimizationEngine
+        from diablos.core.engine.optimization_engine import OptimizationEngine
 
         no_attr = type("B", (), {"params": {"a": 1}})()
         assert OptimizationEngine.runtime_params(no_attr) is no_attr.params
@@ -65,7 +65,7 @@ class TestRuntimeParamsSelection:
 @pytest.mark.slow
 class TestOptimizerSeesARealObjective:
     def test_cost_is_not_identically_zero(self, qapp):
-        from lib.engine.optimization_engine import OptimizationEngine
+        from diablos.core.engine.optimization_engine import OptimizationEngine
 
         dsim = _load()
         engine = OptimizationEngine(dsim=dsim)
@@ -92,7 +92,7 @@ class TestOptimizerSeesARealObjective:
         )
 
     def test_the_parameter_actually_moves(self, qapp):
-        from lib.engine.optimization_engine import OptimizationEngine
+        from diablos.core.engine.optimization_engine import OptimizationEngine
 
         dsim = _load()
         engine = OptimizationEngine(dsim=dsim)

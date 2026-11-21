@@ -69,9 +69,9 @@ def _has_scope(path):
 
 def _run(path, sim_time=None, use_fast_solver=True, zero_crossing=None):
     """Run one diagram headlessly and return ``(dsim, harvested_signals)``."""
-    from lib.analysis.resim import harvest_scope_signals
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.analysis.resim import harvest_scope_signals
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     prev_instance = WorkspaceManager._instance
     WorkspaceManager._instance = None

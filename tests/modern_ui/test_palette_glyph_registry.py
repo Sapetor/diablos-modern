@@ -15,7 +15,7 @@ import pytest
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QImage, QPainter, QPen
 
-from modern_ui.widgets import modern_palette as mp
+from diablos.gui.widgets import modern_palette as mp
 
 _BG = QColor(17, 34, 51, 255)
 _FG = QColor(30, 60, 200)

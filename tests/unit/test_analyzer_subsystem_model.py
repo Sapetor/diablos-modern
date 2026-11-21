@@ -14,9 +14,9 @@ import numpy as np
 import pytest
 from PyQt6.QtCore import QRect
 
-from lib.analysis.analyzers.base_analyzer import BaseAnalyzer
-from lib.simulation.block import DBlock
-from lib.simulation.connection import DLine
+from diablos.core.analysis.analyzers.base_analyzer import BaseAnalyzer
+from diablos.core.simulation.block import DBlock
+from diablos.core.simulation.connection import DLine
 
 
 @pytest.fixture(autouse=True)
@@ -44,7 +44,7 @@ def _primitive(block_fn, name, sid, in_ports, out_ports, params):
 
 
 def _subsystem(name, sub_blocks, sub_lines):
-    from blocks.subsystem import Subsystem
+    from diablos.blocks.subsystem import Subsystem
 
     subsys = Subsystem()
     subsys.name = name
@@ -55,8 +55,8 @@ def _subsystem(name, sub_blocks, sub_lines):
 
 
 def _io_ports(sub_name="Sub1"):
-    from blocks.inport import Inport
-    from blocks.outport import Outport
+    from diablos.blocks.inport import Inport
+    from diablos.blocks.outport import Outport
 
     inport = Inport("In1")
     inport.name = "In1"

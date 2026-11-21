@@ -11,10 +11,10 @@ from types import SimpleNamespace
 import pytest
 from PyQt6.QtCore import QPoint, QRect
 
-from blocks.subsystem import Subsystem
-from lib.simulation.block import DBlock
-from lib.simulation.connection import DLine
-from modern_ui.managers.clipboard_manager import ClipboardManager
+from diablos.blocks.subsystem import Subsystem
+from diablos.core.simulation.block import DBlock
+from diablos.core.simulation.connection import DLine
+from diablos.gui.managers.clipboard_manager import ClipboardManager
 
 
 @pytest.fixture(autouse=True)

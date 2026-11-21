@@ -18,8 +18,8 @@ import pytest
 
 from PyQt6.QtCore import QSettings
 
-from modern_ui.widgets import modern_palette as mp
-from modern_ui.widgets.modern_palette import (
+from diablos.gui.widgets import modern_palette as mp
+from diablos.gui.widgets.modern_palette import (
     ModernBlockPalette,
     CompactBlockRow,
     _PinnedSection,
@@ -81,7 +81,7 @@ def _isolated_settings(tmp_path, monkeypatch):
 
 
 def _make_palette():
-    from lib.lib import DSim
+    from diablos.core.lib import DSim
 
     dsim = DSim()
     init = getattr(dsim, "menu_blocks_init", None)

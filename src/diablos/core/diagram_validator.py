@@ -1,0 +1,738 @@
+"""Diagram Validation System
+Validates block diagrams for integrity errors before simulation.
+"""
+
+import logging
+from collections import defaultdict, deque
+from typing import Any, Dict, List, Set, Tuple
+from enum import Enum
+
+from diablos.core.engine.memory_blocks import OUTPUT_ONLY_SAFE_BLOCK_FNS, is_memory_block
+from diablos.core.i18n import tr
+
+logger = logging.getLogger(__name__)
+
+
+class ErrorSeverity(Enum):
+    """Error severity levels."""
+
+    ERROR = "error"  # Prevents simulation
+    WARNING = "warning"  # Simulation can run but may have issues
+    INFO = "info"  # Informational message
+
+
+class ValidationError:
+    """Represents a validation error or warning."""
+
+    def __init__(
+        self,
+        severity: ErrorSeverity,
+        message: str,
+        blocks: List = None,
+        connections: List = None,
+        suggestion: str = None,
+    ):
+        """
+        Initialize a validation error.
+
+        Args:
+            severity: Error severity level
+            message: Human-readable error message
+            blocks: List of blocks involved in the error
+            connections: List of connections involved in the error
+            suggestion: Suggested fix for the error
+        """
+        self.severity = severity
+        self.message = message
+        self.blocks = blocks or []
+        self.connections = connections or []
+        self.suggestion = suggestion
+
+    def __str__(self):
+        return f"[{self.severity.value.upper()}] {self.message}"
+
+
+def find_duplicate_input_connections(line_list) -> Dict[Tuple[Any, Any], List[Any]]:
+    """Group the lines that feed the same ``(dstblock, dstport)`` input port.
+
+    Returns only the ports with more than one incoming line, keyed in order of
+    each port's first line, with the lines in ``line_list`` order. Lines that
+    carry no destination (partial stubs) are ignored. This is the one place
+    that decides what a duplicate input connection is; both
+    ``DiagramValidator._check_duplicate_connections`` (the error panel) and
+    ``validate_block_connections`` (the GUI pre-flight gate) format their own
+    messages from it.
+    """
+    by_port: Dict[Tuple[Any, Any], List[Any]] = {}
+    for line in line_list:
+        if not (hasattr(line, "dstblock") and hasattr(line, "dstport")):
+            continue
+        by_port.setdefault((line.dstblock, line.dstport), []).append(line)
+    return {key: lines for key, lines in by_port.items() if len(lines) > 1}
+
+
+class DiagramValidator:
+    """Validates block diagrams for common errors and issues."""
+
+    def __init__(self, dsim):
+        """
+        Initialize the validator.
+
+        Args:
+            dsim: DSim instance containing blocks and connections
+        """
+        self.dsim = dsim
+        self.errors = []
+
+    def validate(self) -> List[ValidationError]:
+        """
+        Run all validation checks on the diagram.
+
+        Returns:
+            List of ValidationError objects
+        """
+        self.errors = []
+
+        # Build connection maps once for efficiency (O(n) instead of O(n²))
+        connection_maps = self._build_connection_maps()
+
+        # Run all validation checks with pre-built maps
+        self._check_disconnected_inputs(connection_maps)
+        self._check_disconnected_outputs(connection_maps)
+        self._check_isolated_blocks(connection_maps)
+        self._check_invalid_connections(connection_maps)
+        self._check_duplicate_connections()
+        self._check_goto_from_tags()
+        self._check_rate_mismatches(connection_maps)
+
+        logger.info(f"Validation complete: {len(self.errors)} issues found")
+        for error in self.errors:
+            logger.info(f"  [{error.severity.value}] {error.message}")
+        return self.errors
+
+    def _build_connection_maps(self) -> dict:
+        """
+        Build connection maps once to avoid O(n²) complexity.
+
+        Returns:
+            Dictionary containing:
+                - input_connections: {(block_name, port_idx): [connections]}
+                - output_connections: {(block_name, port_idx): [connections]}
+                - connected_blocks: set of block names with any connection
+                - valid_block_names: set of all valid block names
+        """
+        input_connections = {}
+        output_connections = {}
+        connected_blocks = set()
+
+        for line in self.dsim.line_list:
+            if getattr(line, "hidden", False):
+                continue
+            # Track input connections
+            input_key = (line.dstblock, line.dstport)
+            if input_key not in input_connections:
+                input_connections[input_key] = []
+            input_connections[input_key].append(line)
+
+            # Track output connections
+            output_key = (line.srcblock, line.srcport)
+            if output_key not in output_connections:
+                output_connections[output_key] = []
+            output_connections[output_key].append(line)
+
+            # Track connected blocks
+            connected_blocks.add(line.srcblock)
+            connected_blocks.add(line.dstblock)
+
+        return {
+            "input_connections": input_connections,
+            "output_connections": output_connections,
+            "connected_blocks": connected_blocks,
+            "valid_block_names": {block.name for block in self.dsim.blocks_list},
+        }
+
+    def _check_disconnected_inputs(self, connection_maps: dict) -> None:
+        """Check for input ports that have no connections."""
+        input_connections = connection_maps["input_connections"]
+
+        for block in self.dsim.blocks_list:
+            # Skip blocks that don't require inputs (use block property if available)
+            if (
+                hasattr(block, "block_instance")
+                and block.block_instance
+                and hasattr(block.block_instance, "requires_inputs")
+            ):
+                if not block.block_instance.requires_inputs:
+                    continue
+            elif hasattr(block, "category") and block.category == "Sources":
+                continue
+
+            # Get optional inputs list (if the block specifies any)
+            optional_inputs = set()
+            if hasattr(block, "block_instance") and block.block_instance:
+                if hasattr(block.block_instance, "optional_inputs"):
+                    optional_inputs = set(block.block_instance.optional_inputs)
+
+            # Check for disconnected inputs using pre-built map
+            for i in range(block.in_ports):
+                if i in optional_inputs:
+                    continue  # Skip optional inputs
+                if (block.name, i) not in input_connections:
+                    error = ValidationError(
+                        severity=ErrorSeverity.ERROR,
+                        message=tr(
+                            "Block '{name}' has disconnected input port {port}",
+                            name=block.username or block.name,
+                            port=i + 1,
+                        ),
+                        blocks=[block],
+                        suggestion=tr(
+                            "Connect an output to input port {port} or remove the block",
+                            port=i + 1,
+                        ),
+                    )
+                    self.errors.append(error)
+
+    def _check_disconnected_outputs(self, connection_maps: dict) -> None:
+        """Check for output ports that have no connections."""
+        output_connections = connection_maps["output_connections"]
+
+        for block in self.dsim.blocks_list:
+            # Skip blocks that don't require outputs to be connected (use block property if available)
+            if (
+                hasattr(block, "block_instance")
+                and block.block_instance
+                and hasattr(block.block_instance, "requires_outputs")
+            ):
+                if not block.block_instance.requires_outputs:
+                    continue
+            elif hasattr(block, "category") and block.category in ["Sinks", "Other"]:
+                continue
+
+            # Get optional outputs (ports that don't need to be connected)
+            optional_outputs = set()
+            if hasattr(block, "block_instance") and block.block_instance:
+                if hasattr(block.block_instance, "optional_outputs"):
+                    optional_outputs = set(block.block_instance.optional_outputs)
+
+            # Check for disconnected outputs using pre-built map
+            for i in range(block.out_ports):
+                # Skip optional output ports
+                if i in optional_outputs:
+                    continue
+                if (block.name, i) not in output_connections:
+                    error = ValidationError(
+                        severity=ErrorSeverity.WARNING,
+                        message=tr(
+                            "Block '{name}' has disconnected output port {port}",
+                            name=block.username or block.name,
+                            port=i + 1,
+                        ),
+                        blocks=[block],
+                        suggestion=tr(
+                            "Connect output port {port} to another block or add a sink",
+                            port=i + 1,
+                        ),
+                    )
+                    self.errors.append(error)
+
+    def _check_isolated_blocks(self, connection_maps: dict) -> None:
+        """Check for blocks with no connections at all."""
+        connected_blocks = connection_maps["connected_blocks"]
+
+        for block in self.dsim.blocks_list:
+            # Skip meta-blocks that don't require connections (e.g., Optimizer)
+            if hasattr(block, "block_instance") and block.block_instance:
+                requires_inputs = getattr(block.block_instance, "requires_inputs", True)
+                requires_outputs = getattr(block.block_instance, "requires_outputs", True)
+                # If block doesn't require either inputs or outputs, it's a meta-block
+                if not requires_inputs and not requires_outputs:
+                    continue
+
+            # Also skip blocks with no ports at all (meta-blocks)
+            if block.in_ports == 0 and block.out_ports == 0:
+                continue
+
+            # Block is isolated if it's not in the connected blocks set
+            if block.name not in connected_blocks:
+                error = ValidationError(
+                    severity=ErrorSeverity.ERROR,
+                    message=tr(
+                        "Block '{name}' is not connected to anything",
+                        name=block.username or block.name,
+                    ),
+                    blocks=[block],
+                    suggestion=tr("Connect this block to the diagram or remove it"),
+                )
+                self.errors.append(error)
+
+    def _check_goto_from_tags(self) -> None:
+        """Validate tag usage for Goto/From blocks (duplicates, missing links)."""
+        goto_tags = {}
+        from_tags = {}
+        for block in self.dsim.blocks_list:
+            block_fn = getattr(block, "block_fn", None)
+            if block_fn == "Goto":
+                tag = str(getattr(block, "params", {}).get("tag", "")).strip()
+                goto_tags.setdefault(tag, []).append(block)
+            elif block_fn == "From":
+                tag = str(getattr(block, "params", {}).get("tag", "")).strip()
+                from_tags.setdefault(tag, []).append(block)
+
+        # Multiple Goto with same tag -> warning (ambiguous source)
+        for tag, gotos in goto_tags.items():
+            if len(gotos) > 1:
+                self.errors.append(
+                    ValidationError(
+                        severity=ErrorSeverity.WARNING,
+                        message=tr(
+                            "Multiple Goto blocks share tag '{tag}'",
+                            tag=tag or tr("(empty)"),
+                        ),
+                        blocks=gotos,
+                        suggestion=tr("Use unique tags or remove duplicates to avoid ambiguity"),
+                    )
+                )
+
+        # From without matching Goto -> error
+        for tag, frs in from_tags.items():
+            if tag not in goto_tags:
+                self.errors.append(
+                    ValidationError(
+                        severity=ErrorSeverity.ERROR,
+                        message=tr(
+                            "From tag '{tag}' has no matching Goto",
+                            tag=tag or tr("(empty)"),
+                        ),
+                        blocks=frs,
+                        suggestion=tr("Add a Goto with the same tag or update the tag"),
+                    )
+                )
+
+        # Goto with no From -> warning (unused)
+        for tag, gotos in goto_tags.items():
+            if tag not in from_tags:
+                self.errors.append(
+                    ValidationError(
+                        severity=ErrorSeverity.WARNING,
+                        message=tr(
+                            "Goto tag '{tag}' is unused (no From)",
+                            tag=tag or tr("(empty)"),
+                        ),
+                        blocks=gotos,
+                        suggestion=tr("Add a From with the same tag or remove the Goto"),
+                    )
+                )
+
+    def _check_invalid_connections(self, connection_maps: dict) -> None:
+        """Check for connections with invalid block references."""
+        valid_block_names = connection_maps["valid_block_names"]
+
+        for line in self.dsim.line_list:
+            if getattr(line, "hidden", False):
+                continue
+            if line.srcblock not in valid_block_names:
+                error = ValidationError(
+                    severity=ErrorSeverity.ERROR,
+                    message=tr(
+                        "Connection '{name}' references non-existent source block '{block}'",
+                        name=line.name,
+                        block=line.srcblock,
+                    ),
+                    connections=[line],
+                    suggestion=tr("Delete this invalid connection"),
+                )
+                self.errors.append(error)
+
+            if line.dstblock not in valid_block_names:
+                error = ValidationError(
+                    severity=ErrorSeverity.ERROR,
+                    message=tr(
+                        "Connection '{name}' references non-existent destination block '{block}'",
+                        name=line.name,
+                        block=line.dstblock,
+                    ),
+                    connections=[line],
+                    suggestion=tr("Delete this invalid connection"),
+                )
+                self.errors.append(error)
+
+    def _check_duplicate_connections(self) -> None:
+        """Check for multiple connections to the same input port."""
+        # Same visibility rule as _build_connection_maps: hidden lines don't count.
+        visible_lines = [line for line in self.dsim.line_list if not getattr(line, "hidden", False)]
+        duplicates = find_duplicate_input_connections(visible_lines)
+
+        for (block_name, port_idx), connections in duplicates.items():
+            # Find the block
+            block = None
+            for b in self.dsim.blocks_list:
+                if b.name == block_name:
+                    block = b
+                    break
+
+            error = ValidationError(
+                severity=ErrorSeverity.ERROR,
+                message=tr(
+                    "Block '{name}' input port {port} has {count} connections",
+                    name=(block.username or block.name) if block else block_name,
+                    port=port_idx + 1,
+                    count=len(connections),
+                ),
+                blocks=[block] if block else [],
+                connections=connections,
+                suggestion=tr(
+                    "Remove all but one connection to input port {port}", port=port_idx + 1
+                ),
+            )
+            self.errors.append(error)
+
+    def has_errors(self) -> bool:
+        """Check if there are any errors (not warnings)."""
+        return any(e.severity == ErrorSeverity.ERROR for e in self.errors)
+
+    def has_warnings(self) -> bool:
+        """Check if there are any warnings."""
+        return any(e.severity == ErrorSeverity.WARNING for e in self.errors)
+
+    def get_errors_by_severity(self, severity: ErrorSeverity) -> List[ValidationError]:
+        """Get all errors of a specific severity."""
+        return [e for e in self.errors if e.severity == severity]
+
+    def get_blocks_with_errors(self) -> Set:
+        """Get set of all blocks that have errors."""
+        blocks = set()
+        for error in self.errors:
+            if error.severity == ErrorSeverity.ERROR:
+                blocks.update(error.blocks)
+        return blocks
+
+    def get_blocks_with_warnings(self) -> Set:
+        """Get set of all blocks that have warnings."""
+        blocks = set()
+        for error in self.errors:
+            if error.severity == ErrorSeverity.WARNING:
+                blocks.update(error.blocks)
+        return blocks
+
+    def _check_rate_mismatches(self, connection_maps: dict) -> None:
+        """
+        Check for sample rate mismatches between connected blocks.
+
+        Detects:
+        - Non-integer rate ratios (may cause aliasing)
+        - Discrete→continuous connections without proper rate transition
+        - Missing RateTransition blocks where recommended
+        """
+        # Build block lookup
+        block_map = {block.name: block for block in self.dsim.blocks_list}
+
+        from diablos.core.engine.sample_times import SampleTimeError, declared_sample_time
+        from diablos.core.workspace import Workspace
+
+        workspace = getattr(self.dsim, "workspace", None)
+        if not isinstance(workspace, Workspace):
+            workspace = None
+
+        def get_sample_time(block) -> float:
+            """Declared sample time, resolving workspace names/expressions the
+            way a run does. Returns -1 for continuous (or an unresolvable
+            period, which the engine itself reports as an error)."""
+            if not block:
+                return -1.0
+            params = getattr(block, "params", {}) or {}
+            key = next(
+                (k for k in ("sampling_time", "sample_time", "output_sample_time") if k in params),
+                None,
+            )
+            if key is None:
+                return -1.0
+            raw = {"sampling_time": params[key]}
+            resolved = workspace.resolve_params(raw) if workspace is not None else None
+            try:
+                return declared_sample_time(raw, resolved, getattr(block, "name", ""))
+            except SampleTimeError:
+                return -1.0
+
+        def is_rate_transition_block(block) -> bool:
+            """Check if block is a rate transition type."""
+            if not block:
+                return False
+            return getattr(block, "block_fn", None) in (
+                "RateTransition",
+                "ZeroOrderHold",
+                "FirstOrderHold",
+            )
+
+        # Check each connection for rate mismatches
+        for line in self.dsim.line_list:
+            if getattr(line, "hidden", False):
+                continue
+
+            src_block = block_map.get(line.srcblock)
+            dst_block = block_map.get(line.dstblock)
+
+            if not src_block or not dst_block:
+                continue
+
+            src_rate = get_sample_time(src_block)
+            dst_rate = get_sample_time(dst_block)
+
+            # Skip if both are continuous
+            if src_rate < 0 and dst_rate < 0:
+                continue
+
+            # Skip if destination is a rate transition block (it handles the conversion)
+            if is_rate_transition_block(dst_block):
+                continue
+
+            # Check for discrete → continuous without rate transition
+            if src_rate > 0 and dst_rate < 0:
+                # Source is discrete, destination is continuous
+                self.errors.append(
+                    ValidationError(
+                        severity=ErrorSeverity.INFO,
+                        message=tr(
+                            "Discrete signal from '{src}' (Ts={src_rate}s) connects to "
+                            "continuous block '{dst}'",
+                            src=src_block.username or src_block.name,
+                            src_rate=src_rate,
+                            dst=dst_block.username or dst_block.name,
+                        ),
+                        blocks=[src_block, dst_block],
+                        connections=[line],
+                        suggestion=tr(
+                            "Consider adding a RateTransition block for proper signal conversion"
+                        ),
+                    )
+                )
+
+            # Check for rate ratio issues (both discrete)
+            elif src_rate > 0 and dst_rate > 0:
+                # Calculate rate ratio
+                if src_rate > dst_rate:
+                    ratio = src_rate / dst_rate  # Downsampling
+                    direction = tr("slower→faster")
+                else:
+                    ratio = dst_rate / src_rate  # Upsampling
+                    direction = tr("faster→slower")
+
+                # Check if ratio is non-integer (potential aliasing)
+                if abs(ratio - round(ratio)) > 0.01:
+                    self.errors.append(
+                        ValidationError(
+                            severity=ErrorSeverity.WARNING,
+                            message=tr(
+                                "Non-integer sample rate ratio ({ratio}x, {direction}) "
+                                "between '{src}' (Ts={src_rate}s) and '{dst}' (Ts={dst_rate}s)",
+                                ratio=f"{ratio:.2f}",
+                                direction=direction,
+                                src=src_block.username or src_block.name,
+                                src_rate=src_rate,
+                                dst=dst_block.username or dst_block.name,
+                                dst_rate=dst_rate,
+                            ),
+                            blocks=[src_block, dst_block],
+                            connections=[line],
+                            suggestion=tr(
+                                "Use integer rate ratios (e.g., 2x, 4x) or add a RateTransition block"
+                            ),
+                        )
+                    )
+
+                # Check for significant rate difference without transition
+                elif ratio > 1.5 and not is_rate_transition_block(src_block):
+                    self.errors.append(
+                        ValidationError(
+                            severity=ErrorSeverity.INFO,
+                            message=tr(
+                                "Sample rate change ({ratio}x, {direction}) "
+                                "between '{src}' (Ts={src_rate}s) and '{dst}' (Ts={dst_rate}s)",
+                                ratio=f"{ratio:.0f}",
+                                direction=direction,
+                                src=src_block.username or src_block.name,
+                                src_rate=src_rate,
+                                dst=dst_block.username or dst_block.name,
+                                dst_rate=dst_rate,
+                            ),
+                            blocks=[src_block, dst_block],
+                            connections=[line],
+                            suggestion=tr(
+                                "Consider adding a RateTransition block for proper rate conversion"
+                            ),
+                        )
+                    )
+
+
+# ---------------------------------------------------------------------------
+# Pre-flight checks (plain functions)
+#
+# DiagramValidator above builds the rich, severity-tagged report shown in the
+# error panel. The functions below are the quick gates the GUI runs on the raw
+# (unflattened, unresolved) diagram: ConnectionManager.validate_connection
+# calls validate_block_connections for every proposed wire, and
+# SimulationController.start calls it plus check_simulation_state before
+# execution_init. Each returns an ``(ok, messages)`` tuple.
+# ---------------------------------------------------------------------------
+
+
+def validate_block_connections(blocks_list, line_list) -> Tuple[bool, List[str]]:
+    """Reject duplicate input-port connections; flag algebraic loops.
+
+    Returns ``(ok, messages)``. ``messages`` holds the errors followed by the
+    warnings (blocks that have ports but no connections), so a diagram can be
+    ok and still carry warnings. Input ports are not required to be connected:
+    partial diagrams and blocks with optional inputs must remain buildable.
+    """
+    errors: List[str] = []
+    warnings: List[str] = []
+
+    connected_blocks = set()
+    for line in line_list:
+        if hasattr(line, "srcblock") and hasattr(line, "dstblock"):
+            connected_blocks.add(line.srcblock)
+            connected_blocks.add(line.dstblock)
+
+    for block in blocks_list:
+        if hasattr(block, "name") and block.name not in connected_blocks:
+            if hasattr(block, "in_ports") and hasattr(block, "out_ports"):
+                if block.in_ports > 0 or block.out_ports > 0:
+                    warnings.append(tr("Block '{name}' has no connections", name=block.name))
+
+    # One message per extra line into a duplicated port, in line order.
+    duplicates = find_duplicate_input_connections(line_list)
+    for line in line_list:
+        key = (getattr(line, "dstblock", None), getattr(line, "dstport", None))
+        if key in duplicates and line is not duplicates[key][0]:
+            errors.append(
+                tr(
+                    "Multiple connections to same input port: block {block}, port {port}",
+                    block=line.dstblock,
+                    port=line.dstport,
+                )
+            )
+
+    # An algebraic loop is no longer fatal: the engine solves it iteratively
+    # every step (src/diablos/core/engine/algebraic_loop.py) and reports the loops it
+    # cannot solve (e.g. through a discrete block) when the run starts.
+    no_loops, loop_messages = detect_algebraic_loops(blocks_list, line_list)
+    if not no_loops:
+        warnings[:0] = loop_messages
+
+    return len(errors) == 0, errors + warnings
+
+
+def _subsystem_contains_memory(block) -> bool:
+    """True when a (nested) subsystem holds a block that breaks a loop in time."""
+    if not hasattr(block, "sub_blocks") or not block.sub_blocks:
+        return False
+    for sub_block in block.sub_blocks:
+        if sub_block.b_type == 1:
+            return True
+        if sub_block.block_fn in OUTPUT_ONLY_SAFE_BLOCK_FNS:
+            return True
+        if sub_block.block_fn == "Subsystem" and _subsystem_contains_memory(sub_block):
+            return True
+    return False
+
+
+def detect_algebraic_loops(blocks_list, line_list) -> Tuple[bool, List[str]]:
+    """Topological-sort check for algebraic loops on the raw diagram.
+
+    Memory blocks (Integrator, StateSpace, strictly proper transfer functions,
+    ...) break a loop because their output depends on past state, not on the
+    current input, so edges *into* them are dropped before the sort. The
+    shared ``is_memory_block`` helper is the taxonomy; a Subsystem counts when
+    it contains a memory block anywhere inside.
+
+    Returns ``(no_loops_found, errors)``.
+    """
+    graph = defaultdict(list)
+    in_degree = defaultdict(int)
+    block_map = {block.name: block for block in blocks_list}
+
+    for block in blocks_list:
+        in_degree[block.name] = 0
+
+    for line in line_list:
+        src_block = block_map.get(line.srcblock)
+        dst_block = block_map.get(line.dstblock)
+        if not src_block or not dst_block:
+            continue
+
+        breaks_loop = False
+        if dst_block.b_type == 1:
+            breaks_loop = True
+        elif is_memory_block(dst_block):
+            breaks_loop = True
+        elif dst_block.block_fn == "Subsystem" and _subsystem_contains_memory(dst_block):
+            breaks_loop = True
+            logger.debug(f"  {dst_block.name} (Subsystem) contains memory block - breaks loop")
+
+        if breaks_loop:
+            logger.debug(f"Memory block {dst_block.name} breaks loop from {src_block.name}")
+        else:
+            graph[line.srcblock].append(line.dstblock)
+            in_degree[line.dstblock] += 1
+
+    queue = deque([name for name, degree in in_degree.items() if degree == 0])
+    count = 0
+    while queue:
+        u = queue.popleft()
+        count += 1
+        for v in graph[u]:
+            in_degree[v] -= 1
+            if in_degree[v] == 0:
+                queue.append(v)
+
+    if count < len(blocks_list):
+        cycle_nodes = [name for name, degree in in_degree.items() if degree > 0]
+        return False, [tr("Algebraic loop detected involving blocks: {nodes}", nodes=cycle_nodes)]
+    return True, []
+
+
+def check_block_integrity(block: Any) -> Tuple[bool, List[str]]:
+    """Check that a block carries the attributes the engine relies on."""
+    errors: List[str] = []
+    for attr in ("name", "sid", "in_ports", "out_ports", "b_type", "fn_name"):
+        if not hasattr(block, attr):
+            errors.append(tr("Block missing required attribute: {attr}", attr=attr))
+
+    if hasattr(block, "in_ports") and hasattr(block, "out_ports"):
+        if block.in_ports < 0:
+            errors.append(tr("Block has negative input ports"))
+        if block.out_ports < 0:
+            errors.append(tr("Block has negative output ports"))
+
+    if hasattr(block, "b_type") and block.b_type not in (0, 1, 2, 3):
+        errors.append(tr("Invalid block type: {type}", type=block.b_type))
+
+    return len(errors) == 0, errors
+
+
+def check_simulation_state(dsim_instance: Any) -> Tuple[bool, List[str]]:
+    """Check that a DSim is in a runnable state: blocks present and well-formed,
+    positive simulation time and step."""
+    errors: List[str] = []
+
+    for attr in ("blocks_list", "line_list", "execution_initialized"):
+        if not hasattr(dsim_instance, attr):
+            errors.append(tr("DSim missing required attribute: {attr}", attr=attr))
+
+    if hasattr(dsim_instance, "blocks_list"):
+        if not dsim_instance.blocks_list:
+            errors.append(tr("No blocks in simulation"))
+        else:
+            for i, block in enumerate(dsim_instance.blocks_list):
+                is_valid, block_errors = check_block_integrity(block)
+                if not is_valid:
+                    errors.extend(
+                        tr("Block {index}: {error}", index=i, error=error) for error in block_errors
+                    )
+
+    if hasattr(dsim_instance, "sim_time") and dsim_instance.sim_time <= 0:
+        errors.append(tr("Invalid simulation time"))
+    if hasattr(dsim_instance, "sim_dt") and dsim_instance.sim_dt <= 0:
+        errors.append(tr("Invalid simulation time step"))
+
+    return len(errors) == 0, errors

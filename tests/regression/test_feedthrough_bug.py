@@ -58,7 +58,7 @@ from PyQt6.QtGui import QColor
 
 def _make_block(block_fn, sid, username, in_ports, out_ports, params, b_type=2):
     """Create a DBlock with minimal boilerplate."""
-    from lib.simulation.block import DBlock
+    from diablos.core.simulation.block import DBlock
 
     return DBlock(
         block_fn=block_fn,
@@ -75,7 +75,7 @@ def _make_block(block_fn, sid, username, in_ports, out_ports, params, b_type=2):
 
 def _make_line(sid, src, srcport, dst, dstport):
     """Create a DLine."""
-    from lib.simulation.connection import DLine
+    from diablos.core.simulation.connection import DLine
 
     return DLine(
         sid=sid,
@@ -93,7 +93,7 @@ def _run_compiled(blocks, lines, t_end=20.0):
 
     Returns ``(sol, state_map, block_matrices)``.
     """
-    from lib.engine.system_compiler import SystemCompiler
+    from diablos.core.engine.system_compiler import SystemCompiler
     from scipy.integrate import solve_ivp
 
     compiler = SystemCompiler()

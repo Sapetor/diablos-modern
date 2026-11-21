@@ -10,12 +10,12 @@ import pytest
 from PyQt6.QtCore import QPoint
 from PyQt6.QtWidgets import QMessageBox
 
-from lib.error_locator import build_run_errors, find_block_chain, locate_blocks
+from diablos.core.error_locator import build_run_errors, find_block_chain, locate_blocks
 
 
 @pytest.fixture(scope="module")
 def window(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     w.resize(1000, 700)
@@ -169,7 +169,7 @@ def test_toast_click_callback_runs():
     from PyQt6.QtGui import QMouseEvent
     from PyQt6.QtWidgets import QWidget
 
-    from modern_ui.widgets.toast_notification import ToastNotification
+    from diablos.gui.widgets.toast_notification import ToastNotification
 
     parent = QWidget()
     toast = ToastNotification(parent)

@@ -1,4 +1,4 @@
-"""Unit tests for lib/engine/verification_report.py.
+"""Unit tests for src/diablos/core/engine/verification_report.py.
 
 The report used to be assembled inline in ``SimulationController`` (GUI only);
 these tests pin the collection, the pass/fail judgement per verify_mode and the
@@ -10,7 +10,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from lib.engine import verification_report as vr
+from diablos.core.engine import verification_report as vr
 
 
 def _display(username, value, label=""):

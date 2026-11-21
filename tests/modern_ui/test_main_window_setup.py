@@ -22,15 +22,15 @@ Run with:
 import pytest
 from PyQt6.QtCore import QRect
 
-from modern_ui.widgets.modern_toolbar import ModernToolBar
-from modern_ui.platform_config import get_platform_config
-from modern_ui import __version__
-from modern_ui.themes.theme_manager import get_ui_font, TYPE
+from diablos.gui.widgets.modern_toolbar import ModernToolBar
+from diablos.gui.platform_config import get_platform_config
+from diablos.gui import __version__
+from diablos.gui.themes.theme_manager import get_ui_font, TYPE
 
 
 @pytest.fixture(scope="module")
 def window(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     yield w

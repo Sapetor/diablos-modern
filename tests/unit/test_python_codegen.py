@@ -1,4 +1,4 @@
-"""Standalone Python script export (``lib/export/python_codegen.py``).
+"""Standalone Python script export (``src/diablos/core/export/python_codegen.py``).
 
 Three levels of checking:
 
@@ -17,7 +17,7 @@ import sys
 import numpy as np
 import pytest
 
-from lib.export.python_codegen import (
+from diablos.core.export.python_codegen import (
     CodegenError,
     CodegenUnsupportedError,
     PythonCodeGenerator,
@@ -419,8 +419,8 @@ def _run_generated(script_path, out_path, extra_args=(), env_extra=None):
 
 def _reference_signals(diagram_path):
     """Run the diagram on the existing headless compiled path."""
-    from lib import cli
-    from lib.analysis.resim import harvest_scope_signals
+    from diablos.core import cli
+    from diablos.core.analysis.resim import harvest_scope_signals
 
     dsim = cli.run_diagram(diagram_path)
     result = harvest_scope_signals(dsim)
@@ -454,7 +454,7 @@ class TestMatchesHeadlessRun:
     """The exported script must reproduce the app's own compiled solver."""
 
     def _export(self, diagram_path, tmp_path):
-        from lib import cli
+        from diablos.core import cli
 
         script = str(tmp_path / "model.py")
         cli.export_python(diagram_path, out_path=script)
@@ -541,7 +541,7 @@ def _rated_loop(method="FWD_EULER", anti_windup="clamping"):
     """Every rated block on one diagram: PID and TranFn at 0.05 s driving a
     continuous plant, and an Integrator, a Derivative and a StateSpace sampling
     it at their own rates."""
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     b = DiagramBuilder(sim_time=3.0, sim_dt=0.01)
     r = b.add_block("Step", 0, 0, name="r", params={"value": 1.0, "delay": 0.33, "type": "up"})
@@ -619,7 +619,7 @@ def _rated_loop(method="FWD_EULER", anti_windup="clamping"):
 
 def _export_and_reference(builder, tmp_path, solver=None, edit=None):
     """Export ``builder``'s diagram, run the script, run the compiled path."""
-    from lib import cli
+    from diablos.core import cli
 
     path = str(tmp_path / "sampled.diablos")
     builder.save(path)
@@ -749,7 +749,7 @@ def _scope(b, labels, sources):
 
 
 def _pulse_into_integrator():
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     b = DiagramBuilder(sim_time=10.0, sim_dt=0.01)
     p = _add_pulse(b)
@@ -761,7 +761,7 @@ def _pulse_into_integrator():
 
 def _step_switch():
     """Integrator input switches from +1 to -2 at t = 0.7 (Constant + Step)."""
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     b = DiagramBuilder(sim_time=20.0, sim_dt=0.01)
     c = b.add_block("Constant", 0, 0, name="c", params={"value": 1.0})
@@ -777,7 +777,7 @@ def _step_switch():
 
 def _pulse_feedback(k=2.0, amplitude=50.0):
     """x' = k (r - x) driven by a short pulse r."""
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     b = DiagramBuilder(sim_time=10.0, sim_dt=0.01)
     r = _add_pulse(b, amplitude)
@@ -802,7 +802,7 @@ def _pulse_feedback(k=2.0, amplitude=50.0):
 
 def _pulse_sampled():
     """The pulse integrated, and a ZOH(1 s) sampling it: the hybrid path."""
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     b = DiagramBuilder(sim_time=5.0, sim_dt=0.01)
     p = _add_pulse(b)
@@ -845,7 +845,7 @@ class TestSwitchingSources:
         assert _max_diff(generated, reference) <= 1e-6
 
     def test_switch_times_are_named_constants(self, qapp, tmp_path):
-        from lib import cli
+        from diablos.core import cli
 
         builder, _ = _pulse_into_integrator()
         path = str(tmp_path / "pulse.diablos")

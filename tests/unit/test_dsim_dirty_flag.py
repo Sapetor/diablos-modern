@@ -23,7 +23,7 @@ from PyQt6.QtCore import QPoint
 
 @pytest.fixture
 def dsim(qapp):
-    from lib.lib import DSim
+    from diablos.core.lib import DSim
 
     return DSim()
 

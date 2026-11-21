@@ -20,7 +20,7 @@ import pytest
 @pytest.fixture(autouse=True)
 def isolated_workspace():
     """Reset WorkspaceManager singleton around each test."""
-    from lib.workspace import WorkspaceManager
+    from diablos.core.workspace import WorkspaceManager
 
     prev = WorkspaceManager._instance
     WorkspaceManager._instance = None
@@ -35,7 +35,7 @@ class TestResolveParamsPreservesPatternStrings:
     conditions and MathFunction blocks."""
 
     def setup_method(self):
-        from lib.workspace import WorkspaceManager
+        from diablos.core.workspace import WorkspaceManager
 
         self.wm = WorkspaceManager()
         self.wm.variables = {}

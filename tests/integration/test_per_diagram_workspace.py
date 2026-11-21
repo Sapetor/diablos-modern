@@ -1,17 +1,17 @@
 """Workspace variables belong to a diagram (a DSim), not to the process.
 
 Regression for the old process-wide ``WorkspaceManager`` singleton: building a
-second diagram through ``lib.api`` reset the shared store, and setting ``K`` on
+second diagram through ``diablos.core.api`` reset the shared store, and setting ``K`` on
 the second diagram changed what the *unchanged* first diagram computed.
 """
 
 import numpy as np
 import pytest
 
-from lib import cli
-from lib.api import from_builder
-from lib.diagram_builder import DiagramBuilder
-from lib.workspace import Workspace, WorkspaceManager
+from diablos.core import cli
+from diablos.core.api import from_builder
+from diablos.core.diagram_builder import DiagramBuilder
+from diablos.core.workspace import Workspace, WorkspaceManager
 
 pytestmark = pytest.mark.integration
 
@@ -140,8 +140,8 @@ class TestWorkspaceCopy:
 
 def test_mask_scope_uses_the_diagram_workspace():
     """Flattening a masked subsystem reads mask expressions from *this* diagram."""
-    from lib.engine.flattener import Flattener
-    from lib.masks import resolve_mask_scope
+    from diablos.core.engine.flattener import Flattener
+    from diablos.core.masks import resolve_mask_scope
 
     mask = {"parameters": [{"name": "g", "type": "float", "default": "2*K"}]}
     assert resolve_mask_scope(mask, workspace={"K": 3.0}) == {"g": 6.0}

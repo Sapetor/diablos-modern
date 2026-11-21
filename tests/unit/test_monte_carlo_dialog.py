@@ -1,5 +1,5 @@
 """Tests for the Monte-Carlo ensemble run dialog
-(modern_ui/widgets/monte_carlo_dialog.py).
+(src/diablos/gui/widgets/monte_carlo_dialog.py).
 
 Builds a tiny diagram via DiagramBuilder, loads a DSim (reusing the
 _params/_load helper pattern from tests/unit/test_monte_carlo.py), constructs a
@@ -9,8 +9,8 @@ contract dict with the expected defaults. The dialog is never exec_()'d.
 
 import pytest
 
-from lib.diagram_builder import DiagramBuilder
-from modern_ui.widgets.monte_carlo_dialog import MonteCarloDialog
+from diablos.core.diagram_builder import DiagramBuilder
+from diablos.gui.widgets.monte_carlo_dialog import MonteCarloDialog
 
 
 _BLOCK_INSTANCES = None
@@ -19,7 +19,7 @@ _BLOCK_INSTANCES = None
 def _params(block_type, **overrides):
     global _BLOCK_INSTANCES
     if _BLOCK_INSTANCES is None:
-        from lib.block_loader import load_blocks
+        from diablos.core.block_loader import load_blocks
 
         _BLOCK_INSTANCES = {}
         for cls in load_blocks():
@@ -38,8 +38,8 @@ def _params(block_type, **overrides):
 
 
 def _load(builder, tmp_path, name):
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     path = tmp_path / name
     builder.save(str(path))

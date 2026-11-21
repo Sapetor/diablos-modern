@@ -5,15 +5,15 @@ The palette used to carry its own category->colour chains. The chip fell back to
 ``text_secondary``, so Analysis, Logic, Optimization, Optimization Primitives and
 PDE drew as identical grey chips, and Routing disagreed with the canvas; the dot
 beside it had drifted further still. All three now resolve through
-``lib.theming.categories.category_theme_key``: the canvas fills with the key, the
+``diablos.core.theming.categories.category_theme_key``: the canvas fills with the key, the
 chip and dot use ``key + "_accent"``.
 """
 
 import pytest
 
-from lib.theming.categories import category_theme_key
-from lib.theming.theme_manager import ThemeType, theme_manager
-from modern_ui.widgets.modern_palette import _category_accent, _category_chip_colors
+from diablos.core.theming.categories import category_theme_key
+from diablos.core.theming.theme_manager import ThemeType, theme_manager
+from diablos.gui.widgets.modern_palette import _category_accent, _category_chip_colors
 
 # Every category the shipped blocks declare, plus one they don't.
 EXPECTED_KEY = {

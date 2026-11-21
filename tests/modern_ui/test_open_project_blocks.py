@@ -11,19 +11,19 @@ import json
 import pytest
 from PyQt6.QtWidgets import QMessageBox
 
-import lib.user_blocks as ub
+import diablos.core.user_blocks as ub
 from tests.unit.test_missing_and_project_blocks import write_project
 
 
 @pytest.fixture
 def userdata(tmp_path, monkeypatch):
-    import lib.app_paths
+    import diablos.core.app_paths
 
     monkeypatch.delenv(ub.BLOCKS_ENV_VAR, raising=False)
     home = tmp_path / "userdata"
     home.mkdir()
     monkeypatch.setattr(ub, "get_user_data_dir", lambda: str(home))
-    monkeypatch.setattr(lib.app_paths, "get_user_data_dir", lambda: str(home))
+    monkeypatch.setattr(diablos.core.app_paths, "get_user_data_dir", lambda: str(home))
     monkeypatch.setattr(ub, "_SESSION_TRUSTED", set(), raising=False)
     ub.purge_user_modules()
     yield home
@@ -33,7 +33,7 @@ def userdata(tmp_path, monkeypatch):
 @pytest.fixture
 def window(qapp, userdata):
     """A fresh window per test: its palette must not know the project blocks."""
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     yield w
@@ -49,7 +49,7 @@ def warnings_shown(monkeypatch):
         shown.append((title, text))
         return QMessageBox.StandardButton.Ok
 
-    monkeypatch.setattr("modern_ui.main_window.QMessageBox.warning", _warning)
+    monkeypatch.setattr("diablos.gui.main_window.QMessageBox.warning", _warning)
     return shown
 
 
@@ -70,7 +70,7 @@ def live_blocks(window):
 
 
 def live_placeholders(window):
-    from lib.simulation.missing_block import find_missing_blocks
+    from diablos.core.simulation.missing_block import find_missing_blocks
 
     return find_missing_blocks(window.dsim.blocks_list)
 

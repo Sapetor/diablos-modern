@@ -8,7 +8,7 @@ pytestmark = [pytest.mark.regression, pytest.mark.qt]
 
 @pytest.fixture
 def document(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     yield w
@@ -112,7 +112,7 @@ def test_core_save_also_tracks_saved_state(document, tmp_path, writer):
 
 
 def test_failed_save_does_not_move_saved_state(document, tmp_path, monkeypatch):
-    import lib.services.diagram_service as module
+    import diablos.core.services.diagram_service as module
 
     add(document)
     save(document, tmp_path)
@@ -198,7 +198,7 @@ def test_replacing_document_from_subsystem_returns_to_root(document, tmp_path, r
 def test_cancelled_save_does_not_move_saved_state(document, tmp_path, monkeypatch):
     from unittest.mock import MagicMock
     from PyQt6.QtWidgets import QFileDialog
-    import lib.services.diagram_service as module
+    import diablos.core.services.diagram_service as module
 
     add(document)
     save(document, tmp_path)

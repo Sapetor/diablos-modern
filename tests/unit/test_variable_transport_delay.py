@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from blocks.variable_transport_delay import VariableTransportDelayBlock
-from blocks.transport_delay import TransportDelayBlock
+from diablos.blocks.variable_transport_delay import VariableTransportDelayBlock
+from diablos.blocks.transport_delay import TransportDelayBlock
 
 
 def _run_variable(signal_fn, tau_fn, t_end=2.0, dt=0.01, max_delay=1.0, initial_value=0.0):

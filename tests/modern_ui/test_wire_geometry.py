@@ -16,7 +16,7 @@ import copy
 import pytest
 from PyQt6.QtCore import QPoint, QRect
 
-from lib.simulation.connection import DLine
+from diablos.core.simulation.connection import DLine
 
 
 @pytest.fixture(autouse=True)

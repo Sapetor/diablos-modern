@@ -262,7 +262,7 @@ decays fastest under diffusion — handy as a stiffness or stability probe.
 ### Seeding `random`
 
 `random` draws from a `seed` param that follows the same convention as
-`blocks/noise.py`: **`seed = 0` means entropy** (a different field every run),
+`src/diablos/blocks/noise.py`: **`seed = 0` means entropy** (a different field every run),
 and any non-zero value is reproducible. The interpreter and the compiled solver
 build the field through the same helper, so a seeded run matches on both paths.
 

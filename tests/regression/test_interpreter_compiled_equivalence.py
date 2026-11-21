@@ -34,8 +34,8 @@ EXAMPLES_DIR = Path(__file__).parent.parent.parent / "examples"
 
 def _load_example(filename: str):
     """Load an example .diablos file and return the configured DSim."""
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     WorkspaceManager._instance = None
     dsim = DSim()

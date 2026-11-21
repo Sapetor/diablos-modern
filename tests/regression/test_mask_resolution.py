@@ -15,10 +15,10 @@ import copy
 import pytest
 from PyQt6.QtCore import QPoint, QRect
 
-from lib.engine.flattener import Flattener
-from lib.masks import set_mask
-from lib.simulation.block import DBlock
-from lib.simulation.connection import DLine
+from diablos.core.engine.flattener import Flattener
+from diablos.core.masks import set_mask
+from diablos.core.simulation.block import DBlock
+from diablos.core.simulation.connection import DLine
 
 
 def _primitive(block_fn, name, params, in_ports=1, out_ports=1, b_type=2):
@@ -44,7 +44,7 @@ def _line(sid, src, sp, dst, dp):
 
 
 def _subsystem(qapp, name, inner_blocks, inner_lines, mask=None):
-    from blocks.subsystem import Subsystem
+    from diablos.blocks.subsystem import Subsystem
 
     subsys = Subsystem(block_name=name, sid=1, coords=QRect(200, 100, 120, 90))
     subsys.name = name
@@ -57,8 +57,8 @@ def _subsystem(qapp, name, inner_blocks, inner_lines, mask=None):
 
 def _plant(qapp, name="Plant", mask=None, gain="K", labels="speed"):
     """A subsystem: In1 -> Gain -> Scope, with an unconnected Outport."""
-    from blocks.inport import Inport
-    from blocks.outport import Outport
+    from diablos.blocks.inport import Inport
+    from diablos.blocks.outport import Outport
 
     inport = Inport(block_name="In1", sid=1, coords=QRect(10, 10, 40, 40))
     inport.name = "inport1"
@@ -157,8 +157,8 @@ class TestMaskedResolution:
 
     def test_nested_masks_resolve_outer_to_inner(self, qapp):
         """Inner mask values are evaluated in the outer mask's scope."""
-        from blocks.inport import Inport
-        from blocks.outport import Outport
+        from diablos.blocks.inport import Inport
+        from diablos.blocks.outport import Outport
 
         inner = _plant(qapp, name="Inner", mask=GAIN_MASK)
         inner.params["K"] = "2 * Kout"
@@ -186,8 +186,8 @@ class TestMaskedResolution:
         assert flat["Outer/Inner/gain0"].params["gain"] == 6.0
 
     def test_unmasked_subsystem_inherits_the_enclosing_mask_scope(self, qapp):
-        from blocks.inport import Inport
-        from blocks.outport import Outport
+        from diablos.blocks.inport import Inport
+        from diablos.blocks.outport import Outport
 
         inner = _plant(qapp, name="Inner")  # no mask of its own
 

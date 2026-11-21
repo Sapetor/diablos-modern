@@ -1,7 +1,7 @@
 # Packaging + tooling configuration for DiaBloS Modern.
 #
 # The `[project]` table below is the single source of truth for the version:
-# `modern_ui/__init__.py` parses it back out of this file (or, in a frozen
+# `src/diablos/gui/__init__.py` parses it back out of this file (or, in a frozen
 # build, out of the `_version.txt` the spec emits), and `diablos.spec` /
 # `tools/build.sh` parse it so the macOS bundle version and the DMG filename
 # always match the release tag.
@@ -12,7 +12,7 @@
 # `blocks/` and `config/`, names far too generic to drop into site-packages, so
 # this project deliberately installs no importable packages at all (see
 # `[tool.setuptools]` below). The pip metadata exists purely to carry one
-# canonical version string that `modern_ui/__init__.py`, `diablos.spec`,
+# canonical version string that `src/diablos/gui/__init__.py`, `diablos.spec`,
 # `tools/build.sh` and the release workflow all read back.
 
 [build-system]
@@ -65,7 +65,7 @@ dev = [
     # third-party stopgap for PyQt5 and has no PyQt6 successor).
 ]
 
-# Optional: symbolic features (LaTeX/MathML export, `lib/engine/symbolic_engine.py`
+# Optional: symbolic features (LaTeX/MathML export, `src/diablos/core/engine/symbolic_engine.py`
 # and the per-block `symbolic_execute` hooks). Everything degrades gracefully
 # when SymPy is absent; `diablos.spec` bundles it only if the build env has it.
 symbolic = ["sympy>=1.9"]

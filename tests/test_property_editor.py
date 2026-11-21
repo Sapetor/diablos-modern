@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QLabel,
 )
-from modern_ui.widgets.property_editor import PropertyEditor, CollapsibleSection, SliderSpinBox
+from diablos.gui.widgets.property_editor import PropertyEditor, CollapsibleSection, SliderSpinBox
 
 
 # Mock Block class (minimal)

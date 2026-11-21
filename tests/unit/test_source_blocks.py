@@ -12,7 +12,7 @@ class TestStepBlock:
 
     def test_step_up_before_delay(self):
         """Test step-up signal is 0 before delay time."""
-        from blocks.step import StepBlock
+        from diablos.blocks.step import StepBlock
 
         block = StepBlock()
         params = {
@@ -28,7 +28,7 @@ class TestStepBlock:
 
     def test_step_up_after_delay(self):
         """Test step-up signal reaches final value after delay."""
-        from blocks.step import StepBlock
+        from diablos.blocks.step import StepBlock
 
         block = StepBlock()
         params = {
@@ -46,7 +46,7 @@ class TestStepBlock:
 
     def test_step_down(self):
         """Test step-down signal behavior."""
-        from blocks.step import StepBlock
+        from diablos.blocks.step import StepBlock
 
         block = StepBlock()
         params = {
@@ -68,7 +68,7 @@ class TestStepBlock:
 
     def test_step_constant(self):
         """Test constant type always outputs the value."""
-        from blocks.step import StepBlock
+        from diablos.blocks.step import StepBlock
 
         block = StepBlock()
         params = {
@@ -87,7 +87,7 @@ class TestStepBlock:
 
     def test_impulse_zero_before_delay(self):
         """Impulse outputs 0 before delay time."""
-        from blocks.step import StepBlock
+        from diablos.blocks.step import StepBlock
 
         block = StepBlock()
         dt = 0.01
@@ -104,7 +104,7 @@ class TestStepBlock:
 
     def test_impulse_fires_at_delay(self):
         """Impulse outputs value/dt for one step at t=delay."""
-        from blocks.step import StepBlock
+        from diablos.blocks.step import StepBlock
 
         block = StepBlock()
         dt = 0.01
@@ -126,7 +126,7 @@ class TestStepBlock:
 
     def test_impulse_zero_after_delay(self):
         """Impulse outputs 0 after the impulse step."""
-        from blocks.step import StepBlock
+        from diablos.blocks.step import StepBlock
 
         block = StepBlock()
         dt = 0.01
@@ -147,7 +147,7 @@ class TestStepBlock:
 
     def test_impulse_integral_equals_value(self):
         """Discrete integral of impulse over all time equals value."""
-        from blocks.step import StepBlock
+        from diablos.blocks.step import StepBlock
 
         block = StepBlock()
         dt = 0.01
@@ -173,7 +173,7 @@ class TestStepBlock:
 
     def test_impulse_zero_delay(self):
         """Impulse with delay=0 fires at t=0."""
-        from blocks.step import StepBlock
+        from diablos.blocks.step import StepBlock
 
         block = StepBlock()
         dt = 0.01
@@ -199,9 +199,9 @@ class TestStepBlock:
         """
         from PyQt6.QtCore import QRect, QPoint
         from PyQt6.QtGui import QColor
-        from lib.simulation.block import DBlock
-        from lib.simulation.connection import DLine
-        from lib.engine.system_compiler import SystemCompiler
+        from diablos.core.simulation.block import DBlock
+        from diablos.core.simulation.connection import DLine
+        from diablos.core.engine.system_compiler import SystemCompiler
         from scipy.integrate import solve_ivp
 
         dt = 0.001
@@ -272,7 +272,7 @@ class TestImpulseBlock:
 
     def test_block_properties(self):
         """Impulse block is a source with correct metadata."""
-        from blocks.impulse import ImpulseBlock
+        from diablos.blocks.impulse import ImpulseBlock
 
         block = ImpulseBlock()
         assert block.block_name == "Impulse"
@@ -283,7 +283,7 @@ class TestImpulseBlock:
 
     def test_impulse_fires_at_delay(self):
         """Outputs value/dt for one step at t=delay."""
-        from blocks.impulse import ImpulseBlock
+        from diablos.blocks.impulse import ImpulseBlock
 
         block = ImpulseBlock()
         dt = 0.01
@@ -295,7 +295,7 @@ class TestImpulseBlock:
 
     def test_impulse_zero_elsewhere(self):
         """Outputs 0 before and after the impulse."""
-        from blocks.impulse import ImpulseBlock
+        from diablos.blocks.impulse import ImpulseBlock
 
         block = ImpulseBlock()
         dt = 0.01
@@ -310,7 +310,7 @@ class TestImpulseBlock:
 
     def test_impulse_integral(self):
         """Discrete integral over all time equals value."""
-        from blocks.impulse import ImpulseBlock
+        from diablos.blocks.impulse import ImpulseBlock
 
         block = ImpulseBlock()
         dt = 0.01
@@ -326,9 +326,9 @@ class TestImpulseBlock:
         """Impulse -> 1/(s+1) gives e^(-t) in compiled solver."""
         from PyQt6.QtCore import QRect, QPoint
         from PyQt6.QtGui import QColor
-        from lib.simulation.block import DBlock
-        from lib.simulation.connection import DLine
-        from lib.engine.system_compiler import SystemCompiler
+        from diablos.core.simulation.block import DBlock
+        from diablos.core.simulation.connection import DLine
+        from diablos.core.engine.system_compiler import SystemCompiler
         from scipy.integrate import solve_ivp
 
         dt = 0.001
@@ -393,7 +393,7 @@ class TestConstantBlock:
 
     def test_constant_scalar(self):
         """Test constant outputs scalar value."""
-        from blocks.constant import ConstantBlock
+        from diablos.blocks.constant import ConstantBlock
 
         block = ConstantBlock()
         params = {"value": 42.0}
@@ -403,7 +403,7 @@ class TestConstantBlock:
 
     def test_constant_negative(self):
         """Test constant with negative value."""
-        from blocks.constant import ConstantBlock
+        from diablos.blocks.constant import ConstantBlock
 
         block = ConstantBlock()
         params = {"value": -7.5}
@@ -413,7 +413,7 @@ class TestConstantBlock:
 
     def test_constant_vector(self):
         """Test constant with vector value."""
-        from blocks.constant import ConstantBlock
+        from diablos.blocks.constant import ConstantBlock
 
         block = ConstantBlock()
         params = {"value": [1.0, 2.0, 3.0]}
@@ -424,7 +424,7 @@ class TestConstantBlock:
 
     def test_constant_time_invariant(self):
         """Test constant output doesn't change with time."""
-        from blocks.constant import ConstantBlock
+        from diablos.blocks.constant import ConstantBlock
 
         block = ConstantBlock()
         params = {"value": 10.0}
@@ -440,7 +440,7 @@ class TestRampBlock:
 
     def test_ramp_before_delay(self):
         """Test ramp is 0 before delay time."""
-        from blocks.ramp import RampBlock
+        from diablos.blocks.ramp import RampBlock
 
         block = RampBlock()
         params = {"slope": 2.0, "delay": 1.0}
@@ -450,7 +450,7 @@ class TestRampBlock:
 
     def test_ramp_after_delay(self):
         """Test ramp increases linearly after delay."""
-        from blocks.ramp import RampBlock
+        from diablos.blocks.ramp import RampBlock
 
         block = RampBlock()
         params = {"slope": 2.0, "delay": 1.0}
@@ -461,7 +461,7 @@ class TestRampBlock:
 
     def test_ramp_negative_slope(self):
         """Test ramp with negative slope."""
-        from blocks.ramp import RampBlock
+        from diablos.blocks.ramp import RampBlock
 
         block = RampBlock()
         params = {"slope": -3.0, "delay": 0.0}
@@ -472,7 +472,7 @@ class TestRampBlock:
 
     def test_ramp_zero_slope(self):
         """Test ramp with zero slope outputs 0."""
-        from blocks.ramp import RampBlock
+        from diablos.blocks.ramp import RampBlock
 
         block = RampBlock()
         params = {"slope": 0.0, "delay": 0.0}
@@ -487,7 +487,7 @@ class TestSineBlock:
 
     def test_sine_at_zero(self):
         """Test sine value at t=0."""
-        from blocks.sine import SineBlock
+        from diablos.blocks.sine import SineBlock
 
         block = SineBlock()
         params = {"amplitude": 1.0, "omega": 1.0, "init_angle": 0.0}
@@ -497,7 +497,7 @@ class TestSineBlock:
 
     def test_sine_at_quarter_period(self):
         """Test sine reaches amplitude at quarter period."""
-        from blocks.sine import SineBlock
+        from diablos.blocks.sine import SineBlock
 
         block = SineBlock()
         omega = 2.0
@@ -510,7 +510,7 @@ class TestSineBlock:
 
     def test_sine_with_phase(self):
         """Test sine with initial phase offset."""
-        from blocks.sine import SineBlock
+        from diablos.blocks.sine import SineBlock
 
         block = SineBlock()
         params = {"amplitude": 1.0, "omega": 1.0, "init_angle": np.pi / 2}
@@ -521,7 +521,7 @@ class TestSineBlock:
 
     def test_sine_periodicity(self):
         """Test sine is periodic."""
-        from blocks.sine import SineBlock
+        from diablos.blocks.sine import SineBlock
 
         block = SineBlock()
         omega = 2.0
@@ -537,7 +537,7 @@ class TestSineBlock:
 
     def test_sine_amplitude_scaling(self):
         """Test sine amplitude scales correctly."""
-        from blocks.sine import SineBlock
+        from diablos.blocks.sine import SineBlock
 
         block = SineBlock()
         omega = 1.0
@@ -557,7 +557,7 @@ class TestNoiseBlock:
 
     def test_noise_mean(self):
         """Test noise has approximately correct mean over many samples."""
-        from blocks.noise import NoiseBlock
+        from diablos.blocks.noise import NoiseBlock
 
         block = NoiseBlock()
         params = {"mu": 5.0, "sigma": 1.0}
@@ -572,7 +572,7 @@ class TestNoiseBlock:
 
     def test_noise_std_dev(self):
         """Test noise has approximately correct std dev."""
-        from blocks.noise import NoiseBlock
+        from diablos.blocks.noise import NoiseBlock
 
         block = NoiseBlock()
         params = {"mu": 0.0, "sigma": 2.0}
@@ -589,7 +589,7 @@ class TestNoiseBlock:
 
     def test_noise_zero_sigma(self):
         """Test noise with zero sigma outputs mean."""
-        from blocks.noise import NoiseBlock
+        from diablos.blocks.noise import NoiseBlock
 
         block = NoiseBlock()
         params = {"mu": 3.0, "sigma": 0.0}
@@ -604,7 +604,7 @@ class TestWaveGeneratorBlock:
 
     def test_wave_sine(self):
         """Test sine waveform at known points."""
-        from blocks.wave_generator import WaveGeneratorBlock
+        from diablos.blocks.wave_generator import WaveGeneratorBlock
 
         block = WaveGeneratorBlock()
         params = {"waveform": "Sine", "amplitude": 2.0, "frequency": 1.0, "phase": 0.0, "bias": 0.0}
@@ -621,7 +621,7 @@ class TestWaveGeneratorBlock:
 
     def test_wave_square(self):
         """Test square waveform."""
-        from blocks.wave_generator import WaveGeneratorBlock
+        from diablos.blocks.wave_generator import WaveGeneratorBlock
 
         block = WaveGeneratorBlock()
         params = {
@@ -642,7 +642,7 @@ class TestWaveGeneratorBlock:
 
     def test_wave_with_bias(self):
         """Test waveform with DC bias."""
-        from blocks.wave_generator import WaveGeneratorBlock
+        from diablos.blocks.wave_generator import WaveGeneratorBlock
 
         block = WaveGeneratorBlock()
         params = {"waveform": "Sine", "amplitude": 1.0, "frequency": 1.0, "phase": 0.0, "bias": 5.0}
@@ -653,7 +653,7 @@ class TestWaveGeneratorBlock:
 
     def test_wave_triangle(self):
         """Test triangle waveform exists and runs."""
-        from blocks.wave_generator import WaveGeneratorBlock
+        from diablos.blocks.wave_generator import WaveGeneratorBlock
 
         block = WaveGeneratorBlock()
         params = {
@@ -669,7 +669,7 @@ class TestWaveGeneratorBlock:
 
     def test_wave_sawtooth(self):
         """Test sawtooth waveform exists and runs."""
-        from blocks.wave_generator import WaveGeneratorBlock
+        from diablos.blocks.wave_generator import WaveGeneratorBlock
 
         block = WaveGeneratorBlock()
         params = {
@@ -690,7 +690,7 @@ class TestChirpBlock:
 
     def test_block_properties(self):
         """Chirp is a source with one output and no inputs."""
-        from blocks.chirp import ChirpBlock
+        from diablos.blocks.chirp import ChirpBlock
 
         block = ChirpBlock()
         assert block.block_name == "Chirp"
@@ -702,7 +702,7 @@ class TestChirpBlock:
 
     def test_chirp_zero_at_t0(self):
         """Linear chirp starts at amplitude*sin(0) = 0 at t=0."""
-        from blocks.chirp import ChirpBlock
+        from diablos.blocks.chirp import ChirpBlock
 
         block = ChirpBlock()
         amplitude = 2.5
@@ -716,7 +716,7 @@ class TestChirpBlock:
 
     def test_chirp_amplitude_scales(self):
         """Output scales linearly with amplitude at a fixed time."""
-        from blocks.chirp import ChirpBlock
+        from diablos.blocks.chirp import ChirpBlock
 
         block = ChirpBlock()
         base = {"f0": 1.0, "f1": 5.0, "t1": 10.0, "method": "linear"}
@@ -727,7 +727,7 @@ class TestChirpBlock:
 
     def test_chirp_finite_across_sweep(self):
         """All values across the sweep are finite and within +/- amplitude."""
-        from blocks.chirp import ChirpBlock
+        from diablos.blocks.chirp import ChirpBlock
 
         block = ChirpBlock()
         amplitude = 2.0
@@ -743,7 +743,7 @@ class TestChirpBlock:
 
     def test_chirp_methods_finite(self):
         """Linear, logarithmic, and quadratic sweeps all produce finite values."""
-        from blocks.chirp import ChirpBlock
+        from diablos.blocks.chirp import ChirpBlock
 
         block = ChirpBlock()
         for method in ("linear", "logarithmic", "quadratic"):

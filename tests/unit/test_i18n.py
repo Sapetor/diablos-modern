@@ -1,16 +1,16 @@
-"""Unit tests for the translation core (``lib/i18n.py``) and the extractor."""
+"""Unit tests for the translation core (``src/diablos/core/i18n.py``) and the extractor."""
 
 import json
 import os
 
 import pytest
 
-from lib import i18n
+from diablos.core import i18n
 
 
 @pytest.fixture
 def temp_locales(tmp_path):
-    """Point :mod:`lib.i18n` at a throwaway catalog directory."""
+    """Point :mod:`diablos.core.i18n` at a throwaway catalog directory."""
     directory = tmp_path / "locales"
     directory.mkdir()
     (directory / "xx.json").write_text(

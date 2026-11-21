@@ -1,4 +1,4 @@
-"""SymPy equation extraction (lib/engine/symbolic_engine.py) and the blocks'
+"""SymPy equation extraction (src/diablos/core/engine/symbolic_engine.py) and the blocks'
 symbolic_execute() hooks. SymPy is a dev requirement, so these tests import it
 outright instead of skipping when it is missing."""
 
@@ -11,15 +11,15 @@ import pytest
 import sympy
 from scipy import signal
 
-from blocks.derivative import DerivativeBlock
-from blocks.gain import GainBlock
-from blocks.integrator import IntegratorBlock
-from blocks.pid import PIDBlock
-from blocks.product import ProductBlock
-from blocks.sum import SumBlock
-from blocks.transfer_function import TransferFunctionBlock
-from lib.analysis.block_algebra import sink_input_signal, transfer_function
-from lib.engine.symbolic_engine import SymbolicEngine
+from diablos.blocks.derivative import DerivativeBlock
+from diablos.blocks.gain import GainBlock
+from diablos.blocks.integrator import IntegratorBlock
+from diablos.blocks.pid import PIDBlock
+from diablos.blocks.product import ProductBlock
+from diablos.blocks.sum import SumBlock
+from diablos.blocks.transfer_function import TransferFunctionBlock
+from diablos.core.analysis.block_algebra import sink_input_signal, transfer_function
+from diablos.core.engine.symbolic_engine import SymbolicEngine
 
 s = sympy.Symbol("s")
 
@@ -250,7 +250,7 @@ def test_engine_does_not_import_sympy_eagerly():
     import subprocess
     import sys
 
-    code = "import sys, lib.engine; print('sympy' in sys.modules)"
+    code = "import sys, diablos.core.engine; print('sympy' in sys.modules)"
     root = os.path.join(os.path.dirname(__file__), "..", "..")
     out = subprocess.run(
         [sys.executable, "-c", code], cwd=root, capture_output=True, text=True, check=True

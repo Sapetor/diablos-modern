@@ -1,7 +1,7 @@
 """Unit tests for the Bode/Nyquist stability-margin and auto-range helpers.
 
 These exercise the pure computational helpers shared by the Bode and Nyquist
-analyzers (``lib/analysis/analyzers/base_analyzer.py``): the frequency
+analyzers (``src/diablos/core/analysis/analyzers/base_analyzer.py``): the frequency
 auto-range derived from the system poles/zeros and the gain/phase margin
 computation from the magnitude/phase arrays. They avoid creating Qt windows so
 they are fast and headless-safe.
@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 import scipy.signal as signal
 
-from lib.analysis.analyzers.base_analyzer import BaseAnalyzer
+from diablos.core.analysis.analyzers.base_analyzer import BaseAnalyzer
 
 
 @pytest.mark.unit

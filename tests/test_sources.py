@@ -13,7 +13,7 @@ sys.path.insert(0, os.getcwd())
 
 def test_step_block():
     """Test StepBlock generates correct step signal."""
-    from blocks.step import StepBlock
+    from diablos.blocks.step import StepBlock
 
     block = StepBlock()
 
@@ -73,7 +73,7 @@ def test_step_block():
 
 def test_sine_block():
     """Test SineBlock generates correct sine wave."""
-    from blocks.sine import SineBlock
+    from diablos.blocks.sine import SineBlock
 
     block = SineBlock()
 
@@ -112,7 +112,7 @@ def test_sine_block():
 
 def test_ramp_block():
     """Test RampBlock generates correct ramp signal."""
-    from blocks.ramp import RampBlock
+    from diablos.blocks.ramp import RampBlock
 
     block = RampBlock()
 
@@ -157,7 +157,7 @@ def test_ramp_block():
 
 def test_constant_block():
     """Test ConstantBlock generates constant output."""
-    from blocks.constant import ConstantBlock
+    from diablos.blocks.constant import ConstantBlock
 
     block = ConstantBlock()
 
@@ -186,7 +186,7 @@ def test_constant_block():
 
 def test_noise_block():
     """Test NoiseBlock generates random noise within bounds."""
-    from blocks.noise import NoiseBlock
+    from diablos.blocks.noise import NoiseBlock
 
     block = NoiseBlock()
 
@@ -209,7 +209,7 @@ def test_noise_block():
 
 def test_prbs_block():
     """Test PRBSBlock generates pseudo-random binary sequence."""
-    from blocks.prbs import PRBSBlock
+    from diablos.blocks.prbs import PRBSBlock
 
     block = PRBSBlock()
 

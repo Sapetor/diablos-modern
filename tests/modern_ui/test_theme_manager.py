@@ -11,7 +11,7 @@ Unit tests for ThemeManager block-palette system.
 def _fresh_manager():
     """Return a new ThemeManager instance (independent of global singleton)."""
     # We must instantiate a QObject subclass, so a QApplication must exist.
-    from modern_ui.themes.theme_manager import ThemeManager
+    from diablos.gui.themes.theme_manager import ThemeManager
 
     return ThemeManager()
 
@@ -28,7 +28,7 @@ class TestDefaultPalette:
 
     def test_default_theme_is_dark(self):
         mgr = _fresh_manager()
-        from modern_ui.themes.theme_manager import ThemeType
+        from diablos.gui.themes.theme_manager import ThemeType
 
         assert mgr.current_theme == ThemeType.DARK
 
@@ -68,7 +68,7 @@ class TestSetPaletteTailwind:
 
     def test_tailwind_light_source_fill(self):
         """Switching theme to light with Tailwind palette gives light fill."""
-        from modern_ui.themes.theme_manager import ThemeType
+        from diablos.gui.themes.theme_manager import ThemeType
 
         mgr = _fresh_manager()
         mgr.set_palette("tailwind")
@@ -77,7 +77,7 @@ class TestSetPaletteTailwind:
         assert color.name().lower() == "#d1fae5"
 
     def test_tailwind_light_control_border(self):
-        from modern_ui.themes.theme_manager import ThemeType
+        from diablos.gui.themes.theme_manager import ThemeType
 
         mgr = _fresh_manager()
         mgr.set_palette("tailwind")
@@ -121,7 +121,7 @@ class TestSetPaletteCatppuccin:
 
     def test_catppuccin_light_fill_uniform(self):
         """All light Catppuccin fills should be the Latte base (#eff1f5)."""
-        from modern_ui.themes.theme_manager import ThemeType
+        from diablos.gui.themes.theme_manager import ThemeType
 
         mgr = _fresh_manager()
         mgr.set_palette("catppuccin")
@@ -151,7 +151,7 @@ class TestSetPaletteCatppuccin:
 
 class TestThemeAndPaletteInteraction:
     def test_dark_to_light_tailwind_source(self):
-        from modern_ui.themes.theme_manager import ThemeType
+        from diablos.gui.themes.theme_manager import ThemeType
 
         mgr = _fresh_manager()
         mgr.set_palette("tailwind")
@@ -207,7 +207,7 @@ class TestSignalOnSetPalette:
         assert len(received) == 0
 
     def test_theme_changed_emitted_on_set_theme(self):
-        from modern_ui.themes.theme_manager import ThemeType
+        from diablos.gui.themes.theme_manager import ThemeType
 
         mgr = _fresh_manager()
         received = []
@@ -311,7 +311,7 @@ class TestPaletteCompleteness:
     SUFFIXES = ["", "_border", "_accent"]
 
     def test_all_keys_present(self):
-        from modern_ui.themes.theme_manager import PALETTES
+        from diablos.gui.themes.theme_manager import PALETTES
 
         for palette_name, variants in PALETTES.items():
             for theme_name, colors in variants.items():

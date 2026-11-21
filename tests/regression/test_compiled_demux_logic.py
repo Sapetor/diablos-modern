@@ -10,13 +10,13 @@ This adds compiled executors for:
 
   * ``Demux``           — splits its single vector input into N consecutive
                           sub-vectors of length ``output_shape`` each, matching
-                          ``blocks/demux.py``. Port 0 is stored at the block
+                          ``src/diablos/blocks/demux.py``. Port 0 is stored at the block
                           signal key; secondary ports use the
                           ``"{name}_out{i}"`` convention.
   * ``LogicalOperator`` — applies the configured boolean op
                           (AND/OR/NAND/NOR/XOR/NOT) element-wise over its
                           inputs (nonzero = True), matching
-                          ``blocks/logical_operator.py``.
+                          ``src/diablos/blocks/logical_operator.py``.
 
 The tests below build a diagram containing both blocks and assert:
 
@@ -43,8 +43,8 @@ EXAMPLES_DIR = Path(__file__).parent.parent.parent / "examples"
 
 def _load_example():
     """Load the Demux+Logic example and return the configured DSim."""
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     WorkspaceManager._instance = None
     dsim = DSim()
@@ -85,7 +85,7 @@ class TestCompiledDemuxLogic:
     def test_diagram_is_compilable_no_fallback(self, qapp):
         """The Demux + LogicalOperator diagram must compile (no interpreter
         fallback). Before this feature, either block forced the slow path."""
-        from lib.engine.system_compiler import SystemCompiler
+        from diablos.core.engine.system_compiler import SystemCompiler
 
         dsim = _load_example()
         assert dsim.engine.initialize_execution(dsim.model.blocks_list, dsim.model.line_list)
@@ -106,7 +106,7 @@ class TestCompiledDemuxLogic:
         The compiled fast path and the interpreter must produce identical Scope
         traces: this exercises the new Demux split semantics (ports 0/1/2) and
         every boolean operator, proving the compiled executors match
-        blocks/demux.py and blocks/logical_operator.py.
+        src/diablos/blocks/demux.py and src/diablos/blocks/logical_operator.py.
         """
         compiled = _run(operator, use_fast=True)
         interp = _run(operator, use_fast=False)
@@ -138,10 +138,10 @@ class TestCompiledDemuxLogic:
         ODE right-hand side (the Integrator's derivative), not only the
         post-solve replay. AND(1, 1) = 1, so the integrator output must be ~t.
         """
-        from lib.simulation.block import DBlock
-        from lib.simulation.connection import DLine
-        from lib.engine.system_compiler import SystemCompiler
-        from lib.workspace import WorkspaceManager
+        from diablos.core.simulation.block import DBlock
+        from diablos.core.simulation.connection import DLine
+        from diablos.core.engine.system_compiler import SystemCompiler
+        from diablos.core.workspace import WorkspaceManager
         from scipy.integrate import solve_ivp
 
         def mk(fn, sid, inp, outp, params, b_type=2):

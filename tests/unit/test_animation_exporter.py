@@ -16,7 +16,7 @@ class TestAnimationExporter:
 
     def test_init_2d_field(self):
         """Test initialization with 2D field data."""
-        from lib.plotting.animation_exporter import AnimationExporter
+        from diablos.core.plotting.animation_exporter import AnimationExporter
 
         # Create synthetic 2D field data: (n_times, Ny, Nx)
         n_times, Ny, Nx = 50, 20, 20
@@ -33,7 +33,7 @@ class TestAnimationExporter:
 
     def test_init_1d_field(self):
         """Test initialization with 1D field data."""
-        from lib.plotting.animation_exporter import AnimationExporter
+        from diablos.core.plotting.animation_exporter import AnimationExporter
 
         # Create synthetic 1D field data: (n_times, n_nodes)
         n_times, n_nodes = 100, 50
@@ -50,7 +50,7 @@ class TestAnimationExporter:
 
     def test_init_invalid_dimension_2d(self):
         """Test that 2D dimension with wrong shape raises error."""
-        from lib.plotting.animation_exporter import AnimationExporter
+        from diablos.core.plotting.animation_exporter import AnimationExporter
 
         # 2D array but dimension='2d' expects 3D
         field_data = np.random.rand(50, 100)
@@ -62,7 +62,7 @@ class TestAnimationExporter:
 
     def test_init_invalid_dimension_1d(self):
         """Test that 1D dimension with wrong shape raises error."""
-        from lib.plotting.animation_exporter import AnimationExporter
+        from diablos.core.plotting.animation_exporter import AnimationExporter
 
         # 3D array but dimension='1d' expects 2D
         field_data = np.random.rand(50, 20, 20)
@@ -74,7 +74,7 @@ class TestAnimationExporter:
 
     def test_recommended_fps(self):
         """Test FPS recommendation for target duration."""
-        from lib.plotting.animation_exporter import AnimationExporter
+        from diablos.core.plotting.animation_exporter import AnimationExporter
 
         field_data = np.random.rand(100, 20, 20)
         time_data = np.linspace(0, 10, 100)
@@ -93,7 +93,7 @@ class TestAnimationExporter:
 
     def test_playback_duration(self):
         """Test playback duration calculation."""
-        from lib.plotting.animation_exporter import AnimationExporter
+        from diablos.core.plotting.animation_exporter import AnimationExporter
 
         field_data = np.random.rand(60, 20, 20)
         time_data = np.linspace(0, 6, 60)
@@ -109,7 +109,7 @@ class TestAnimationExporter:
 
     def test_check_writers(self):
         """Test writer availability check returns dict."""
-        from lib.plotting.animation_exporter import AnimationExporter
+        from diablos.core.plotting.animation_exporter import AnimationExporter
 
         available = AnimationExporter.check_writers()
 
@@ -121,7 +121,7 @@ class TestAnimationExporter:
 
     def test_single_frame(self):
         """Test edge case: single frame animation."""
-        from lib.plotting.animation_exporter import AnimationExporter
+        from diablos.core.plotting.animation_exporter import AnimationExporter
 
         field_data = np.random.rand(1, 20, 20)
         time_data = np.array([0.0])
@@ -135,7 +135,7 @@ class TestAnimationExporter:
 
     def test_no_time_data(self):
         """Test initialization without time data."""
-        from lib.plotting.animation_exporter import AnimationExporter
+        from diablos.core.plotting.animation_exporter import AnimationExporter
 
         field_data = np.random.rand(50, 20, 20)
         params = {"Lx": 1.0, "Ly": 1.0}
@@ -154,7 +154,7 @@ class TestAnimationExport:
     @pytest.fixture
     def sample_2d_exporter(self):
         """Create sample 2D exporter for tests."""
-        from lib.plotting.animation_exporter import AnimationExporter
+        from diablos.core.plotting.animation_exporter import AnimationExporter
 
         n_times, Ny, Nx = 10, 15, 15
         # Create a simple decaying pattern
@@ -175,7 +175,7 @@ class TestAnimationExport:
     @pytest.fixture
     def sample_1d_exporter(self):
         """Create sample 1D exporter for tests."""
-        from lib.plotting.animation_exporter import AnimationExporter
+        from diablos.core.plotting.animation_exporter import AnimationExporter
 
         n_times, n_nodes = 10, 50
         x = np.linspace(0, 1, n_nodes)
@@ -192,7 +192,7 @@ class TestAnimationExport:
 
     def test_export_2d_gif(self, sample_2d_exporter):
         """Test exporting 2D animation as GIF."""
-        from lib.plotting.animation_exporter import AnimationExporter
+        from diablos.core.plotting.animation_exporter import AnimationExporter
         import matplotlib
 
         matplotlib.use("Agg")  # Non-interactive backend for testing
@@ -212,7 +212,7 @@ class TestAnimationExport:
 
     def test_export_1d_gif(self, sample_1d_exporter):
         """Test exporting 1D animation as GIF."""
-        from lib.plotting.animation_exporter import AnimationExporter
+        from diablos.core.plotting.animation_exporter import AnimationExporter
         import matplotlib
 
         matplotlib.use("Agg")
@@ -245,7 +245,7 @@ class TestAnimationExport:
 
     def test_export_creates_parent_dirs(self, sample_2d_exporter):
         """Test that export creates parent directories if needed."""
-        from lib.plotting.animation_exporter import AnimationExporter
+        from diablos.core.plotting.animation_exporter import AnimationExporter
         import matplotlib
 
         matplotlib.use("Agg")

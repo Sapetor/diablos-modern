@@ -1,6 +1,6 @@
 """The GUI's single diagram owns the workspace the window edits and loads.
 
-Workspace variables are per-DSim (``lib/workspace.py``). The window's DSim is
+Workspace variables are per-DSim (``src/diablos/core/workspace.py``). The window's DSim is
 built on the process-level default, so ``WorkspaceManager()`` (legacy and
 user-block code) still sees the variables loaded in the window, and loading a
 workspace file still drives a simulation.
@@ -11,13 +11,13 @@ import json
 import numpy as np
 import pytest
 
-from lib.diagram_builder import DiagramBuilder
-from lib.workspace import WorkspaceManager
+from diablos.core.diagram_builder import DiagramBuilder
+from diablos.core.workspace import WorkspaceManager
 
 
 @pytest.fixture(scope="module")
 def window(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     yield w
@@ -38,7 +38,7 @@ def _restore_variables(window):
 
 def _load_workspace_file(window, monkeypatch, path):
     monkeypatch.setattr(
-        "modern_ui.main_window.QFileDialog.getOpenFileName",
+        "diablos.gui.main_window.QFileDialog.getOpenFileName",
         lambda *a, **k: (str(path), ""),
     )
     window.load_workspace()
@@ -80,7 +80,7 @@ def test_loaded_workspace_file_drives_a_simulation(window, monkeypatch, tmp_path
     b.connect(k, 0, x, 0)
     b.connect(x, 0, y, 0)
 
-    from lib.api import _complete_builder_blocks
+    from diablos.core.api import _complete_builder_blocks
 
     dsim = window.dsim
     data = json.loads(json.dumps(b.to_dict()))

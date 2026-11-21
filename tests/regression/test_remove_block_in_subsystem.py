@@ -10,12 +10,12 @@ re-entry, save and simulation.
 import pytest
 from PyQt6.QtCore import QRect
 
-from blocks.inport import Inport
-from blocks.outport import Outport
-from blocks.subsystem import Subsystem
-from lib.lib import DSim
-from lib.simulation.block import DBlock
-from lib.simulation.connection import DLine
+from diablos.blocks.inport import Inport
+from diablos.blocks.outport import Outport
+from diablos.blocks.subsystem import Subsystem
+from diablos.core.lib import DSim
+from diablos.core.simulation.block import DBlock
+from diablos.core.simulation.connection import DLine
 
 
 def _subsystem():

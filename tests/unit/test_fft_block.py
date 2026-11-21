@@ -8,7 +8,7 @@ class TestFFTBlock:
 
     def test_block_properties(self):
         """Test basic block properties."""
-        from blocks.fft import FFTBlock
+        from diablos.blocks.fft import FFTBlock
 
         block = FFTBlock()
         assert block.block_name == "FFT"
@@ -17,7 +17,7 @@ class TestFFTBlock:
 
     def test_params_structure(self):
         """Test parameter definitions."""
-        from blocks.fft import FFTBlock
+        from diablos.blocks.fft import FFTBlock
 
         block = FFTBlock()
         assert "window" in block.params
@@ -27,7 +27,7 @@ class TestFFTBlock:
 
     def test_window_parameter_options(self):
         """Test window parameter default and type."""
-        from blocks.fft import FFTBlock
+        from diablos.blocks.fft import FFTBlock
 
         block = FFTBlock()
         assert block.params["window"]["default"] == "hann"
@@ -35,7 +35,7 @@ class TestFFTBlock:
 
     def test_normalize_parameter(self):
         """Test normalize parameter."""
-        from blocks.fft import FFTBlock
+        from diablos.blocks.fft import FFTBlock
 
         block = FFTBlock()
         assert block.params["normalize"]["default"] is True
@@ -43,7 +43,7 @@ class TestFFTBlock:
 
     def test_log_scale_parameter(self):
         """Test log_scale parameter."""
-        from blocks.fft import FFTBlock
+        from diablos.blocks.fft import FFTBlock
 
         block = FFTBlock()
         assert block.params["log_scale"]["default"] is False
@@ -51,7 +51,7 @@ class TestFFTBlock:
 
     def test_has_one_input(self):
         """FFT block should have one input port."""
-        from blocks.fft import FFTBlock
+        from diablos.blocks.fft import FFTBlock
 
         block = FFTBlock()
         assert len(block.inputs) == 1
@@ -59,14 +59,14 @@ class TestFFTBlock:
 
     def test_has_no_outputs(self):
         """FFT is a sink with no output ports."""
-        from blocks.fft import FFTBlock
+        from diablos.blocks.fft import FFTBlock
 
         block = FFTBlock()
         assert block.outputs == []
 
     def test_execute_returns_empty_dict(self):
         """FFT is a sink - returns empty dict."""
-        from blocks.fft import FFTBlock
+        from diablos.blocks.fft import FFTBlock
 
         block = FFTBlock()
         params = {}
@@ -75,7 +75,7 @@ class TestFFTBlock:
 
     def test_buffer_initialization(self):
         """Test that first execute initializes buffers."""
-        from blocks.fft import FFTBlock
+        from diablos.blocks.fft import FFTBlock
 
         block = FFTBlock()
         params = {}
@@ -92,7 +92,7 @@ class TestFFTBlock:
 
     def test_buffer_accumulation(self):
         """Test that execute accumulates samples in buffer."""
-        from blocks.fft import FFTBlock
+        from diablos.blocks.fft import FFTBlock
 
         block = FFTBlock()
         params = {}
@@ -106,7 +106,7 @@ class TestFFTBlock:
 
     def test_time_buffer_accumulation(self):
         """Time values should be recorded correctly."""
-        from blocks.fft import FFTBlock
+        from diablos.blocks.fft import FFTBlock
 
         block = FFTBlock()
         params = {}
@@ -119,7 +119,7 @@ class TestFFTBlock:
 
     def test_scalar_input_storage(self):
         """Test storage of scalar input values."""
-        from blocks.fft import FFTBlock
+        from diablos.blocks.fft import FFTBlock
 
         block = FFTBlock()
         params = {}
@@ -134,7 +134,7 @@ class TestFFTBlock:
 
     def test_vector_input_storage(self):
         """Test storage of vector input (takes first element)."""
-        from blocks.fft import FFTBlock
+        from diablos.blocks.fft import FFTBlock
 
         block = FFTBlock()
         params = {}
@@ -149,7 +149,7 @@ class TestFFTBlock:
 
     def test_empty_input_handling(self):
         """Test handling of empty/zero input."""
-        from blocks.fft import FFTBlock
+        from diablos.blocks.fft import FFTBlock
 
         block = FFTBlock()
         params = {}
@@ -162,7 +162,7 @@ class TestFFTBlock:
 
     def test_continuous_accumulation(self):
         """Test that buffer continues to accumulate across multiple calls."""
-        from blocks.fft import FFTBlock
+        from diablos.blocks.fft import FFTBlock
 
         block = FFTBlock()
         params = {}
@@ -181,7 +181,7 @@ class TestFFTBlock:
 
     def test_sine_wave_accumulation(self):
         """Test accumulation of a sine wave signal."""
-        from blocks.fft import FFTBlock
+        from diablos.blocks.fft import FFTBlock
 
         block = FFTBlock()
         params = {}
@@ -204,7 +204,7 @@ class TestFFTBlock:
 
     def test_doc_property(self):
         """Test documentation string."""
-        from blocks.fft import FFTBlock
+        from diablos.blocks.fft import FFTBlock
 
         block = FFTBlock()
         assert "FFT" in block.doc or "Spectrum" in block.doc
@@ -212,7 +212,7 @@ class TestFFTBlock:
 
     def test_draw_icon_returns_path(self):
         """Test that draw_icon returns an IconPath."""
-        from blocks.fft import FFTBlock
+        from diablos.blocks.fft import FFTBlock
         from PyQt6.QtCore import QRectF
 
         block = FFTBlock()
@@ -220,13 +220,13 @@ class TestFFTBlock:
         path = block.draw_icon(rect)
 
         # Should return an IconPath
-        from lib.icon_path import IconPath
+        from diablos.core.icon_path import IconPath
 
         assert isinstance(path, IconPath)
 
     def test_multiple_executions_same_params_dict(self):
         """Test that same params dict is used across executions."""
-        from blocks.fft import FFTBlock
+        from diablos.blocks.fft import FFTBlock
 
         block = FFTBlock()
         params = {}
@@ -253,13 +253,13 @@ class TestFFTBufferReset:
     """
 
     def test_declares_the_init_flag_so_the_engine_can_re_arm_it(self):
-        from blocks.fft import FFTBlock
+        from diablos.blocks.fft import FFTBlock
 
         # reset_memblocks() only resets blocks that have "_init_start_" in params.
         assert "_init_start_" in FFTBlock().params
 
     def test_second_run_does_not_see_the_first_run_s_samples(self):
-        from blocks.fft import FFTBlock
+        from diablos.blocks.fft import FFTBlock
 
         block = FFTBlock()
         params = {k: v["default"] for k, v in block.params.items()}
@@ -284,7 +284,7 @@ class TestFFTBufferReset:
         assert params["_fft_time_"] == [0.0, 0.1]
 
     def test_buffer_keeps_accumulating_while_the_flag_stays_cleared(self):
-        from blocks.fft import FFTBlock
+        from diablos.blocks.fft import FFTBlock
 
         block = FFTBlock()
         params = {"_init_start_": True}

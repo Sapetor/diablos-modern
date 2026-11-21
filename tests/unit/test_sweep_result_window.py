@@ -1,5 +1,5 @@
 """Tests for the parameter-sweep results window
-(modern_ui/widgets/sweep_result_window.py).
+(src/diablos/gui/widgets/sweep_result_window.py).
 
 Builds hand-crafted 1-D and 2-D sweep-result dicts and asserts the widget
 constructs and switches views/metrics without error.
@@ -13,8 +13,8 @@ import pytest
 
 from PyQt6.QtWidgets import QWidget
 
-from lib.analysis.resim import OUTCOME_METRICS
-from modern_ui.widgets.sweep_result_window import SweepResultWindow
+from diablos.core.analysis.resim import OUTCOME_METRICS
+from diablos.gui.widgets.sweep_result_window import SweepResultWindow
 
 
 def _sweep_1d(n=4, L=20, nsig=1):
@@ -115,7 +115,7 @@ class TestSweepResultWindow:
         assert win.metric_combo.isEnabled()
 
     def test_1d_metric_change_rerenders(self, qapp, make_window):
-        from lib.analysis.resim import OUTCOME_METRIC_LABELS
+        from diablos.core.analysis.resim import OUTCOME_METRIC_LABELS
 
         win = make_window(_sweep_1d())
         win.view_combo.setCurrentIndex(1)
@@ -137,7 +137,7 @@ class TestSweepResultWindow:
         assert win.view_combo is None  # no view toggle in 2-D
 
     def test_2d_metric_change_rerenders(self, qapp, make_window):
-        from lib.analysis.resim import OUTCOME_METRIC_LABELS
+        from diablos.core.analysis.resim import OUTCOME_METRIC_LABELS
 
         win = make_window(_sweep_2d())
         _select_metric(win.metric_combo, "rms")  # must not raise

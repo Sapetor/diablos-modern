@@ -1,6 +1,6 @@
 """
 Tests for the Linearize & Analyze results window
-(modern_ui/widgets/linearization_result_window.py).
+(src/diablos/gui/widgets/linearization_result_window.py).
 
 The window CONSUMES the shared linearization result-dict contract and only
 plots the arrays already present in it -- it performs no linearization of its
@@ -21,7 +21,7 @@ from PyQt6 import sip
 from PyQt6.QtCore import QCoreApplication, QEvent, QTimer
 from PyQt6.QtWidgets import QWidget, QTabWidget, QPushButton, QApplication
 
-from modern_ui.widgets.linearization_result_window import LinearizationResultWindow
+from diablos.gui.widgets.linearization_result_window import LinearizationResultWindow
 
 
 def _sample_ok_result(with_bode=True):
@@ -301,7 +301,7 @@ class TestTeardown:
     def test_the_controller_forgets_closed_windows_and_closes_the_rest(self, qapp):
         from types import SimpleNamespace
 
-        from modern_ui.controllers.experiment_controller import ExperimentController
+        from diablos.gui.controllers.experiment_controller import ExperimentController
 
         ctl = ExperimentController(SimpleNamespace())
         first = LinearizationResultWindow(_sample_ok_result())

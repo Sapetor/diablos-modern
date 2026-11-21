@@ -1,4 +1,4 @@
-"""Unit tests for the pre-flight checks in lib/diagram_validator.py.
+"""Unit tests for the pre-flight checks in src/diablos/core/diagram_validator.py.
 
 ``validate_block_connections`` / ``detect_algebraic_loops`` gate every proposed
 wire (ConnectionManager) and the Run action (SimulationController);
@@ -11,7 +11,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from lib.diagram_validator import (
+from diablos.core.diagram_validator import (
     DiagramValidator,
     ErrorSeverity,
     check_block_integrity,
@@ -62,7 +62,7 @@ class TestValidateBlockConnections:
         assert messages == ["Multiple connections to same input port: block gain, port 0"]
 
     def test_algebraic_loop_is_a_warning_listed_first(self):
-        """The engine solves algebraic loops (lib/engine/algebraic_loop.py), so
+        """The engine solves algebraic loops (src/diablos/core/engine/algebraic_loop.py), so
         the preflight flags one but no longer blocks the run or the wire."""
         blocks = [_blk("g1"), _blk("g2"), _blk("lonely")]
         ok, messages = validate_block_connections(blocks, [_line("g1", "g2"), _line("g2", "g1")])

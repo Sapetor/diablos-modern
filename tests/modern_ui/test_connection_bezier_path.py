@@ -13,7 +13,7 @@ import pytest
 from PyQt6.QtCore import QPoint
 from PyQt6.QtGui import QPainterPath
 
-from lib.simulation.connection import DLine
+from diablos.core.simulation.connection import DLine
 
 
 @pytest.fixture(autouse=True)

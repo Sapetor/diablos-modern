@@ -23,8 +23,8 @@ NOTE on block_fn strings
 ------------------------
 The block_fn used by the engine is the *block_name* property (the string
 returned by the block class), not the Python file name:
-  - blocks/derivative.py                → block_name == "Deriv"
-  - blocks/discrete_transfer_function.py → block_name == "DiscreteTranFn"
+  - src/diablos/blocks/derivative.py                → block_name == "Deriv"
+  - src/diablos/blocks/discrete_transfer_function.py → block_name == "DiscreteTranFn"
 
 NOTE on conditional classifications
 -------------------------------------
@@ -48,7 +48,7 @@ from types import SimpleNamespace
 @pytest.fixture
 def engine(qapp, simulation_model):
     """SimulationEngine with empty model — uses shared conftest fixtures."""
-    from lib.engine.simulation_engine import SimulationEngine
+    from diablos.core.engine.simulation_engine import SimulationEngine
 
     return SimulationEngine(simulation_model)
 
@@ -231,7 +231,7 @@ class TestHardenedBlockEmptyInputs:
     def test_pid_safe_on_empty_inputs(self):
         """PID with empty inputs returns current integral (should be ~0 on first call)."""
         import numpy as np
-        from blocks.pid import PIDBlock
+        from diablos.blocks.pid import PIDBlock
 
         block = PIDBlock()
         params = {k: v["default"] for k, v in block.params.items()}
@@ -245,7 +245,7 @@ class TestHardenedBlockEmptyInputs:
     def test_pid_output_only_returns_held_integral(self):
         """PID output_only after one normal step returns the held integral, not a crash."""
         import numpy as np
-        from blocks.pid import PIDBlock
+        from diablos.blocks.pid import PIDBlock
 
         block = PIDBlock()
         params = {k: v["default"] for k, v in block.params.items()}
@@ -262,7 +262,7 @@ class TestHardenedBlockEmptyInputs:
     def test_hysteresis_safe_on_empty_inputs(self):
         """Hysteresis with empty inputs returns the held _state (low by default)."""
         import numpy as np
-        from blocks.hysteresis import HysteresisBlock
+        from diablos.blocks.hysteresis import HysteresisBlock
 
         block = HysteresisBlock()
         params = {k: v["default"] for k, v in block.params.items()}
@@ -275,7 +275,7 @@ class TestHardenedBlockEmptyInputs:
     def test_hysteresis_output_only_returns_held_state(self):
         """Hysteresis output_only after a switch returns the switched state."""
         import numpy as np
-        from blocks.hysteresis import HysteresisBlock
+        from diablos.blocks.hysteresis import HysteresisBlock
 
         block = HysteresisBlock()
         params = {k: v["default"] for k, v in block.params.items()}
@@ -289,7 +289,7 @@ class TestHardenedBlockEmptyInputs:
     def test_derivative_safe_on_empty_inputs(self):
         """Deriv with empty inputs on first call returns zeros (no crash)."""
         import numpy as np
-        from blocks.derivative import DerivativeBlock
+        from diablos.blocks.derivative import DerivativeBlock
 
         block = DerivativeBlock()
         params = {k: v["default"] for k, v in block.params.items()}
@@ -302,7 +302,7 @@ class TestHardenedBlockEmptyInputs:
     def test_derivative_output_only_returns_last_derivative(self):
         """Deriv output_only after a normal step returns the last computed didt."""
         import numpy as np
-        from blocks.derivative import DerivativeBlock
+        from diablos.blocks.derivative import DerivativeBlock
 
         block = DerivativeBlock()
         params = {k: v["default"] for k, v in block.params.items()}
@@ -324,7 +324,7 @@ class TestHardenedBlockEmptyInputs:
         _prev_e or _d_state. Otherwise the next real step's derivative term
         is computed from corrupted state."""
         import numpy as np
-        from blocks.pid import PIDBlock
+        from diablos.blocks.pid import PIDBlock
 
         block = PIDBlock()
         params = {k: v["default"] for k, v in block.params.items()}
@@ -356,7 +356,7 @@ class TestHardenedBlockEmptyInputs:
         """With non-symmetric thresholds (both above 0), the default 0.0 input
         must not spuriously trigger a transition. Empty inputs → return current state."""
         import numpy as np
-        from blocks.hysteresis import HysteresisBlock
+        from diablos.blocks.hysteresis import HysteresisBlock
 
         block = HysteresisBlock()
         params = {k: v["default"] for k, v in block.params.items()}
@@ -378,7 +378,7 @@ class TestHardenedBlockEmptyInputs:
     def test_adam_output_only_does_not_corrupt_moments(self):
         """Adam with empty inputs must not increment _t_ or mutate _m_/_v_."""
         import numpy as np
-        from blocks.optimization_primitives.adam import AdamBlock
+        from diablos.blocks.optimization_primitives.adam import AdamBlock
 
         block = AdamBlock()
         params = {k: v["default"] if isinstance(v, dict) else v for k, v in block.params.items()}
@@ -401,7 +401,7 @@ class TestHardenedBlockEmptyInputs:
     def test_momentum_output_only_does_not_corrupt_velocity(self):
         """Momentum with empty inputs must not mutate _velocity_."""
         import numpy as np
-        from blocks.optimization_primitives.momentum import MomentumBlock
+        from diablos.blocks.optimization_primitives.momentum import MomentumBlock
 
         block = MomentumBlock()
         params = {k: v["default"] if isinstance(v, dict) else v for k, v in block.params.items()}
@@ -422,7 +422,7 @@ class TestHardenedBlockEmptyInputs:
     def test_rate_limiter_output_only_does_not_corrupt_prev(self):
         """RateLimiter with empty inputs must not overwrite _prev."""
         import numpy as np
-        from blocks.rate_limiter import RateLimiterBlock
+        from diablos.blocks.rate_limiter import RateLimiterBlock
 
         block = RateLimiterBlock()
         params = {k: (v["default"] if isinstance(v, dict) else v) for k, v in block.params.items()}
@@ -532,8 +532,8 @@ class TestM1ParamResolutionOrder:
         workspace-variable strings.  Register matching workspace variables.
         Call initialize_execution and verify the TranFn lands in memory_blocks.
         """
-        from lib.engine.simulation_engine import SimulationEngine
-        from lib.workspace import WorkspaceManager
+        from diablos.core.engine.simulation_engine import SimulationEngine
+        from diablos.core.workspace import WorkspaceManager
 
         # Reset workspace singleton so this test doesn't share state.
         prev = WorkspaceManager._instance

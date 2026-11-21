@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Scan the blocks/ directory and update _BLOCK_MODULES in lib/block_loader.py.
+Scan the blocks/ directory and update _BLOCK_MODULES in src/diablos/core/block_loader.py.
 
 Run this before building with PyInstaller so the frozen app includes all blocks.
 Called automatically by tools/build.sh, and reused by diablos.spec (which imports
@@ -8,7 +8,7 @@ Called automatically by tools/build.sh, and reused by diablos.spec (which import
 ``tests/test_block_registry_sync.py``.
 
 Usage:
-    python tools/sync_block_registry.py            # rewrite lib/block_loader.py
+    python tools/sync_block_registry.py            # rewrite src/diablos/core/block_loader.py
     python tools/sync_block_registry.py --check    # exit 1 if it would change
 """
 
@@ -122,7 +122,7 @@ def main(argv=None):
     parser.add_argument(
         "--check",
         action="store_true",
-        help="do not write; exit 1 if lib/block_loader.py is out of date",
+        help="do not write; exit 1 if src/diablos/core/block_loader.py is out of date",
     )
     args = parser.parse_args(argv)
 

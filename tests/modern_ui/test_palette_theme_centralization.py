@@ -19,8 +19,8 @@ def _qt(qapp):
 @pytest.fixture
 def palette():
     try:
-        from lib.lib import DSim
-        from modern_ui.widgets.modern_palette import ModernBlockPalette
+        from diablos.core.lib import DSim
+        from diablos.gui.widgets.modern_palette import ModernBlockPalette
 
         dsim = DSim()
         init = getattr(dsim, "menu_blocks_init", None)
@@ -36,7 +36,7 @@ def palette():
 
 
 def _rows(pal):
-    from modern_ui.widgets.modern_palette import CompactBlockRow
+    from diablos.gui.widgets.modern_palette import CompactBlockRow
 
     return pal.findChildren(CompactBlockRow)
 
@@ -49,7 +49,7 @@ class TestCentralizedThemeRestyle:
         assert hasattr(palette, "_on_theme_changed")
 
     def test_toggle_theme_does_not_raise(self, palette):
-        from modern_ui.themes.theme_manager import theme_manager
+        from diablos.gui.themes.theme_manager import theme_manager
 
         start = theme_manager.current_theme
         try:
@@ -72,7 +72,7 @@ class TestCentralizedThemeRestyle:
         # The child classes must not connect to theme_changed in __init__ any
         # more; the central handler drives them. We assert the marker methods
         # the handler relies on still exist on freshly built children.
-        from modern_ui.widgets.modern_palette import CompactBlockRow, _CategorySection
+        from diablos.gui.widgets.modern_palette import CompactBlockRow, _CategorySection
 
         rows = palette.findChildren(CompactBlockRow)
         secs = palette.findChildren(_CategorySection)

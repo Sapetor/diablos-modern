@@ -7,7 +7,7 @@ pass; they now assert.
 import numpy as np
 import pytest
 
-from lib.block_loader import load_blocks
+from diablos.core.block_loader import load_blocks
 
 FAMILIES = ("PDE", "Optimization")
 
@@ -31,7 +31,7 @@ def test_block_loading():
 
 def test_heat_equation():
     """Heat flows in from the hot left boundary; both boundaries are held."""
-    from blocks.pde.heat_equation_1d import HeatEquation1DBlock
+    from diablos.blocks.pde.heat_equation_1d import HeatEquation1DBlock
 
     block = HeatEquation1DBlock()
     params = {
@@ -57,7 +57,7 @@ def test_heat_equation():
 
 def test_wave_equation():
     """An undamped Gaussian pulse keeps a finite, nonzero field and energy."""
-    from blocks.pde.wave_equation_1d import WaveEquation1DBlock
+    from diablos.blocks.pde.wave_equation_1d import WaveEquation1DBlock
 
     block = WaveEquation1DBlock()
     params = {
@@ -85,7 +85,7 @@ def test_wave_equation():
 
 def test_field_probe():
     """Probing f(x) = 10x at the midpoint interpolates 5."""
-    from blocks.pde.field_processing import FieldProbeBlock
+    from diablos.blocks.pde.field_processing import FieldProbeBlock
 
     params = {"position": 0.5, "position_mode": "normalized", "L": 1.0}
     result = FieldProbeBlock().execute(0.0, {0: np.linspace(0, 10, 11)}, params)
@@ -94,7 +94,7 @@ def test_field_probe():
 
 def test_field_integral():
     """The integral of f(x) = 2 over [0, 1] is 2."""
-    from blocks.pde.field_processing import FieldIntegralBlock
+    from diablos.blocks.pde.field_processing import FieldIntegralBlock
 
     params = {"L": 1.0, "normalize": False}
     result = FieldIntegralBlock().execute(0.0, {0: np.full(11, 2.0)}, params)
@@ -103,7 +103,7 @@ def test_field_integral():
 
 def test_parameter_block():
     """A Parameter block outputs its value and reports it for optimization."""
-    from blocks.optimization.parameter import ParameterBlock
+    from diablos.blocks.optimization.parameter import ParameterBlock
 
     block = ParameterBlock()
     params = {
@@ -120,7 +120,7 @@ def test_parameter_block():
 
 def test_cost_function():
     """ISE of a decaying error accumulates a positive cost."""
-    from blocks.optimization.cost_function import CostFunctionBlock
+    from diablos.blocks.optimization.cost_function import CostFunctionBlock
 
     block = CostFunctionBlock()
     params = {"cost_type": "ISE", "target": 0.0, "weight": 1.0, "_init_start_": True}
@@ -132,7 +132,7 @@ def test_cost_function():
 
 def test_draw_icons():
     """Every PDE/Optimization block draws an icon (an IconPath or None)."""
-    from lib.icon_path import IconPath
+    from diablos.core.icon_path import IconPath
 
     problems = []
     for inst in _instances():

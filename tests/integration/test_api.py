@@ -1,4 +1,4 @@
-"""Importable headless simulation API (``lib/api.py``)."""
+"""Importable headless simulation API (``src/diablos/core/api.py``)."""
 
 import os
 import subprocess
@@ -7,8 +7,8 @@ import sys
 import numpy as np
 import pytest
 
-from lib.api import Diagram, SimulationError, from_builder, load
-from lib.diagram_builder import DiagramBuilder
+from diablos.core.api import Diagram, SimulationError, from_builder, load
+from diablos.core.diagram_builder import DiagramBuilder
 
 pytestmark = pytest.mark.integration
 
@@ -269,7 +269,7 @@ def test_cold_start_without_a_qapplication():
     """
     code = (
         "import os\n"
-        "from lib.api import load\n"
+        "from diablos.core.api import load\n"
         f"res = load({FIRST_ORDER!r}).run(t=2.0)\n"
         "from PyQt6.QtCore import QCoreApplication\n"
         "print(res.engine, QCoreApplication.instance() is None,"

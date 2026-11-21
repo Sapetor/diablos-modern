@@ -1,7 +1,7 @@
 """Unit tests for the extracted diagram graph-analysis helpers.
 
 These were private methods on SimulationEngine; extracting them into
-``lib/engine/graph_analysis.py`` lets us exercise the connectivity/topology
+``src/diablos/core/engine/graph_analysis.py`` lets us exercise the connectivity/topology
 logic against plain stand-in blocks and lines, with no engine or simulation.
 """
 
@@ -9,7 +9,7 @@ import types
 
 import pytest
 
-from lib.engine import graph_analysis as ga
+from diablos.core.engine import graph_analysis as ga
 
 
 def _line(src, dst, srcport=0, dstport=0):

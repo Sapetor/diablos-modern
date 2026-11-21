@@ -24,7 +24,7 @@ import pytest
 
 @pytest.fixture
 def engine(qapp, simulation_model):
-    from lib.engine.simulation_engine import SimulationEngine
+    from diablos.core.engine.simulation_engine import SimulationEngine
 
     return SimulationEngine(simulation_model)
 
@@ -67,7 +67,7 @@ class TestExecParamsSkipResolution:
             },
         )
 
-        with patch("lib.workspace.WorkspaceManager.resolve_params") as mocked:
+        with patch("diablos.core.workspace.WorkspaceManager.resolve_params") as mocked:
             # Drive only the resolve-loop portion of initialize_execution.
             current_dt = engine.sim_dt
             for block in [stub]:
@@ -82,7 +82,7 @@ class TestExecParamsSkipResolution:
 
     def test_resolve_when_dtime_mismatches(self, engine):
         """Engine resolves when cached dtime doesn't match (e.g. sim_dt changed)."""
-        from lib.workspace import WorkspaceManager
+        from diablos.core.workspace import WorkspaceManager
 
         # Reset singleton so we don't leak state.
         prev = WorkspaceManager._instance
@@ -117,7 +117,7 @@ class TestExecParamsSkipResolution:
 
     def test_resolve_when_exec_params_empty(self, engine):
         """Engine resolves when exec_params is empty (fresh block)."""
-        from lib.workspace import WorkspaceManager
+        from diablos.core.workspace import WorkspaceManager
 
         prev = WorkspaceManager._instance
         WorkspaceManager._instance = None
@@ -150,8 +150,8 @@ class TestExecParamsSkipResolution:
         engine.initialize_execution's pre-loop and verifies it's zero when
         the caller has already resolved.
         """
-        from lib.engine.simulation_engine import SimulationEngine
-        from lib.workspace import WorkspaceManager
+        from diablos.core.engine.simulation_engine import SimulationEngine
+        from diablos.core.workspace import WorkspaceManager
 
         prev = WorkspaceManager._instance
         WorkspaceManager._instance = None
@@ -199,8 +199,8 @@ class TestExecParamsSkipResolution:
 
     def test_run_compiled_skips_when_already_resolved(self, qapp, simulation_model):
         """The same skip guard in run_compiled_simulation."""
-        from lib.engine.simulation_engine import SimulationEngine
-        from lib.workspace import WorkspaceManager
+        from diablos.core.engine.simulation_engine import SimulationEngine
+        from diablos.core.workspace import WorkspaceManager
 
         prev = WorkspaceManager._instance
         WorkspaceManager._instance = None

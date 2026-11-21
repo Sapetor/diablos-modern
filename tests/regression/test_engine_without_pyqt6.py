@@ -1,9 +1,9 @@
 """The simulation engine runs in a process where PyQt6 cannot be imported.
 
-Before 2026-11-21 ``import lib.lib`` required PyQt6: the diagram model kept
+Before 2026-11-21 ``import diablos.core.lib`` required PyQt6: the diagram model kept
 its geometry and colours as Qt value types imported at module level, DBlock
 and MenuBlocks built a QFont/QPixmap (which need a QGuiApplication), and the
-headless CLI always created an offscreen QApplication. ``lib/qt_types.py`` now
+headless CLI always created an offscreen QApplication. ``src/diablos/core/qt_types.py`` now
 supplies pure-Python stand-ins when PyQt6 is missing.
 
 Each test runs a fresh interpreter with an import hook that makes PyQt6 and
@@ -65,8 +65,8 @@ EXAMPLES = [
 
 
 def _traces(path):
-    from lib.analysis.resim import harvest_scope_signals
-    from lib.cli import run_diagram
+    from diablos.core.analysis.resim import harvest_scope_signals
+    from diablos.core.cli import run_diagram
 
     sig = harvest_scope_signals(run_diagram(path))
     return {k: np.asarray(v, dtype=float) for k, v in sig["signals"].items()}
@@ -79,8 +79,8 @@ def test_examples_match_a_qt_run_without_pyqt6(no_qt_path):
     result = _run_without_qt(
         f"""
         import json, sys
-        from lib.analysis.resim import harvest_scope_signals
-        from lib.cli import run_diagram
+        from diablos.core.analysis.resim import harvest_scope_signals
+        from diablos.core.cli import run_diagram
 
         out = {{}}
         for path in {paths!r}:
@@ -108,10 +108,10 @@ def test_engine_and_analysis_import_and_build_without_pyqt6(no_qt_path):
     result = _run_without_qt(
         """
         import json
-        import lib.lib, lib.analysis.monte_carlo, lib.analysis.parameter_sweep
-        import lib.analysis.linearizer, lib.engine.system_compiler
-        from lib import qt_types
-        from lib.cli import load_diagram
+        import diablos.core.lib, diablos.core.analysis.monte_carlo, diablos.core.analysis.parameter_sweep
+        import diablos.core.analysis.linearizer, diablos.core.engine.system_compiler
+        from diablos.core import qt_types
+        from diablos.core.cli import load_diagram
 
         dsim, _ = load_diagram("examples/first_order_step_response.diablos")
         block = dsim.blocks_list[0]
@@ -136,8 +136,8 @@ def test_monte_carlo_runs_without_pyqt6(no_qt_path):
     result = _run_without_qt(
         """
         import json
-        from lib.analysis.monte_carlo import MonteCarloRunner
-        from lib.cli import load_diagram
+        from diablos.core.analysis.monte_carlo import MonteCarloRunner
+        from diablos.core.cli import load_diagram
 
         dsim, params = load_diagram("examples/first_order_step_response.diablos")
         serial = MonteCarloRunner(dsim).run(3, master_seed=1, sim_time=1.0, sim_dt=0.01)
@@ -164,7 +164,7 @@ def test_headless_run_creates_no_qapplication_when_pyqt6_is_installed():
             "-c",
             textwrap.dedent(
                 """
-                from lib.cli import run_diagram
+                from diablos.core.cli import run_diagram
                 from PyQt6.QtCore import QCoreApplication
 
                 dsim = run_diagram("examples/first_order_step_response.diablos")
@@ -211,7 +211,7 @@ def test_execution_init_does_not_open_a_dialog_headless(no_qt_path):
     result = _run_without_qt(
         """
         import json
-        from lib.cli import load_diagram
+        from diablos.core.cli import load_diagram
 
         dsim, _ = load_diagram("examples/first_order_step_response.diablos")
         print(json.dumps({"reviewed": dsim.settings_reviewed, "ok": dsim.execution_init()}))
@@ -229,9 +229,9 @@ def test_forced_stand_ins_work_with_pyqt6_installed():
     code = textwrap.dedent(
         """
         import json
-        from lib import qt_types
-        from lib.analysis.resim import harvest_scope_signals
-        from lib.cli import load_diagram, run_diagram
+        from diablos.core import qt_types
+        from diablos.core.analysis.resim import harvest_scope_signals
+        from diablos.core.cli import load_diagram, run_diagram
 
         dsim, _ = load_diagram("examples/first_order_step_response.diablos")
         sig = harvest_scope_signals(run_diagram("examples/first_order_step_response.diablos"))
@@ -274,10 +274,10 @@ def test_engine_needs_only_numpy_and_scipy(tmp_path):
     result = _run_without_qt(
         f"""
         import json
-        from lib.analysis.monte_carlo import MonteCarloRunner
-        from lib.analysis.resim import harvest_scope_signals
-        from lib.block_loader import load_blocks
-        from lib.cli import load_diagram, run_diagram
+        from diablos.core.analysis.monte_carlo import MonteCarloRunner
+        from diablos.core.analysis.resim import harvest_scope_signals
+        from diablos.core.block_loader import load_blocks
+        from diablos.core.cli import load_diagram, run_diagram
 
         out = {{"blocks": sorted(c().block_name for c in load_blocks())}}
         for path in {paths!r}:
@@ -290,7 +290,7 @@ def test_engine_needs_only_numpy_and_scipy(tmp_path):
         """,
         no_qt=str(tmp_path),
     )
-    from lib.block_loader import load_blocks
+    from diablos.core.block_loader import load_blocks
 
     assert result.pop("blocks") == sorted(c().block_name for c in load_blocks())
     assert result.pop("mc_ok") == 2

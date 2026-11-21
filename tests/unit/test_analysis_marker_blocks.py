@@ -18,9 +18,9 @@ What actually has to hold for a marker, and is asserted here:
 import numpy as np
 import pytest
 
-from blocks.bodemag import BodeMagBlock
-from blocks.bodephase import BodePhaseBlock
-from blocks.rootlocus import RootLocusBlock
+from diablos.blocks.bodemag import BodeMagBlock
+from diablos.blocks.bodephase import BodePhaseBlock
+from diablos.blocks.rootlocus import RootLocusBlock
 
 MARKERS = [
     pytest.param(BodeMagBlock, "BodeMag", id="bodemag"),
@@ -73,7 +73,7 @@ class TestAnalysisMarkerContract:
 
     def test_draw_icon_returns_a_painter_path(self, block_cls, expected_name, qapp):
         from PyQt6.QtCore import QRect
-        from lib.icon_path import IconPath
+        from diablos.core.icon_path import IconPath
 
         path = block_cls().draw_icon(QRect(0, 0, 100, 60))
         assert isinstance(path, IconPath)
@@ -118,7 +118,7 @@ class TestAnalysisMarkerExecution:
 @pytest.mark.unit
 def test_markers_are_discoverable_blocks():
     """A marker missing from the loader silently disappears from the palette."""
-    from lib.block_loader import load_blocks
+    from diablos.core.block_loader import load_blocks
 
     names = {cls().block_name for cls in load_blocks()}
     assert {"BodeMag", "BodePhase", "RootLocus", "Nyquist"} <= names

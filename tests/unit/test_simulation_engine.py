@@ -5,8 +5,8 @@ Unit tests for SimulationEngine class.
 import pytest
 from PyQt6.QtCore import QRect
 
-from lib.simulation.block import DBlock
-from lib.simulation.connection import DLine
+from diablos.core.simulation.block import DBlock
+from diablos.core.simulation.connection import DLine
 
 
 @pytest.mark.unit
@@ -442,7 +442,7 @@ class TestResetExecutionData:
 
         assert block.computed_data == False
         assert block.data_received == 0
-        # Deprecated misspelling kept as a read/write alias for lib/lib.py.
+        # Deprecated misspelling kept as a read/write alias for src/diablos/core/lib.py.
         assert block.data_recieved == 0
         block.data_recieved = 7
         assert block.data_received == 7

@@ -17,8 +17,8 @@ import pytest
 from PyQt6.QtCore import QPointF
 from PyQt6.QtGui import QPainterPath
 
-from lib.simulation import wire_router
-from modern_ui.renderers.connection_renderer import ConnectionRenderer
+from diablos.core.simulation import wire_router
+from diablos.gui.renderers.connection_renderer import ConnectionRenderer
 
 pytestmark = pytest.mark.qt
 
@@ -27,7 +27,7 @@ EXAMPLES = os.path.join(os.path.dirname(__file__), "..", "..", "examples")
 
 @pytest.fixture
 def window(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     w.resize(1400, 900)

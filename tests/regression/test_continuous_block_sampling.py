@@ -47,7 +47,7 @@ from PyQt6.QtCore import QPoint
 
 
 def _new_dsim(sim_time, sim_dt):
-    from lib.lib import DSim
+    from diablos.core.lib import DSim
 
     dsim = DSim()
     dsim.sim_time = sim_time
@@ -202,9 +202,9 @@ class TestSampledStaircaseAlignment:
 
     def test_output_is_post_update_flag(self):
         """Only blocks returning the advanced state declare the flag."""
-        from blocks.integrator import IntegratorBlock
-        from blocks.statespace import StateSpaceBlock
-        from blocks.zero_order_hold import ZeroOrderHoldBlock
+        from diablos.blocks.integrator import IntegratorBlock
+        from diablos.blocks.statespace import StateSpaceBlock
+        from diablos.blocks.zero_order_hold import ZeroOrderHoldBlock
 
         assert IntegratorBlock().output_is_post_update is True
         assert StateSpaceBlock().output_is_post_update is False
@@ -215,7 +215,7 @@ class TestSampledStaircaseAlignment:
 class TestSampledBlocksCompileAsSampled:
     """A rated continuous block used to send the diagram to the interpreter,
     because the compiled path had no notion of sample instants. It now compiles
-    as a sampled holder on the hybrid path (lib/engine/compiler_kernels/
+    as a sampled holder on the hybrid path (src/diablos/core/engine/compiler_kernels/
     discrete.py) and gives the interpreter's answer."""
 
     def _tf_diagram(self, sampling_time):

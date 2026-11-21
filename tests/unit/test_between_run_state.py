@@ -9,13 +9,13 @@ import os
 import numpy as np
 import pytest
 
-from lib.analysis.resim import harvest_scope_signals
+from diablos.core.analysis.resim import harvest_scope_signals
 
 _EXAMPLES = os.path.join(os.path.dirname(__file__), "..", "..", "examples")
 
 
 def _load_example(name):
-    from lib.cli import load_diagram
+    from diablos.core.cli import load_diagram
 
     dsim, _params = load_diagram(os.path.join(_EXAMPLES, name))
     dsim.use_fast_solver = False  # interpreter path
@@ -45,7 +45,7 @@ class TestInputQueueDoesNotLeak:
 @pytest.mark.unit
 class TestHysteresisLatch:
     def test_output_only_probe_after_run_returns_baseline(self):
-        from blocks.hysteresis import HysteresisBlock
+        from diablos.blocks.hysteresis import HysteresisBlock
 
         blk = HysteresisBlock()
         params = {"upper": 0.5, "lower": -0.5, "high": 1.0, "low": 0.0, "_init_start_": True}
@@ -68,7 +68,7 @@ class TestHeldOutputResetOnNewRun:
     """Output-only probes before the first input must not return the last run's output."""
 
     def test_pid(self):
-        from blocks.pid import PIDBlock
+        from diablos.blocks.pid import PIDBlock
 
         blk = PIDBlock()
         params = {"Kp": 2.0, "Ki": 0.0, "Kd": 0.0, "N": 20.0, "dtime": 0.01, "_init_start_": True}
@@ -82,7 +82,7 @@ class TestHeldOutputResetOnNewRun:
     def test_optimizer_primitives(self, mod, cls):
         import importlib
 
-        blk = getattr(importlib.import_module(f"blocks.optimization_primitives.{mod}"), cls)()
+        blk = getattr(importlib.import_module(f"diablos.blocks.optimization_primitives.{mod}"), cls)()
         params = {"_init_start_": True}
         blk.execute(0.0, {0: np.array([1.0])}, params)
         assert float(np.ravel(params["_last_update_"])[0]) != 0.0

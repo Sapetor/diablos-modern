@@ -1,7 +1,7 @@
 """Tests for LinearSystemSolver block."""
 
 import numpy as np
-from blocks.optimization_primitives.linear_system_solver import LinearSystemSolverBlock
+from diablos.blocks.optimization_primitives.linear_system_solver import LinearSystemSolverBlock
 
 
 class TestLinearSystemSolverBlock:

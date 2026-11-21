@@ -4,7 +4,7 @@
 text" (see ``_draw_icon_text``). A block that never overrides it is invisible on the canvas
 beyond its coloured rounded rectangle, so this module pins two things:
 
-1. every class returned by :func:`lib.block_loader.load_blocks` overrides
+1. every class returned by :func:`diablos.core.block_loader.load_blocks` overrides
    ``draw_icon`` (it is not ``BaseBlock``'s method object); and
 2. calling it paints something -- the returned ``IconPath`` (replayed onto a QPainterPath) is mapped with
    the same transform ``BlockRenderer.draw_block`` uses and stroked onto a
@@ -20,9 +20,9 @@ import pytest
 from PyQt6.QtCore import QRect
 from PyQt6.QtGui import QColor, QPainter, QPixmap, QPen, QTransform
 
-from blocks.base_block import BaseBlock
-from lib.block_loader import load_blocks
-from lib.icon_path import IconPath, to_qpainterpath
+from diablos.blocks.base_block import BaseBlock
+from diablos.core.block_loader import load_blocks
+from diablos.core.icon_path import IconPath, to_qpainterpath
 
 # Blocks whose icon is painter-drawn text in BlockRenderer._draw_icon_text.
 # They override draw_icon (returning None) to document that on purpose.

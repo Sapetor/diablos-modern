@@ -17,9 +17,9 @@ Run with:
 import pytest
 from PyQt6.QtCore import QPoint, QRect
 
-from lib.lib import DSim
-from lib.simulation.block import DBlock
-from modern_ui.widgets.modern_canvas import ModernCanvas
+from diablos.core.lib import DSim
+from diablos.core.simulation.block import DBlock
+from diablos.gui.widgets.modern_canvas import ModernCanvas
 
 
 def _make_block(sid, x, y, w=100, h=80, name=None):
@@ -173,7 +173,7 @@ class TestResize:
 
     def test_resize_enforces_minimum_size(self, canvas):
         try:
-            from config.block_sizes import MIN_BLOCK_WIDTH, MIN_BLOCK_HEIGHT
+            from diablos.core.block_sizes import MIN_BLOCK_WIDTH, MIN_BLOCK_HEIGHT
 
             min_w, min_h = MIN_BLOCK_WIDTH, MIN_BLOCK_HEIGHT
         except ImportError:

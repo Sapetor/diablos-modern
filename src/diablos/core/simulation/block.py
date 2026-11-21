@@ -1,0 +1,818 @@
+"""
+DBlock class - represents a block in the simulation diagram.
+"""
+
+import logging
+import copy
+from typing import Dict, List, Optional, Any, Union
+import math
+import numpy as np
+from diablos.core.qt_types import QColor, QPoint, QRect
+
+logger = logging.getLogger(__name__)
+
+
+class DBlock:
+    """
+    Represents a functional block in the simulation diagram.
+
+    Attributes:
+        name: Unique block identifier (block_fn + sid)
+        block_fn: Block function name (e.g., "Integrator", "Gain")
+        sid: Sequential ID number
+        username: User-defined name for the block
+        rect: QRect defining block position and size
+        b_color: Block color
+        params: Block parameters dictionary
+        in_ports: Number of input ports
+        out_ports: Number of output ports
+        in_coords: List of input port coordinates
+        out_coords: List of output port coordinates
+        hierarchy: Execution hierarchy level (-1 if not set)
+        computed_data: Whether block has been computed in current step
+        input_queue: Dictionary mapping port number to received data
+    """
+
+    def __init__(
+        self,
+        block_fn: str,
+        sid: int,
+        coords: QRect,
+        color: Optional[Union[str, QColor]],
+        in_ports: int = 1,
+        out_ports: int = 1,
+        b_type: int = 2,
+        io_edit: Union[bool, str] = True,
+        fn_name: str = "block",
+        params: Optional[Dict[str, Any]] = None,
+        external: bool = False,
+        username: str = "",
+        block_class: Optional[Any] = None,
+        colors: Optional[Dict[str, QColor]] = None,
+        category: str = "Other",
+    ) -> None:
+        """
+        Initialize a block instance.
+
+        Args:
+            block_fn: Block function name (e.g., "Integrator", "Step")
+            sid: Sequential ID for this block type
+            coords: QRect defining block position and size
+            color: Block color (QColor or color name string)
+            in_ports: Number of input ports (default 1)
+            out_ports: Number of output ports (default 1)
+            b_type: Block type identifier (default 2)
+            io_edit: Port editability ('input', 'output', 'both', 'none', or bool)
+            fn_name: Function name for execution
+            params: Block parameters dictionary
+            external: Whether block uses external code
+            username: User-defined block name
+            block_class: Block class for instantiation
+            colors: Color palette dictionary
+            category: Block category (Sources, Math, Control, Sinks, Other)
+        """
+        if params is None:
+            params = {}
+
+        logger.debug(f"Initializing DBlock {block_fn}{sid}")
+        self.name: str = block_fn.lower() + str(sid)
+        self.category: str = category  # Store category for theme-aware rendering
+        self._flipped: bool = False  # set directly: no geometry exists yet
+        self.block_fn: str = block_fn
+        self.sid: int = sid
+        self.username: str = self.name if username == "" else username
+
+        self.rect: QRect = coords
+        self.left: int = self.rect.left()
+        self.top: int = self.rect.top()
+        self.width: int = self.rect.width()
+        self.height: int = self.rect.height()
+        self.height_base: int = self.height
+
+        # Handle color - can be either a QColor object or a string
+        if isinstance(color, QColor):
+            self.b_color: QColor = color
+        elif colors and color in colors:
+            self.b_color: QColor = colors[color]
+        elif color is None:
+            self.b_color: QColor = QColor()  # invalid colour = "no colour"
+        else:
+            self.b_color: QColor = QColor(color)
+
+        self.params: Dict[str, Any] = params.copy()
+        self.initial_params: Dict[str, Any] = params.copy()
+        self.exec_params: Dict[
+            str, Any
+        ] = {}  # Parameters used during execution (resolved variables)
+        self.init_params_list: List[str] = [
+            key for key in params.keys() if not (key.startswith("_") and key.endswith("_"))
+        ]
+        logger.debug(f"Initialized block {self.name} with params: {self.params}")
+
+        self.fn_name: str = fn_name
+        self.external: bool = external
+
+        self.port_radius: int = 8
+        self.in_ports: int = in_ports
+        self.out_ports: int = out_ports
+
+        self.params.update(
+            {"_name_": self.name, "_inputs_": self.in_ports, "_outputs_": self.out_ports}
+        )
+        self.rectf: QRect = QRect(
+            self.left - self.port_radius, self.top, self.width + 2 * self.port_radius, self.height
+        )
+
+        self.in_coords: List[QPoint] = []
+        self.out_coords: List[QPoint] = []
+        self.io_edit: Union[bool, str] = io_edit
+
+        # Create block_instance BEFORE update_Block so port positions can use it
+        if block_class:
+            self.block_instance = block_class()
+
+            # Check if block supports dynamic port configuration and update accordingly.
+            # update_Block() below refreshes geometry regardless, so we only need to
+            # reconcile the port count here.
+            if hasattr(self.block_instance, "get_inputs"):
+                try:
+                    # Get initial input configuration based on default params
+                    initial_inputs = self.block_instance.get_inputs(self.params)
+                    initial_input_count = len(initial_inputs)
+
+                    # Update port count if different from default
+                    if initial_input_count != self.in_ports:
+                        logger.info(
+                            f"Setting dynamic input ports for {self.name}: {initial_input_count}"
+                        )
+                        self.in_ports = initial_input_count
+                        self.params["_inputs_"] = initial_input_count
+                except (AttributeError, KeyError, TypeError, ValueError) as e:
+                    logger.error(f"Error setting initial dynamic ports for {self.name}: {str(e)}")
+        else:
+            self.block_instance = None
+
+        # Now update_Block can access block_instance for port positioning
+        self.update_Block()
+
+        self.b_type: int = b_type
+        self.dragging: bool = False
+        self.selected: bool = False
+
+        self.font_size: int = 11  # Reduced from 14 for better fit
+
+        self.hierarchy: int = -1
+        self.data_received: int = 0
+        self.computed_data: bool = False
+        self.data_sent: int = 0
+        self.input_queue: Dict[int, Any] = {}
+
+        # Multi-rate simulation support
+        # effective_sample_time: Resolved sample time for execution
+        #   -1.0 = continuous (execute every timestep)
+        #    0.0 = inherit from fastest connected input
+        #   >0.0 = fixed discrete rate (execute at this interval)
+        self.effective_sample_time: float = -1.0
+        self._next_execution_time: float = 0.0  # Next scheduled discrete execution
+        self._held_outputs: Dict[int, Any] = {}  # Held outputs between discrete executions
+        self._last_execution_time: float = -1.0  # Last time block was executed
+
+    @property
+    def doc(self) -> str:
+        """Get the documentation string from the block instance."""
+        if self.block_instance and hasattr(self.block_instance, "doc"):
+            return self.block_instance.doc
+        return ""
+
+    @property
+    def data_recieved(self) -> int:
+        """Deprecated misspelling of :attr:`data_received`.
+
+        Kept as a read/write alias so callers outside the engine (``src/diablos/core/lib.py``
+        and existing tests / saved tooling) keep working after the rename.
+        """
+        return self.data_received
+
+    @data_recieved.setter
+    def data_recieved(self, value: int) -> None:
+        self.data_received = value
+
+    # =========================================================================
+    # Multi-Rate Simulation Methods
+    # =========================================================================
+
+    def should_execute(self, current_time: float, tolerance: float = 1e-9) -> bool:
+        """
+        Check if block should execute at the current simulation time.
+
+        Args:
+            current_time: Current simulation time
+            tolerance: Floating-point comparison tolerance
+
+        Returns:
+            bool: True if block should execute, False if should skip
+        """
+        # Continuous blocks always execute
+        if self.effective_sample_time < 0:
+            return True
+
+        # Discrete blocks execute at their sample times
+        # Check if we're at or past the next scheduled execution time
+        if current_time >= self._next_execution_time - tolerance:
+            return True
+
+        return False
+
+    def schedule_next_execution(self, current_time: float) -> None:
+        """
+        Schedule the next execution time for a discrete block.
+
+        Args:
+            current_time: Current simulation time
+        """
+        if self.effective_sample_time > 0:
+            # Calculate next execution time based on sample period
+            # Align to sample time grid to avoid drift
+            n = math.floor(current_time / self.effective_sample_time + 0.5)
+            self._next_execution_time = (n + 1) * self.effective_sample_time
+            self._last_execution_time = current_time
+
+    def get_held_output(self, port: int) -> Any:
+        """
+        Get the held output value for a port (used between discrete executions).
+
+        Args:
+            port: Output port number
+
+        Returns:
+            The held output value, or 0.0 if not set
+        """
+        return self._held_outputs.get(port, 0.0)
+
+    def set_held_output(self, port: int, value: Any) -> None:
+        """
+        Set the held output value for a port.
+
+        Args:
+            port: Output port number
+            value: Value to hold
+        """
+        self._held_outputs[port] = value
+
+    def execution_step(self, sim_dt: float) -> float:
+        """
+        Time increment this block advances on each of its executions.
+
+        A block gated to a discrete rate (``effective_sample_time > 0``) is
+        only executed every Ts seconds, so the step it must integrate over is
+        Ts — not the base solver step.  Continuous blocks run every step and
+        advance by ``sim_dt``.  This is what gets stamped into
+        ``exec_params['dtime']``, which Integrator/TranFn/StateSpace/PID use
+        as their step size.
+
+        Args:
+            sim_dt: Base simulation step size
+
+        Returns:
+            float: Ts for discrete-rate blocks, sim_dt otherwise
+        """
+        if self.effective_sample_time > 0:
+            return self.effective_sample_time
+        return sim_dt
+
+    def reset_sample_time_state(self) -> None:
+        """Reset sample time execution state for a new simulation run."""
+        self._next_execution_time = 0.0
+        self._last_execution_time = -1.0
+        self._held_outputs = {}
+
+    def resolve_sample_time(self, resolved: Optional[Dict[str, Any]] = None) -> float:
+        """
+        Resolve the declared sample time from block parameters.
+
+        Checks params for 'sampling_time' or 'sample_time' keys.
+        Returns -1.0 for continuous (any negative value), 0.0 for inherited,
+        >0 for a fixed rate.  A literal is read directly; a workspace variable
+        name or expression is read from ``resolved`` (default: this block's
+        ``exec_params``, which the engine refreshes before scheduling), so all
+        three spellings give the same rate.
+
+        Raises:
+            SampleTimeError (a ValueError): the period does not resolve to a
+                finite real number.
+        """
+        from diablos.core.engine.sample_times import declared_sample_time
+
+        if resolved is None:
+            resolved = getattr(self, "exec_params", None)
+        return declared_sample_time(self.params, resolved, self.name)
+
+    def get_port_names(self) -> tuple:
+        """
+        Get the names of input and output ports.
+
+        Returns:
+            tuple: (input_names: List[str], output_names: List[str])
+        """
+        input_names = []
+        output_names = []
+
+        if self.block_instance:
+            # Get input names
+            try:
+                if hasattr(self.block_instance, "get_inputs"):
+                    inputs = self.block_instance.get_inputs(self.params)
+                elif hasattr(self.block_instance, "inputs"):
+                    inputs = self.block_instance.inputs
+                else:
+                    inputs = []
+                input_names = [inp.get("name", f"in{i}") for i, inp in enumerate(inputs)]
+            except (AttributeError, KeyError, TypeError, ValueError) as e:
+                logger.warning(f"Falling back to generic input port names for {self.name}: {e}")
+                input_names = [f"in{i}" for i in range(self.in_ports)]
+
+            # Get output names
+            try:
+                if hasattr(self.block_instance, "outputs"):
+                    outputs = self.block_instance.outputs
+                else:
+                    outputs = []
+                output_names = [out.get("name", f"out{i}") for i, out in enumerate(outputs)]
+            except (AttributeError, KeyError, TypeError, ValueError) as e:
+                logger.warning(f"Falling back to generic output port names for {self.name}: {e}")
+                output_names = [f"out{i}" for i in range(self.out_ports)]
+        else:
+            # Fallback to generic names
+            input_names = [f"in{i}" for i in range(self.in_ports)]
+            output_names = [f"out{i}" for i in range(self.out_ports)]
+
+        # Ensure we have the right number of names
+        while len(input_names) < self.in_ports:
+            input_names.append(f"in{len(input_names)}")
+        while len(output_names) < self.out_ports:
+            output_names.append(f"out{len(output_names)}")
+
+        return (input_names[: self.in_ports], output_names[: self.out_ports])
+
+    def calculate_min_size(self) -> int:
+        """
+        Calculate the minimum height required for the block based on its ports.
+
+        Only the port layout counts: height_base is the user's chosen height
+        (resize_Block overwrites it on every drag step), so folding it in here
+        would make interactive resizing grow-only in the vertical direction.
+
+        Returns:
+            int: The calculated minimum height (usually applied only if greater than default).
+        """
+        # Constants for layout
+        PORT_SPACING = 20  # Vertical spacing between ports
+        PORT_MARGIN = 12  # Top/bottom margin
+
+        max_ports = max(self.in_ports, self.out_ports)
+
+        if max_ports <= 1:
+            return 0  # no port-imposed minimum; MIN_BLOCK_HEIGHT still applies
+
+        return (max_ports * PORT_SPACING) + (PORT_MARGIN * 2)
+
+    def toggle_selection(self) -> None:
+        """Toggle the selection state of this block."""
+        self.selected = not self.selected
+
+    @property
+    def flipped(self) -> bool:
+        """Whether the block is mirrored horizontally (inputs on the right)."""
+        return self._flipped
+
+    @flipped.setter
+    def flipped(self, value: bool) -> None:
+        # Port coordinates depend on the flip, so a change re-lays them out here
+        # rather than relying on every writer (load, paste, the Flip action) to
+        # call update_Block() afterwards -- load and paste used to forget.
+        value = bool(value)
+        if value != self._flipped:
+            self._flipped = value
+            self.update_Block()
+
+    def update_Block(self) -> None:
+        """Update block geometry and port positions based on current state."""
+        self.in_coords = []
+        self.out_coords = []
+        self.input_queue = {}
+        for i in range(self.in_ports):
+            self.input_queue[i] = None
+
+        # Determine input groups if provided by block instance
+        control_group_indices = []
+        data_group_indices = []
+        top_port_indices = []  # Ports positioned on top edge
+        if hasattr(self, "block_instance") and self.block_instance:
+            try:
+                port_defs = (
+                    self.block_instance.get_inputs(self.params)
+                    if hasattr(self.block_instance, "get_inputs")
+                    else self.block_instance.inputs
+                )
+            except (AttributeError, KeyError, TypeError, ValueError) as e:
+                logger.warning(f"Could not resolve port definitions for {self.name}: {e}")
+                port_defs = []
+            for idx, pdef in enumerate(port_defs or []):
+                if isinstance(pdef, dict):
+                    if pdef.get("position") == "top":
+                        top_port_indices.append(idx)
+                    elif pdef.get("group") == "control":
+                        control_group_indices.append(idx)
+                    else:
+                        data_group_indices.append(idx)
+                else:
+                    data_group_indices.append(idx)
+
+        # Calculate minimum height based on ports
+        min_height = self.calculate_min_size()
+
+        # Ensure block is at least the calculated minimum height
+        if self.height < min_height:
+            self.height = min_height
+
+        # Also respect the base height (initial size) if distinct, though calculate_min_size usually covers this
+        if self.height < self.height_base:
+            self.height = self.height_base
+
+        self.rectf = QRect(
+            self.left - self.port_radius, self.top, self.width + 2 * self.port_radius, self.height
+        )
+        self.rect = QRect(self.left, self.top, self.width, self.height)
+
+        in_x = self.left if not self.flipped else self.left + self.width
+        out_x = self.left + self.width if not self.flipped else self.left
+
+        # Port grid snapping disabled by default for smooth resize behavior
+        # Blocks can opt-in via block_instance.use_port_grid_snap = True
+        grid_size = 10
+        use_grid_snap = False
+        if (
+            hasattr(self, "block_instance")
+            and self.block_instance
+            and hasattr(self.block_instance, "use_port_grid_snap")
+        ):
+            use_grid_snap = self.block_instance.use_port_grid_snap
+
+        # Helper to compute evenly spaced Y positions
+        def spaced_positions(count, top, height):
+            return [int(top + height * (i + 1) / (count + 1)) for i in range(count)]
+
+        # Assign Y positions with grouping: control at top section, data below
+        port_y_positions = {}
+        ctrl_section_height = int(self.height * 0.35) if control_group_indices else 0
+        data_section_height = self.height - ctrl_section_height
+        ctrl_top = self.top
+        data_top = self.top + ctrl_section_height
+
+        if control_group_indices:
+            ctrl_positions = spaced_positions(
+                len(control_group_indices), ctrl_top, max(ctrl_section_height, self.port_radius * 2)
+            )
+            for idx, pos in zip(control_group_indices, ctrl_positions):
+                port_y_positions[idx] = pos
+
+        data_indices = [
+            i
+            for i in range(self.in_ports)
+            if i not in control_group_indices and i not in top_port_indices
+        ]
+        if data_indices:
+            data_positions = spaced_positions(
+                len(data_indices), data_top, max(data_section_height, self.port_radius * 2)
+            )
+            for idx, pos in zip(data_indices, data_positions):
+                port_y_positions[idx] = pos
+
+        # Calculate top port positions (horizontal spacing on top edge)
+        top_port_positions = {}
+        if top_port_indices:
+            top_x_positions = [
+                int(self.left + self.width * (i + 1) / (len(top_port_indices) + 1))
+                for i in range(len(top_port_indices))
+            ]
+            for idx, x_pos in zip(top_port_indices, top_x_positions):
+                top_port_positions[idx] = x_pos
+
+        if self.in_ports > 0:
+            for i in range(self.in_ports):
+                if i in top_port_indices:
+                    # Top port: positioned on top edge
+                    port_x = top_port_positions.get(i, self.left + self.width // 2)
+                    port_in = QPoint(port_x, self.top)
+                else:
+                    # Left-side port
+                    if port_y_positions:
+                        port_y_float = port_y_positions.get(
+                            i, self.top + self.height * (i + 1) / (self.in_ports + 1)
+                        )
+                    else:
+                        port_y_float = self.top + self.height * (i + 1) / (self.in_ports + 1)
+                    if use_grid_snap:
+                        port_y = int(round(port_y_float / grid_size) * grid_size)
+                    else:
+                        port_y = int(port_y_float)
+                    port_in = QPoint(in_x, port_y)
+                self.in_coords.append(port_in)
+        if self.out_ports > 0:
+            for j in range(self.out_ports):
+                port_y_float = self.top + self.height * (j + 1) / (self.out_ports + 1)
+                if use_grid_snap:
+                    port_y = int(round(port_y_float / grid_size) * grid_size)
+                else:
+                    port_y = int(port_y_float)
+                port_out = QPoint(out_x, port_y)
+                self.out_coords.append(port_out)
+
+    def port_collision(self, pos):
+        if isinstance(pos, tuple):
+            pos = QPoint(*pos)
+
+        enlarged_radius = self.port_radius * 2  # Increase the clickable area
+
+        for i, coord in enumerate(self.in_coords):
+            if (pos - coord).manhattanLength() <= enlarged_radius:
+                return ("i", i)
+
+        for i, coord in enumerate(self.out_coords):
+            if (pos - coord).manhattanLength() <= enlarged_radius:
+                return ("o", i)
+
+        return (-1, -1)
+
+    def relocate_Block(self, new_pos):
+        logger.debug(f"Relocating block {self.name} to {new_pos}")
+        self.left = new_pos.x()
+        self.top = new_pos.y()
+        self.rect.moveTo(self.left, self.top)  # Update the QRect used for collision detection
+        self.rectf.moveTopLeft(QPoint(self.left, self.top))  # Update the QRectF
+        self.update_Block()
+
+    def resize_Block(self, new_width, new_height):
+        """
+        Resize the block to new dimensions.
+
+        Args:
+            new_width: New width in pixels
+            new_height: New height in pixels
+        """
+        # Clamp to minimum and maximum sizes
+        try:
+            from diablos.core.block_sizes import clamp_block_size
+
+            new_width, new_height = clamp_block_size(new_width, new_height)
+        except ImportError:
+            # Fallback min/max if config not available
+            new_width = max(50, min(new_width, 300))
+            new_height = max(40, min(new_height, 300))
+
+        # Update dimensions
+        self.width = new_width
+        self.height = new_height
+        self.height_base = new_height
+
+        # Update rect properties
+        self.rect = QRect(self.left, self.top, self.width, self.height)
+        self.rectf = QRect(
+            self.left - self.port_radius, self.top, self.width + 2 * self.port_radius, self.height
+        )
+
+        # Update port positions
+        self.update_Block()
+
+        logger.debug(f"Resized block {self.name} to {new_width}x{new_height}")
+
+    @staticmethod
+    def _parse_port_count(value, current):
+        """Parse a port count from dialog input, clamped to a non-negative int.
+
+        Returns ``current`` unchanged if the value is non-numeric or negative,
+        so invalid input cannot leave the block with an inconsistent port count.
+        """
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            logger.warning(f"Invalid port count {value!r}; keeping {current}")
+            return current
+        if parsed < 0:
+            logger.warning(f"Negative port count {parsed}; keeping {current}")
+            return current
+        return parsed
+
+    def change_port_numbers(self):
+        logger.debug(f"Changing port numbers for block: {self.name}")
+        from diablos.core.dialogs import PortDialog  # GUI-only; keeps the engine Qt-free
+
+        if self.io_edit == "both":
+            # Inputs and outputs can be edited
+            dialog = PortDialog(self.name, {"inputs": self.in_ports, "outputs": self.out_ports})
+            if dialog.exec():
+                new_io = dialog.get_values()
+                self.in_ports = self._parse_port_count(new_io["inputs"], self.in_ports)
+                self.out_ports = self._parse_port_count(new_io["outputs"], self.out_ports)
+                logger.debug(
+                    f"Changed input ports to {self.in_ports} and output ports to {self.out_ports}"
+                )
+
+        elif self.io_edit == "input":
+            # Only inputs can be edited
+            dialog = PortDialog(self.name, {"inputs": self.in_ports})
+            if dialog.exec():
+                new_io = dialog.get_values()
+                self.in_ports = self._parse_port_count(new_io["inputs"], self.in_ports)
+                logger.debug(f"Changed input ports to {self.in_ports}")
+
+        elif self.io_edit == "output":
+            # Only outputs can be edited
+            dialog = PortDialog(self.name, {"outputs": self.out_ports})
+            if dialog.exec():
+                new_io = dialog.get_values()
+                self.out_ports = self._parse_port_count(new_io["outputs"], self.out_ports)
+                logger.debug(f"Changed output ports to {self.out_ports}")
+
+        else:
+            logger.debug(f"Port number change not allowed for block: {self.name}")
+            return
+
+        self.update_Block()
+
+        # To maintain the data in the parameters for the functions
+        self.params["_inputs_"] = self.in_ports
+        self.params["_outputs_"] = self.out_ports
+
+        logger.debug(f"Port numbers updated for block: {self.name}")
+
+    def saving_params(self):
+        ed_dict = {}
+        for key in self.params.keys():
+            if key in self.init_params_list:
+                if isinstance(self.params[key], np.ndarray):
+                    arraylist = self.params[key]
+                    ed_dict[key] = arraylist.tolist()
+                else:
+                    ed_dict[key] = self.params[key]
+        return ed_dict
+
+    def loading_params(self, new_params):
+        """
+        Load and normalize parameters, converting lists to numpy arrays.
+
+        Args:
+            new_params: Dictionary of parameters to load
+
+        Returns:
+            A new dictionary with list values converted to numpy arrays. The
+            input dict is left unmodified.
+        """
+        out = dict(new_params)
+        try:
+            for key, value in out.items():
+                if isinstance(value, list):
+                    out[key] = np.array(value)
+            return out
+        except (TypeError, ValueError) as e:
+            logger.warning(f"Failed to convert parameter lists to arrays: {e}")
+            return out
+
+    def _refresh_dynamic_ports(self) -> None:
+        """Recompute input port count from the block's dynamic ``get_inputs``.
+
+        Blocks that support dynamic port configuration recompute their input
+        count from current params; when it changes, update geometry/ports.
+        Shared by ``__init__`` and ``update_params``.
+        """
+        if not (self.block_instance and hasattr(self.block_instance, "get_inputs")):
+            return
+        try:
+            new_inputs_config = self.block_instance.get_inputs(self.params)
+            new_input_count = len(new_inputs_config)
+        except (AttributeError, KeyError, TypeError, ValueError) as e:
+            logger.error(f"Error updating dynamic ports for {self.name}: {str(e)}")
+            return
+
+        if new_input_count != self.in_ports:
+            logger.info(
+                f"Updating {self.name} input ports from {self.in_ports} to {new_input_count}"
+            )
+            self.in_ports = new_input_count
+            self.params["_inputs_"] = new_input_count
+            # Update block geometry and port positions
+            self.update_Block()
+
+    def _refresh_tranfn_btype(self) -> None:
+        """Recompute ``b_type`` for TranFn blocks from numerator/denominator.
+
+        A strictly proper transfer function (more poles than zeros) is a state
+        block (b_type 1); otherwise it has direct feedthrough (b_type 2). Also
+        flags the block for re-initialization. Shared by ``update_params`` and
+        block construction.
+        """
+        if self.block_fn != "TranFn":
+            return
+        num = self.params.get("numerator", [])
+        den = self.params.get("denominator", [])
+        if len(den) > len(num):
+            self.b_type = 1
+        else:
+            self.b_type = 2
+        self.params["_init_start_"] = True
+
+    def load_external_data(self, params_reset=False):
+        # Implement this method based on your specific requirements for loading external data
+        pass
+
+    def reload_external_data(self):
+        # Implement this method based on your specific requirements for reloading external data
+        pass
+
+    def update_params(self, new_params):
+        if new_params:
+            for key, value in new_params.items():
+                if key in self.params:
+                    self.params[key] = value
+
+        # Update port count if the block reconfigures ports from params
+        self._refresh_dynamic_ports()
+
+        self._refresh_tranfn_btype()
+
+        logger.debug(f"Final parameters for {self.name}: {self.params}")
+
+    @property
+    def font(self):
+        """The block-name font (a ``QFont``), created on first use.
+
+        Building a QFont needs a running QGuiApplication, which a headless
+        engine run does not have, so only the GUI (the renderer) creates it.
+        """
+        font = self.__dict__.get("_font")
+        if font is None:
+            from PyQt6.QtGui import QFont
+
+            font = QFont()
+            font.setPointSize(self.font_size)
+            self._font = font
+        return font
+
+    @font.setter
+    def font(self, value):
+        self._font = value
+
+    def __deepcopy__(self, memo):
+        """
+        Custom deepcopy: GUI objects (QFont/QPixmap) are not copied, and Qt
+        value types are rebuilt with their copy constructors.
+        """
+        # Create a new instance
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+
+        # Attributes that must never be silently nulled: corrupting them would
+        # produce hard-to-trace AttributeErrors / wrong results far from here.
+        load_bearing_keys = {
+            "params",
+            "initial_params",
+            "exec_params",
+            "rect",
+            "rectf",
+            "b_color",
+            "name",
+            "block_fn",
+            "sid",
+        }
+
+        for k, v in self.__dict__.items():
+            if k in ("image", "pixmap", "_font"):
+                # GUI objects (QPixmap/QFont) are not copied; the font is
+                # recreated on first use (see the ``font`` property).
+                setattr(result, k, None)
+            elif isinstance(v, QColor):
+                # QColor cannot always be deepcopied; reconstruct it explicitly
+                setattr(result, k, QColor(v))
+            elif isinstance(v, (QRect, QPoint)):
+                # Qt geometry types: reconstruct via copy constructor
+                setattr(result, k, type(v)(v))
+            elif k == "sub_blocks":
+                # List of blocks, recurse
+                setattr(result, k, copy.deepcopy(v, memo))
+            else:
+                try:
+                    setattr(result, k, copy.deepcopy(v, memo))
+                except Exception as e:
+                    # Load-bearing state must not be silently corrupted: re-raise
+                    # so the failure surfaces at its real cause.
+                    if k in load_bearing_keys:
+                        logger.error(f"Deepcopy failed for load-bearing key {k}: {e}")
+                        raise
+                    logger.warning(f"Deepcopy failed for key {k}: {e}")
+                    setattr(result, k, None)
+
+        return result
+
+    # Add reload_image method if needed to restore pixmap?
+    # Usually update_Block handles drawing or re-creating it.

@@ -1,5 +1,5 @@
 import pytest
-from blocks.prbs import PRBSBlock
+from diablos.blocks.prbs import PRBSBlock
 
 
 def test_prbs_deterministic_sequence():

@@ -6,9 +6,9 @@ Before 2026-10-10 any feedthrough cycle without a memory block failed init with
 feedback path) only converges when the loop is a contraction:
 scripts/benchmarks/pathsim/s2_algebraic_loop.py measured it diverging for
 y = u - 3y and oscillating for y = u - tanh(3y). Each loop is now a strongly
-connected component solved as a unit every step (lib/engine/algebraic_loop.py).
+connected component solved as a unit every step (src/diablos/core/engine/algebraic_loop.py).
 Since phase 3 of the hybrid compiled path the compiler solves them too, inside
-the RHS (lib/engine/compiled_loops.py), so a diagram with a loop compiles and
+the RHS (src/diablos/core/engine/compiled_loops.py), so a diagram with a loop compiles and
 linearizes; the interpreter's solver remains for interpreter runs.
 """
 
@@ -18,8 +18,8 @@ from scipy.optimize import brentq
 
 
 def _run(builder, tmp_path, sim_time, sim_dt):
-    from lib.analysis.resim import harvest_scope_signals
-    from lib.cli import load_diagram
+    from diablos.core.analysis.resim import harvest_scope_signals
+    from diablos.core.cli import load_diagram
 
     path = tmp_path / "loop.diablos"
     builder.save(str(path))
@@ -32,7 +32,7 @@ def _run(builder, tmp_path, sim_time, sim_dt):
 
 def _scalar_loop(expr, signs="+-", u=1.0, sim_time=0.5, sim_dt=0.1):
     """u -> Sum -> y, y -> Function(expr) -> Sum; Scope on y."""
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     b = DiagramBuilder(sim_time=sim_time, sim_dt=sim_dt)
     c = b.add_block("Constant", 0, 0, name="u", params={"value": u})
@@ -88,7 +88,7 @@ class TestScalarLoops:
 class TestStructuredLoops:
     def test_two_feedback_paths_into_one_sum(self, qapp, tmp_path):
         """One SCC with two cycles: y = u - 0.2 y - 0.3 y."""
-        from lib.diagram_builder import DiagramBuilder
+        from diablos.core.diagram_builder import DiagramBuilder
 
         b = DiagramBuilder(sim_time=0.3, sim_dt=0.1)
         c = b.add_block("Constant", 0, 0, name="u", params={"value": 1.0})
@@ -112,7 +112,7 @@ class TestStructuredLoops:
         G carries state, so the solver's repeated trial evaluations must not
         advance it. Closed loop (s+2)/(2s+3): y(t) = 2/3 - exp(-1.5 t)/6.
         """
-        from lib.diagram_builder import DiagramBuilder
+        from diablos.core.diagram_builder import DiagramBuilder
 
         b = DiagramBuilder(sim_time=3.0, sim_dt=0.001)
         c = b.add_block("Constant", 0, 0, name="u", params={"value": 1.0})
@@ -134,7 +134,7 @@ class TestStructuredLoops:
         assert np.max(np.abs(y - exact)) < 1e-3
 
     def test_loop_through_a_discrete_block_is_rejected_by_name(self, qapp, tmp_path):
-        from lib.diagram_builder import DiagramBuilder
+        from diablos.core.diagram_builder import DiagramBuilder
 
         b = DiagramBuilder(sim_time=0.3, sim_dt=0.1)
         c = b.add_block("Constant", 0, 0, name="u", params={"value": 1.0})
@@ -160,7 +160,7 @@ class TestStructuredLoops:
 
 def _zoh_loop(sim_time=1.0):
     """ramp -> ZOH(0.2) -> Sum(+-) -> y, y -> Gain(0.5) -> Sum. y = r(kT) / 1.5."""
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     b = DiagramBuilder(sim_time=sim_time, sim_dt=0.1)
     r = b.add_block("Ramp", 0, 0, name="r", params={"slope": 1.0, "delay": 0.0})
@@ -187,7 +187,7 @@ class TestLoopBehindAZoh:
     @pytest.mark.parametrize("sim_dt", [0.1, 0.05])
     def test_staircase_edges_land_on_sample_instants(self, qapp, tmp_path, sim_dt):
         """Driven the way the GUI runs: execution_init + the step loop."""
-        from lib.cli import load_diagram
+        from diablos.core.cli import load_diagram
 
         path = tmp_path / "zoh_loop.diablos"
         _zoh_loop().save(str(path))
@@ -211,9 +211,9 @@ class TestLoopBehindAZoh:
         """ramp -> loop A -> ZOH(0.2) -> loop B. The ZOH's input exists only
         once loop A is solved, so loop B must not solve on the ZOH's stale
         value in the same sweep. yB = r(kT) / 2.25."""
-        from lib.analysis.resim import harvest_scope_signals
-        from lib.cli import load_diagram
-        from lib.diagram_builder import DiagramBuilder
+        from diablos.core.analysis.resim import harvest_scope_signals
+        from diablos.core.cli import load_diagram
+        from diablos.core.diagram_builder import DiagramBuilder
 
         b = DiagramBuilder(sim_time=1.0, sim_dt=0.1)
         r = b.add_block("Ramp", 0, 0, name="r", params={"slope": 1.0, "delay": 0.0})
@@ -245,7 +245,7 @@ class TestLoopBehindAZoh:
 class TestLoopsOnTheCompiledPath:
     def _proper_tf_loop(self):
         """r -> Sum(+-) -> (s+2)/(s+1) -> feedback: closed loop (s+2)/(2s+3)."""
-        from lib.diagram_builder import DiagramBuilder
+        from diablos.core.diagram_builder import DiagramBuilder
 
         b = DiagramBuilder(sim_time=3.0, sim_dt=0.01)
         r = b.add_block("Step", 0, 0, name="r", params={"value": 1.0, "delay": 0.0, "type": "up"})
@@ -273,8 +273,8 @@ class TestLoopsOnTheCompiledPath:
         assert np.max(np.abs(np.ravel(data["signals"]["y"]) - y_ref)) < 1e-8
 
     def test_linearizer_solves_through_the_loop(self, qapp, tmp_path):
-        from lib.analysis.linearizer import Linearizer
-        from lib.cli import load_diagram
+        from diablos.core.analysis.linearizer import Linearizer
+        from diablos.core.cli import load_diagram
 
         path = tmp_path / "loop.diablos"
         self._proper_tf_loop().save(str(path))
@@ -293,8 +293,8 @@ class TestLoopsOnTheCompiledPath:
         import subprocess
         import sys
 
-        from lib.cli import export_python
-        from lib.diagram_builder import DiagramBuilder
+        from diablos.core.cli import export_python
+        from diablos.core.diagram_builder import DiagramBuilder
 
         if which == "gain":
             b = DiagramBuilder(sim_time=0.3, sim_dt=0.1)

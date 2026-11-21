@@ -1,6 +1,6 @@
 """User block modules: discovery, isolation, registration and end-to-end use.
 
-``lib/user_blocks.py`` lets a third party add a block by dropping a ``.py``
+``src/diablos/core/user_blocks.py`` lets a third party add a block by dropping a ``.py``
 file into a folder -- no repository edit, no rebuild.  The properties that make
 that safe are all tested here:
 
@@ -25,7 +25,7 @@ import types
 
 import pytest
 
-from lib import user_blocks as ub
+from diablos.core import user_blocks as ub
 
 # --------------------------------------------------------------------------- #
 # Module sources written into tmp_path
@@ -33,7 +33,7 @@ from lib import user_blocks as ub
 
 GOOD_BLOCK = """
 import numpy as np
-from blocks.base_block import BaseBlock
+from diablos.blocks.base_block import BaseBlock
 
 BLOCK_API_VERSION = 1
 
@@ -68,7 +68,7 @@ raise RuntimeError("this module is broken on purpose")
 """
 
 INVALID_BLOCK = """
-from blocks.base_block import BaseBlock
+from diablos.blocks.base_block import BaseBlock
 
 
 class InvalidBlock(BaseBlock):
@@ -93,7 +93,7 @@ class InvalidBlock(BaseBlock):
 """
 
 FUTURE_API = """
-from blocks.base_block import BaseBlock
+from diablos.blocks.base_block import BaseBlock
 
 BLOCK_API_VERSION = 9999
 
@@ -186,9 +186,9 @@ class TestSearchPaths:
 
     def test_the_builtin_blocks_package_is_never_a_user_folder(self, monkeypatch):
         """In a dev checkout ``<user data>/blocks`` IS the built-in package."""
-        import blocks.base_block
+        import diablos.blocks.base_block
 
-        builtin = os.path.dirname(os.path.abspath(blocks.base_block.__file__))
+        builtin = os.path.dirname(os.path.abspath(diablos.blocks.base_block.__file__))
         monkeypatch.setenv(ub.BLOCKS_ENV_VAR, builtin)
         monkeypatch.setattr(ub, "get_user_data_dir", lambda: os.path.dirname(builtin))
 
@@ -309,7 +309,7 @@ class TestLoading:
 
     def test_imported_builtin_classes_are_not_re_registered(self, tmp_path, monkeypatch):
         folder = tmp_path / "blocks"
-        _write(folder, "reexport.py", "from blocks.gain import GainBlock  # noqa: F401\n")
+        _write(folder, "reexport.py", "from diablos.blocks.gain import GainBlock  # noqa: F401\n")
         monkeypatch.setenv(ub.BLOCKS_ENV_VAR, str(folder))
 
         report = ub.load_user_blocks()
@@ -346,7 +346,7 @@ class TestLoading:
 class TestFrozenMode:
     def test_user_blocks_load_when_frozen(self, tmp_path, monkeypatch):
         """The bundled blocks/ package is not scanned, but user blocks are."""
-        from lib.block_loader import load_blocks
+        from diablos.core.block_loader import load_blocks
 
         folder = tmp_path / "userdata" / "blocks"
         _write(folder, "acme.py", _good())
@@ -360,7 +360,7 @@ class TestFrozenMode:
         assert "Gain" in names, "the frozen static registry must still provide built-ins"
 
     def test_frozen_user_folder_follows_app_paths(self, monkeypatch):
-        from lib import app_paths
+        from diablos.core import app_paths
 
         monkeypatch.setattr(sys, "frozen", True, raising=False)
         monkeypatch.setattr(sys, "platform", "darwin")
@@ -381,7 +381,7 @@ class TestFrozenMode:
 @pytest.mark.unit
 class TestBlockLoaderIntegration:
     def test_load_blocks_appends_user_classes_after_builtins(self, tmp_path, monkeypatch):
-        from lib.block_loader import load_blocks, load_builtin_blocks
+        from diablos.core.block_loader import load_blocks, load_builtin_blocks
 
         folder = tmp_path / "blocks"
         _write(folder, "acme.py", _good())
@@ -395,7 +395,7 @@ class TestBlockLoaderIntegration:
         assert everything[-1]().block_name == "AcmeScale"
 
     def test_include_user_false_skips_third_party_code(self, tmp_path, monkeypatch):
-        from lib.block_loader import load_blocks
+        from diablos.core.block_loader import load_blocks
 
         folder = tmp_path / "blocks"
         _write(folder, "acme.py", _good())
@@ -409,8 +409,8 @@ class TestBlockLoaderIntegration:
 @pytest.mark.qt
 class TestPaletteRegistration:
     def test_a_user_block_reaches_the_palette_with_a_marker(self, qapp, tmp_path, monkeypatch):
-        from lib.lib import DSim
-        from modern_ui.widgets.modern_palette import (
+        from diablos.core.lib import DSim
+        from diablos.gui.widgets.modern_palette import (
             CompactBlockRow,
             ModernBlockPalette,
             is_user_menu_block,
@@ -443,7 +443,7 @@ class TestPaletteRegistration:
             palette.deleteLater()
 
     def test_reload_blocks_picks_up_a_new_file(self, qapp, tmp_path, monkeypatch):
-        from lib.lib import DSim
+        from diablos.core.lib import DSim
 
         folder = tmp_path / "blocks"
         monkeypatch.setenv(ub.BLOCKS_ENV_VAR, str(folder))
@@ -503,7 +503,7 @@ class TestMissingBlockReporting:
 @pytest.mark.integration
 class TestSavedDiagramRoundTrip:
     def _diagram(self, tmp_path):
-        from lib.diagram_builder import DiagramBuilder
+        from diablos.core.diagram_builder import DiagramBuilder
 
         builder = DiagramBuilder(sim_time=0.2, sim_dt=0.01)
         step = builder.add_block("Step", 50, 100, params={"value": 1.0, "delay": 0.0})
@@ -516,8 +516,8 @@ class TestSavedDiagramRoundTrip:
         return path
 
     def _dsim(self):
-        from lib.lib import DSim
-        from lib.workspace import WorkspaceManager
+        from diablos.core.lib import DSim
+        from diablos.core.workspace import WorkspaceManager
 
         WorkspaceManager._instance = None
         return DSim()
@@ -538,7 +538,7 @@ class TestSavedDiagramRoundTrip:
         ok, message = dsim.run_tuning_simulation(0.2, 0.01)
         assert ok, message
 
-        from lib.analysis.resim import harvest_scope_signals
+        from diablos.core.analysis.resim import harvest_scope_signals
 
         harvested = harvest_scope_signals(dsim)
         trace = next(iter(harvested["signals"].values()))
@@ -561,7 +561,7 @@ class TestSavedDiagramRoundTrip:
         dsim.file_service.apply_loaded_data(data)
 
         # Kept as a placeholder (not dropped), so saving cannot delete it.
-        from lib.simulation.missing_block import missing_block_types
+        from diablos.core.simulation.missing_block import missing_block_types
 
         assert missing_block_types(dsim.blocks_list) == ["AcmeScale"]
         known = [mb.block_fn for mb in dsim.menu_blocks]
@@ -577,7 +577,7 @@ class TestMenuActions:
     def test_library_menu_lists_the_user_block_actions(self, qapp):
         from PyQt6.QtWidgets import QMenuBar
 
-        from modern_ui.builders.menu_builder import MenuBuilder
+        from diablos.gui.builders.menu_builder import MenuBuilder
 
         calls = []
         window = types.SimpleNamespace(
@@ -602,7 +602,7 @@ class TestMenuActions:
             menubar.deleteLater()
 
     def test_main_window_exposes_the_facades(self):
-        from modern_ui.main_window import ModernDiaBloSWindow
+        from diablos.gui.main_window import ModernDiaBloSWindow
 
         assert callable(getattr(ModernDiaBloSWindow, "reload_user_blocks", None))
         assert callable(getattr(ModernDiaBloSWindow, "open_user_blocks_folder", None))

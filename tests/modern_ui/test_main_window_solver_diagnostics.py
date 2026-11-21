@@ -1,7 +1,7 @@
 """
 Tests for ModernDiaBloSWindow's solver-diagnostics status-bar hookup.
 
-lib/engine/simulation_engine.py records a compact per-run diagnostics dict and a
+src/diablos/core/engine/simulation_engine.py records a compact per-run diagnostics dict and a
 one-line summary; DSim exposes it as ``last_solver_diagnostics_summary``. When a
 batch run finishes, ``SimulationController._finish_batch`` appends that summary
 to the finished status line (and logs it) -- but only when the compiled solver
@@ -23,7 +23,7 @@ import pytest
 
 @pytest.fixture(scope="module")
 def window(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     yield w

@@ -84,8 +84,8 @@ def diablos_run(
     ``result`` holds the harvested Scope signals, the solver path that actually
     ran (``last_solver_type``), and an error string when the run was rejected.
     """
-    from lib.analysis.resim import harvest_scope_signals
-    from lib.cli import load_diagram
+    from diablos.core.analysis.resim import harvest_scope_signals
+    from diablos.core.cli import load_diagram
 
     dsim, _ = load_diagram(str(path))
     dsim.use_fast_solver = use_fast_solver

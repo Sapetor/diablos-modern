@@ -12,7 +12,7 @@ class TestGainBlock:
 
     def test_scalar_gain(self):
         """Test scalar gain multiplication."""
-        from blocks.gain import GainBlock
+        from diablos.blocks.gain import GainBlock
 
         block = GainBlock()
         params = {"gain": 2.0}
@@ -23,7 +23,7 @@ class TestGainBlock:
 
     def test_negative_gain(self):
         """Test negative gain (inversion)."""
-        from blocks.gain import GainBlock
+        from diablos.blocks.gain import GainBlock
 
         block = GainBlock()
         params = {"gain": -1.0}
@@ -34,7 +34,7 @@ class TestGainBlock:
 
     def test_vector_input_scalar_gain(self):
         """Test scalar gain applied to vector input."""
-        from blocks.gain import GainBlock
+        from diablos.blocks.gain import GainBlock
 
         block = GainBlock()
         params = {"gain": 3.0}
@@ -46,7 +46,7 @@ class TestGainBlock:
 
     def test_matrix_gain(self):
         """Test matrix gain for MIMO systems."""
-        from blocks.gain import GainBlock
+        from diablos.blocks.gain import GainBlock
 
         block = GainBlock()
         # 2x2 matrix gain
@@ -60,7 +60,7 @@ class TestGainBlock:
 
     def test_zero_gain(self):
         """Test zero gain produces zero output."""
-        from blocks.gain import GainBlock
+        from diablos.blocks.gain import GainBlock
 
         block = GainBlock()
         params = {"gain": 0.0}
@@ -76,7 +76,7 @@ class TestSumBlock:
 
     def test_sum_two_inputs(self):
         """Test summing two inputs."""
-        from blocks.sum import SumBlock
+        from diablos.blocks.sum import SumBlock
 
         block = SumBlock()
         params = {"sign": "++"}
@@ -87,7 +87,7 @@ class TestSumBlock:
 
     def test_sum_subtraction(self):
         """Test subtraction (+-) operation."""
-        from blocks.sum import SumBlock
+        from diablos.blocks.sum import SumBlock
 
         block = SumBlock()
         params = {"sign": "+-"}
@@ -98,7 +98,7 @@ class TestSumBlock:
 
     def test_sum_three_inputs(self):
         """Test summing three inputs."""
-        from blocks.sum import SumBlock
+        from diablos.blocks.sum import SumBlock
 
         block = SumBlock()
         params = {"sign": "++-"}
@@ -109,7 +109,7 @@ class TestSumBlock:
 
     def test_sum_vectors(self):
         """Test summing vector inputs."""
-        from blocks.sum import SumBlock
+        from diablos.blocks.sum import SumBlock
 
         block = SumBlock()
         params = {"sign": "++"}
@@ -126,7 +126,7 @@ class TestMathFunctionBlock:
 
     def test_sin_function(self):
         """Test sine function."""
-        from blocks.math_function import MathFunctionBlock
+        from diablos.blocks.math_function import MathFunctionBlock
 
         block = MathFunctionBlock()
         params = {"function": "sin"}
@@ -137,7 +137,7 @@ class TestMathFunctionBlock:
 
     def test_cos_function(self):
         """Test cosine function."""
-        from blocks.math_function import MathFunctionBlock
+        from diablos.blocks.math_function import MathFunctionBlock
 
         block = MathFunctionBlock()
         params = {"function": "cos"}
@@ -148,7 +148,7 @@ class TestMathFunctionBlock:
 
     def test_exp_function(self):
         """Test exponential function."""
-        from blocks.math_function import MathFunctionBlock
+        from diablos.blocks.math_function import MathFunctionBlock
 
         block = MathFunctionBlock()
         params = {"function": "exp"}
@@ -159,7 +159,7 @@ class TestMathFunctionBlock:
 
     def test_log_function(self):
         """Test natural log function."""
-        from blocks.math_function import MathFunctionBlock
+        from diablos.blocks.math_function import MathFunctionBlock
 
         block = MathFunctionBlock()
         params = {"function": "log"}
@@ -170,7 +170,7 @@ class TestMathFunctionBlock:
 
     def test_sqrt_function(self):
         """Test square root function."""
-        from blocks.math_function import MathFunctionBlock
+        from diablos.blocks.math_function import MathFunctionBlock
 
         block = MathFunctionBlock()
         params = {"function": "sqrt"}
@@ -181,7 +181,7 @@ class TestMathFunctionBlock:
 
     def test_square_function(self):
         """Test square function."""
-        from blocks.math_function import MathFunctionBlock
+        from diablos.blocks.math_function import MathFunctionBlock
 
         block = MathFunctionBlock()
         params = {"function": "square"}
@@ -192,7 +192,7 @@ class TestMathFunctionBlock:
 
     def test_abs_function(self):
         """Test absolute value function."""
-        from blocks.math_function import MathFunctionBlock
+        from diablos.blocks.math_function import MathFunctionBlock
 
         block = MathFunctionBlock()
         params = {"function": "abs"}
@@ -203,7 +203,7 @@ class TestMathFunctionBlock:
 
     def test_function_on_vector(self):
         """Test math function applied element-wise to vector."""
-        from blocks.math_function import MathFunctionBlock
+        from diablos.blocks.math_function import MathFunctionBlock
 
         block = MathFunctionBlock()
         params = {"function": "square"}
@@ -220,7 +220,7 @@ class TestDerivativeBlock:
 
     def test_derivative_constant_is_zero(self):
         """Test derivative of constant is zero."""
-        from blocks.derivative import DerivativeBlock
+        from diablos.blocks.derivative import DerivativeBlock
 
         block = DerivativeBlock()
         params = {"dt": 0.01, "_last_value_": None, "_last_time_": None}
@@ -233,7 +233,7 @@ class TestDerivativeBlock:
 
     def test_derivative_linear_ramp(self):
         """Test derivative of linear ramp is constant."""
-        from blocks.derivative import DerivativeBlock
+        from diablos.blocks.derivative import DerivativeBlock
 
         block = DerivativeBlock()
         params = {"dt": 0.01, "_last_value_": None, "_last_time_": None}
@@ -252,7 +252,7 @@ class TestProductBlock:
 
     def test_product_two_scalars(self):
         """Test product of two scalar inputs."""
-        from blocks.sigproduct import SigProductBlock
+        from diablos.blocks.sigproduct import SigProductBlock
 
         block = SigProductBlock()
         params = {}
@@ -263,7 +263,7 @@ class TestProductBlock:
 
     def test_product_with_zero(self):
         """Test product with zero gives zero."""
-        from blocks.sigproduct import SigProductBlock
+        from diablos.blocks.sigproduct import SigProductBlock
 
         block = SigProductBlock()
         params = {}
@@ -274,7 +274,7 @@ class TestProductBlock:
 
     def test_product_negative_numbers(self):
         """Test product with negative numbers."""
-        from blocks.sigproduct import SigProductBlock
+        from diablos.blocks.sigproduct import SigProductBlock
 
         block = SigProductBlock()
         params = {}
@@ -285,7 +285,7 @@ class TestProductBlock:
 
     def test_product_identity(self):
         """Test product with 1 is identity."""
-        from blocks.sigproduct import SigProductBlock
+        from diablos.blocks.sigproduct import SigProductBlock
 
         block = SigProductBlock()
         params = {}

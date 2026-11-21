@@ -7,11 +7,11 @@ from PyQt6.QtCore import QRect
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
-    from lib.lib import DSim
-    from blocks.subsystem import Subsystem
-    from blocks.inport import Inport
-    from blocks.outport import Outport
-    from lib.simulation.block import DBlock
+    from diablos.core.lib import DSim
+    from diablos.blocks.subsystem import Subsystem
+    from diablos.blocks.inport import Inport
+    from diablos.blocks.outport import Outport
+    from diablos.core.simulation.block import DBlock
 except Exception as e:
     print(f"IMPORT ERROR: {e}")
     sys.exit(1)
@@ -92,7 +92,7 @@ class TestSubsystems(unittest.TestCase):
         # Internal Connections
         # In1 -> Gain1
         # Gain1 -> Out1
-        from lib.simulation.connection import DLine
+        from diablos.core.simulation.connection import DLine
 
         # Need dummy points for DLine init
         l1 = DLine(1, "In1", 0, "Gain1", 0, [(0, 0), (10, 10)])
@@ -140,7 +140,7 @@ class TestSubsystems(unittest.TestCase):
         # We need to patch resolve_params because we have incomplete blocks
         # Or test Flattener directly.
 
-        from lib.engine.flattener import Flattener
+        from diablos.core.engine.flattener import Flattener
 
         flattener = Flattener()
 

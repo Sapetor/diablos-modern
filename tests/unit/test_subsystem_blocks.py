@@ -18,7 +18,7 @@ class TestInport:
 
     def test_inport_creation(self, qapp):
         """Test basic Inport creation."""
-        from blocks.inport import Inport
+        from diablos.blocks.inport import Inport
 
         block = Inport()
         assert block.block_fn == "Inport"
@@ -27,7 +27,7 @@ class TestInport:
 
     def test_inport_default_name(self, qapp):
         """Test Inport uses default username 'In1'."""
-        from blocks.inport import Inport
+        from diablos.blocks.inport import Inport
 
         block = Inport()
         assert block.username == "In1"
@@ -35,7 +35,7 @@ class TestInport:
 
     def test_inport_custom_name(self, qapp):
         """Test Inport with custom username."""
-        from blocks.inport import Inport
+        from diablos.blocks.inport import Inport
 
         block = Inport(block_name="CustomIn")
         assert block.username == "CustomIn"
@@ -43,7 +43,7 @@ class TestInport:
 
     def test_inport_output_port_position(self, qapp):
         """Test Inport has correct output port structure."""
-        from blocks.inport import Inport
+        from diablos.blocks.inport import Inport
 
         block = Inport()
         assert "out" in block.ports
@@ -53,14 +53,14 @@ class TestInport:
 
     def test_inport_no_input_ports(self, qapp):
         """Test Inport has no input ports."""
-        from blocks.inport import Inport
+        from diablos.blocks.inport import Inport
 
         block = Inport()
         assert "in" not in block.ports or not block.ports.get("in")
 
     def test_inport_update_does_nothing(self, qapp):
         """Test Inport update is a no-op (flattening handles it)."""
-        from blocks.inport import Inport
+        from diablos.blocks.inport import Inport
 
         block = Inport()
         # Should not raise
@@ -70,7 +70,7 @@ class TestInport:
 
     def test_inport_dimensions(self, qapp):
         """Test Inport has expected dimensions."""
-        from blocks.inport import Inport
+        from diablos.blocks.inport import Inport
 
         block = Inport()
         assert block.width == 40
@@ -78,7 +78,7 @@ class TestInport:
 
     def test_inport_color(self, qapp):
         """Test Inport default color is green."""
-        from blocks.inport import Inport
+        from diablos.blocks.inport import Inport
         from PyQt6.QtGui import QColor
 
         block = Inport()
@@ -86,7 +86,7 @@ class TestInport:
 
     def test_inport_custom_color(self, qapp):
         """Test Inport with custom color."""
-        from blocks.inport import Inport
+        from diablos.blocks.inport import Inport
         from PyQt6.QtGui import QColor
 
         block = Inport(color="blue")
@@ -94,14 +94,14 @@ class TestInport:
 
     def test_inport_block_type(self, qapp):
         """Test Inport has correct block_type attribute."""
-        from blocks.inport import Inport
+        from diablos.blocks.inport import Inport
 
         block = Inport()
         assert block.block_type == "Inport"
 
     def test_inport_coords_tuple(self, qapp):
         """Test Inport accepts coords as tuple."""
-        from blocks.inport import Inport
+        from diablos.blocks.inport import Inport
 
         block = Inport(coords=(10, 20, 50, 40))
         assert block.left == 10
@@ -109,7 +109,7 @@ class TestInport:
 
     def test_inport_coords_qrect(self, qapp):
         """Test Inport accepts coords as QRect."""
-        from blocks.inport import Inport
+        from diablos.blocks.inport import Inport
 
         rect = QRect(15, 25, 50, 40)
         block = Inport(coords=rect)
@@ -118,7 +118,7 @@ class TestInport:
 
     def test_inport_sid(self, qapp):
         """Test Inport accepts custom sid."""
-        from blocks.inport import Inport
+        from diablos.blocks.inport import Inport
 
         block = Inport(sid=42)
         assert block.sid == 42
@@ -130,7 +130,7 @@ class TestOutport:
 
     def test_outport_creation(self, qapp):
         """Test basic Outport creation."""
-        from blocks.outport import Outport
+        from diablos.blocks.outport import Outport
 
         block = Outport()
         assert block.block_fn == "Outport"
@@ -139,7 +139,7 @@ class TestOutport:
 
     def test_outport_default_name(self, qapp):
         """Test Outport uses default username 'Out1'."""
-        from blocks.outport import Outport
+        from diablos.blocks.outport import Outport
 
         block = Outport()
         assert block.username == "Out1"
@@ -147,7 +147,7 @@ class TestOutport:
 
     def test_outport_custom_name(self, qapp):
         """Test Outport with custom username."""
-        from blocks.outport import Outport
+        from diablos.blocks.outport import Outport
 
         block = Outport(block_name="CustomOut")
         assert block.username == "CustomOut"
@@ -155,7 +155,7 @@ class TestOutport:
 
     def test_outport_input_port_position(self, qapp):
         """Test Outport has correct input port structure."""
-        from blocks.outport import Outport
+        from diablos.blocks.outport import Outport
 
         block = Outport()
         assert "in" in block.ports
@@ -165,14 +165,14 @@ class TestOutport:
 
     def test_outport_no_output_ports(self, qapp):
         """Test Outport has no output ports."""
-        from blocks.outport import Outport
+        from diablos.blocks.outport import Outport
 
         block = Outport()
         assert "out" not in block.ports or not block.ports.get("out")
 
     def test_outport_update_does_nothing(self, qapp):
         """Test Outport update is a no-op (flattening handles it)."""
-        from blocks.outport import Outport
+        from diablos.blocks.outport import Outport
 
         block = Outport()
         # Should not raise
@@ -182,7 +182,7 @@ class TestOutport:
 
     def test_outport_dimensions(self, qapp):
         """Test Outport has expected dimensions."""
-        from blocks.outport import Outport
+        from diablos.blocks.outport import Outport
 
         block = Outport()
         assert block.width == 40
@@ -190,7 +190,7 @@ class TestOutport:
 
     def test_outport_color(self, qapp):
         """Test Outport default color is red."""
-        from blocks.outport import Outport
+        from diablos.blocks.outport import Outport
         from PyQt6.QtGui import QColor
 
         block = Outport()
@@ -198,7 +198,7 @@ class TestOutport:
 
     def test_outport_custom_color(self, qapp):
         """Test Outport with custom color."""
-        from blocks.outport import Outport
+        from diablos.blocks.outport import Outport
         from PyQt6.QtGui import QColor
 
         block = Outport(color="yellow")
@@ -206,14 +206,14 @@ class TestOutport:
 
     def test_outport_block_type(self, qapp):
         """Test Outport has correct block_type attribute."""
-        from blocks.outport import Outport
+        from diablos.blocks.outport import Outport
 
         block = Outport()
         assert block.block_type == "Outport"
 
     def test_outport_coords_tuple(self, qapp):
         """Test Outport accepts coords as tuple."""
-        from blocks.outport import Outport
+        from diablos.blocks.outport import Outport
 
         block = Outport(coords=(30, 40, 60, 50))
         assert block.left == 30
@@ -221,7 +221,7 @@ class TestOutport:
 
     def test_outport_coords_qrect(self, qapp):
         """Test Outport accepts coords as QRect."""
-        from blocks.outport import Outport
+        from diablos.blocks.outport import Outport
 
         rect = QRect(35, 45, 60, 50)
         block = Outport(coords=rect)
@@ -230,7 +230,7 @@ class TestOutport:
 
     def test_outport_sid(self, qapp):
         """Test Outport accepts custom sid."""
-        from blocks.outport import Outport
+        from diablos.blocks.outport import Outport
 
         block = Outport(sid=99)
         assert block.sid == 99
@@ -242,7 +242,7 @@ class TestSubsystem:
 
     def test_subsystem_creation(self, qapp):
         """Test basic Subsystem creation."""
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
 
         block = Subsystem()
         assert block.block_fn == "Subsystem"
@@ -251,7 +251,7 @@ class TestSubsystem:
 
     def test_subsystem_default_ports(self, qapp):
         """Test Subsystem starts with 0 input and 0 output ports."""
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
 
         block = Subsystem()
         assert block.in_ports == 0
@@ -259,7 +259,7 @@ class TestSubsystem:
 
     def test_subsystem_update_does_nothing(self, qapp):
         """Test Subsystem update is a no-op (flattening handles execution)."""
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
 
         block = Subsystem()
         # Should not raise
@@ -269,7 +269,7 @@ class TestSubsystem:
 
     def test_subsystem_default_name(self, qapp):
         """Test Subsystem uses default username 'Subsystem'."""
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
 
         block = Subsystem()
         assert block.username == "Subsystem"
@@ -277,7 +277,7 @@ class TestSubsystem:
 
     def test_subsystem_custom_name(self, qapp):
         """Test Subsystem with custom username."""
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
 
         block = Subsystem(block_name="MySubsys")
         assert block.username == "MySubsys"
@@ -285,14 +285,14 @@ class TestSubsystem:
 
     def test_subsystem_block_type(self, qapp):
         """Test Subsystem has correct block_type attribute."""
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
 
         block = Subsystem()
         assert block.block_type == "Subsystem"
 
     def test_subsystem_color(self, qapp):
         """Test Subsystem default color is lightgray."""
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
         from PyQt6.QtGui import QColor
 
         block = Subsystem()
@@ -300,7 +300,7 @@ class TestSubsystem:
 
     def test_subsystem_custom_color(self, qapp):
         """Test Subsystem with custom color."""
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
         from PyQt6.QtGui import QColor
 
         block = Subsystem(color="cyan")
@@ -308,7 +308,7 @@ class TestSubsystem:
 
     def test_subsystem_ports_map(self, qapp):
         """Test Subsystem has ports_map for port synchronization."""
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
 
         block = Subsystem()
         assert hasattr(block, "ports_map")
@@ -317,7 +317,7 @@ class TestSubsystem:
 
     def test_subsystem_params(self, qapp):
         """Test Subsystem has params dict."""
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
 
         block = Subsystem()
         assert hasattr(block, "params")
@@ -326,14 +326,14 @@ class TestSubsystem:
 
     def test_subsystem_io_edit(self, qapp):
         """Test Subsystem has io_edit enabled (for dynamic port config)."""
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
 
         block = Subsystem()
         assert block.io_edit == True
 
     def test_subsystem_coords_tuple(self, qapp):
         """Test Subsystem accepts coords as tuple."""
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
 
         block = Subsystem(coords=(50, 60, 150, 120))
         assert block.left == 50
@@ -341,7 +341,7 @@ class TestSubsystem:
 
     def test_subsystem_coords_qrect(self, qapp):
         """Test Subsystem accepts coords as QRect."""
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
 
         rect = QRect(55, 65, 150, 120)
         block = Subsystem(coords=rect)
@@ -350,14 +350,14 @@ class TestSubsystem:
 
     def test_subsystem_sid(self, qapp):
         """Test Subsystem accepts custom sid."""
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
 
         block = Subsystem(sid=123)
         assert block.sid == 123
 
     def test_subsystem_default_dimensions(self, qapp):
         """Test Subsystem has larger default size than Inport/Outport."""
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
 
         block = Subsystem()
         # Default coords are (0,0,100,80)
@@ -366,7 +366,7 @@ class TestSubsystem:
 
     def test_subsystem_sub_blocks_list(self, qapp):
         """Test Subsystem sub_blocks is a mutable list."""
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
 
         block = Subsystem()
         # Should be able to append
@@ -377,7 +377,7 @@ class TestSubsystem:
 
     def test_subsystem_sub_lines_list(self, qapp):
         """Test Subsystem sub_lines is a mutable list."""
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
 
         block = Subsystem()
         # Should be able to append
@@ -388,14 +388,14 @@ class TestSubsystem:
 
     def test_subsystem_b_type(self, qapp):
         """Test Subsystem has b_type=2 (container type)."""
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
 
         block = Subsystem()
         assert block.b_type == 2
 
     def test_subsystem_update_block_no_ports(self, qapp):
         """Test Subsystem.update_Block with no custom ports uses default behavior."""
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
 
         block = Subsystem()
         # Should not raise
@@ -403,7 +403,7 @@ class TestSubsystem:
 
     def test_subsystem_update_block_with_input_ports(self, qapp):
         """Test Subsystem.update_Block with input ports distributes them evenly."""
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
 
         block = Subsystem()
         # Add custom input ports
@@ -420,7 +420,7 @@ class TestSubsystem:
 
     def test_subsystem_update_block_with_output_ports(self, qapp):
         """Test Subsystem.update_Block with output ports distributes them evenly."""
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
 
         block = Subsystem()
         # Add custom output ports
@@ -437,7 +437,7 @@ class TestSubsystem:
 
     def test_subsystem_update_block_with_mixed_ports(self, qapp):
         """Test Subsystem.update_Block with both input and output ports."""
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
 
         block = Subsystem()
         # Add custom ports
@@ -459,9 +459,9 @@ class TestSubsystemBlockIntegration:
 
     def test_inport_outport_within_subsystem(self, qapp):
         """Test typical pattern: Inport and Outport as children of Subsystem."""
-        from blocks.subsystem import Subsystem
-        from blocks.inport import Inport
-        from blocks.outport import Outport
+        from diablos.blocks.subsystem import Subsystem
+        from diablos.blocks.inport import Inport
+        from diablos.blocks.outport import Outport
 
         subsys = Subsystem(block_name="TestSys")
         inport = Inport(block_name="In1")
@@ -477,8 +477,8 @@ class TestSubsystemBlockIntegration:
 
     def test_multiple_inports_in_subsystem(self, qapp):
         """Test subsystem with multiple Inports."""
-        from blocks.subsystem import Subsystem
-        from blocks.inport import Inport
+        from diablos.blocks.subsystem import Subsystem
+        from diablos.blocks.inport import Inport
 
         subsys = Subsystem()
         in1 = Inport(block_name="In1")
@@ -495,8 +495,8 @@ class TestSubsystemBlockIntegration:
 
     def test_multiple_outports_in_subsystem(self, qapp):
         """Test subsystem with multiple Outports."""
-        from blocks.subsystem import Subsystem
-        from blocks.outport import Outport
+        from diablos.blocks.subsystem import Subsystem
+        from diablos.blocks.outport import Outport
 
         subsys = Subsystem()
         out1 = Outport(block_name="Out1")
@@ -511,7 +511,7 @@ class TestSubsystemBlockIntegration:
 
     def test_subsystem_with_internal_connections(self, qapp):
         """Test subsystem with sub_lines (internal connections)."""
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
 
         subsys = Subsystem()
         mock_line1 = MagicMock()
@@ -523,7 +523,7 @@ class TestSubsystemBlockIntegration:
 
     def test_nested_subsystems_structure(self, qapp):
         """Test that subsystems can contain other subsystems."""
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
 
         parent = Subsystem(block_name="Parent")
         child = Subsystem(block_name="Child", sid=2)

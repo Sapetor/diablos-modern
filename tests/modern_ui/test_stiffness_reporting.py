@@ -1,6 +1,6 @@
 """How a stiff run reaches the user: a status line and a property-editor row.
 
-The engine records the verdict (``lib/engine/solver_diagnostics.py``); these are
+The engine records the verdict (``src/diablos/core/engine/solver_diagnostics.py``); these are
 the two places it is surfaced. Both must be silent when the heuristic did not
 fire and neither may ever raise -- a diagnostic that breaks the end of a good
 run is worse than no diagnostic.
@@ -11,8 +11,8 @@ import types
 import pytest
 from PyQt6.QtWidgets import QLabel
 
-from modern_ui.controllers.simulation_controller import SimulationController
-from modern_ui.widgets.property_editor import PropertyEditor
+from diablos.gui.controllers.simulation_controller import SimulationController
+from diablos.gui.widgets.property_editor import PropertyEditor
 
 
 def _dsim_with(diagnostics, solver_method="RK45", fallback_reason=None):

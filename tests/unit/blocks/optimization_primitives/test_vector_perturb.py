@@ -1,7 +1,7 @@
 """Tests for VectorPerturb block."""
 
 import numpy as np
-from blocks.optimization_primitives.vector_perturb import VectorPerturbBlock
+from diablos.blocks.optimization_primitives.vector_perturb import VectorPerturbBlock
 
 
 class TestVectorPerturbBlock:

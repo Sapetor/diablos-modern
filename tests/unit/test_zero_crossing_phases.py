@@ -1,6 +1,6 @@
 """Pin the phase helpers ``solve_with_events`` is built from.
 
-The segmented event driver in ``lib/engine/zero_crossing.py`` is an
+The segmented event driver in ``src/diablos/core/engine/zero_crossing.py`` is an
 orchestrator over small private helpers (step cap, mode seeding, gap fill, one
 segment, discrete updates, event record, chattering guard, restart point,
 guard trip, tail truncation).  Each is pinned here in isolation so a change
@@ -14,8 +14,8 @@ import logging
 import numpy as np
 import pytest
 
-from lib.engine import zero_crossing as zc
-from lib.engine.zero_crossing import (
+from diablos.core.engine import zero_crossing as zc
+from diablos.core.engine.zero_crossing import (
     CHATTER_STREAK_LIMIT,
     EventSolveResult,
     EventSpec,

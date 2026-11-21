@@ -1,4 +1,4 @@
-"""Unit tests for the DataFit calibration block (blocks/optimization/data_fit.py).
+"""Unit tests for the DataFit calibration block (src/diablos/blocks/optimization/data_fit.py).
 
 DataFit loads a measured (t, y) series and, at every step, reports how far the
 simulation signal is from the measurement. The optimizer minimizes the value
@@ -18,7 +18,7 @@ concurrent revision.
 import numpy as np
 import pytest
 
-from blocks.optimization.data_fit import DataFitBlock
+from diablos.blocks.optimization.data_fit import DataFitBlock
 
 
 def _defaults(**overrides):
@@ -83,7 +83,7 @@ class TestDataFitContract:
 
     def test_draw_icon_returns_a_painter_path(self, qapp):
         from PyQt6.QtCore import QRect
-        from lib.icon_path import IconPath
+        from diablos.core.icon_path import IconPath
 
         path = DataFitBlock().draw_icon(QRect(0, 0, 100, 60))
         assert isinstance(path, IconPath)

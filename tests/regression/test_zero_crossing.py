@@ -15,7 +15,7 @@ tests pin the four properties that buys us:
    single-shot ``solve_ivp`` call it has always made -- including for every
    example diagram that registers no events at all.
 
-See ``lib/engine/zero_crossing.py`` and ``docs/FAST_SOLVER.md``.
+See ``src/diablos/core/engine/zero_crossing.py`` and ``docs/FAST_SOLVER.md``.
 """
 
 import gc
@@ -25,8 +25,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from lib.block_loader import load_blocks
-from lib.diagram_builder import DiagramBuilder
+from diablos.core.block_loader import load_blocks
+from diablos.core.diagram_builder import DiagramBuilder
 
 
 pytestmark = pytest.mark.regression
@@ -88,8 +88,8 @@ def _add(builder, block_type, name, params=None, **kwargs):
 
 def _run(builder, tmp_path, sim_time, sim_dt, zero_crossing=True, max_events=None):
     """Save the built diagram, load it and run it through the compiled path."""
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     path = tmp_path / "diagram.diablos"
     builder.save(str(path))
@@ -339,7 +339,7 @@ class TestHysteresis:
         falls back to the interpreter, rather than compiling a relay whose
         latch the solver's out-of-order probing would corrupt.
         """
-        from lib.lib import DSim
+        from diablos.core.lib import DSim
 
         engine = DSim().engine
 
@@ -386,7 +386,7 @@ class TestStepEdge:
         Marking it so keeps the max-step cap (which state-dependent guards do
         need) away from the many diagrams whose only discontinuity is a step.
         """
-        from lib.engine.compiler_kernels import EVENT_BUILDERS, BuildContext
+        from diablos.core.engine.compiler_kernels import EVENT_BUILDERS, BuildContext
 
         ctx = BuildContext(
             block=None,
@@ -538,8 +538,8 @@ def test_examples_agree_with_events_on_and_off(filename, qapp):
     register events legitimately moves (that is the fix), but only to solver
     tolerance, and never in shape.
     """
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     def run(zero_crossing):
         WorkspaceManager._instance = None

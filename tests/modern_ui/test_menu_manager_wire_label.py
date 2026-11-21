@@ -8,7 +8,7 @@ label format against the real DLine attribute names after that simplification.
 
 import pytest
 
-from modern_ui.managers.menu_manager import MenuManager
+from diablos.gui.managers.menu_manager import MenuManager
 
 
 class _StubLine:

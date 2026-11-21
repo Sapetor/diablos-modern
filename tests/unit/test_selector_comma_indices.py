@@ -6,15 +6,15 @@ the compiled kernel ever sees it. Before the fix that broke both paths: the
 interpreter crashed in _parse_indices ('tuple' object has no attribute 'split')
 and the compiled kernel did str((0, 2)) == "(0, 2)", failed to int-parse, and
 silently selected index 0. Both paths now normalize the resolved value back to a
-comma string via blocks.selector.normalize_indices_str.
+comma string via diablos.blocks.selector.normalize_indices_str.
 """
 
 import numpy as np
 import pytest
 
-from blocks.selector import SelectorBlock, normalize_indices_str
-from lib.engine.compiler_kernels import BuildContext, get_kernel_builder
-from lib.workspace import WorkspaceManager
+from diablos.blocks.selector import SelectorBlock, normalize_indices_str
+from diablos.core.engine.compiler_kernels import BuildContext, get_kernel_builder
+from diablos.core.workspace import WorkspaceManager
 
 
 @pytest.mark.unit

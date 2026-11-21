@@ -16,7 +16,7 @@ from PyQt6.QtGui import QColor
 
 def _make_block(block_fn, sid, username, in_ports, out_ports, params, b_type=2):
     """Helper to create a DBlock with minimal boilerplate."""
-    from lib.simulation.block import DBlock
+    from diablos.core.simulation.block import DBlock
 
     return DBlock(
         block_fn=block_fn,
@@ -33,7 +33,7 @@ def _make_block(block_fn, sid, username, in_ports, out_ports, params, b_type=2):
 
 def _make_line(sid, src, srcport, dst, dstport):
     """Helper to create a DLine."""
-    from lib.simulation.connection import DLine
+    from diablos.core.simulation.connection import DLine
 
     return DLine(
         sid=sid,
@@ -56,7 +56,7 @@ class TestFeedbackLoopSumSign:
         CL transfer function: 1/(s+1.2), steady-state = 8/1.2 ~ 6.667
         If feedback is broken (signs='++'), output would diverge or be wrong.
         """
-        from lib.engine.system_compiler import SystemCompiler
+        from diablos.core.engine.system_compiler import SystemCompiler
         from scipy.integrate import solve_ivp
 
         # Create blocks — Sum has ONLY 'sign', not 'inputs'

@@ -7,10 +7,10 @@ from PyQt6.QtWidgets import QApplication
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
-    from lib.lib import DSim
-    from blocks.subsystem import Subsystem
-    from blocks.inport import Inport
-    from blocks.outport import Outport
+    from diablos.core.lib import DSim
+    from diablos.blocks.subsystem import Subsystem
+    from diablos.blocks.inport import Inport
+    from diablos.blocks.outport import Outport
 except ImportError as e:
     print(f"Import Error: {e}")
     sys.exit(1)

@@ -26,11 +26,11 @@ import pytest
 from PyQt6.QtCore import QPoint
 from PyQt6.QtGui import QPixmap, QPainter, QColor
 
-from lib.lib import DSim
-from modern_ui.widgets.modern_canvas import ModernCanvas
-from modern_ui.renderers.canvas_renderer import CanvasRenderer
-from modern_ui.renderers.connection_renderer import ConnectionRenderer
-from modern_ui.widgets.modern_toolbar import _StateDot
+from diablos.core.lib import DSim
+from diablos.gui.widgets.modern_canvas import ModernCanvas
+from diablos.gui.renderers.canvas_renderer import CanvasRenderer
+from diablos.gui.renderers.connection_renderer import ConnectionRenderer
+from diablos.gui.widgets.modern_toolbar import _StateDot
 
 
 @pytest.fixture(autouse=True)

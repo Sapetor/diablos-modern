@@ -10,7 +10,7 @@ user's ``labels`` entry decides on both now.
 import numpy as np
 import pytest
 
-from lib.analysis.resim import harvest_scope_signals
+from diablos.core.analysis.resim import harvest_scope_signals
 from tests.validation import _harness as H
 
 

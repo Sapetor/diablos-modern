@@ -1,12 +1,12 @@
 import numpy as np
-from blocks.saturation import SaturationBlock
-from blocks.rate_limiter import RateLimiterBlock
-from blocks.pid import PIDBlock
-from blocks.hysteresis import HysteresisBlock
-from blocks.deadband import DeadbandBlock
-from blocks.switch import SwitchBlock
-from blocks.goto import GotoBlock
-from blocks.from_block import FromBlock
+from diablos.blocks.saturation import SaturationBlock
+from diablos.blocks.rate_limiter import RateLimiterBlock
+from diablos.blocks.pid import PIDBlock
+from diablos.blocks.hysteresis import HysteresisBlock
+from diablos.blocks.deadband import DeadbandBlock
+from diablos.blocks.switch import SwitchBlock
+from diablos.blocks.goto import GotoBlock
+from diablos.blocks.from_block import FromBlock
 
 
 def test_saturation_clips_values():
@@ -99,9 +99,9 @@ def test_goto_from_params_defaults():
 
 def test_link_goto_from_adds_line(simulation_model):
     from PyQt6.QtCore import QRect, QPoint
-    from lib.simulation.block import DBlock
-    from lib.simulation.connection import DLine
-    from blocks.step import StepBlock
+    from diablos.core.simulation.block import DBlock
+    from diablos.core.simulation.connection import DLine
+    from diablos.blocks.step import StepBlock
 
     # Create a source block that feeds into Goto
     src = DBlock(

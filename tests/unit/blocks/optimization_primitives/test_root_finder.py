@@ -2,7 +2,7 @@
 
 import pytest
 import numpy as np
-from blocks.optimization_primitives.root_finder import RootFinderBlock
+from diablos.blocks.optimization_primitives.root_finder import RootFinderBlock
 
 
 class TestRootFinderBlock:

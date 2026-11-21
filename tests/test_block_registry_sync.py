@@ -1,6 +1,6 @@
 """Guard against dual block-registry drift.
 
-Blocks load two ways (see ``lib/block_loader.py``):
+Blocks load two ways (see ``src/diablos/core/block_loader.py``):
 
 * **dev** — a live filesystem scan of ``blocks/`` (``load_blocks``);
 * **frozen / PyInstaller** — the hardcoded ``_BLOCK_MODULES`` list.
@@ -36,7 +36,7 @@ def _load_sync_tool():
 
 @pytest.mark.unit
 def test_block_modules_registry_is_in_sync():
-    from lib.block_loader import _BLOCK_MODULES
+    from diablos.core.block_loader import _BLOCK_MODULES
 
     scan_block_modules = _load_sync_tool().scan_block_modules
     expected = set(scan_block_modules())
@@ -62,7 +62,7 @@ def test_sync_rewrite_is_byte_identical(tmp_path):
     The registry can be in sync by *content* while the tool still renders it
     differently: it used to emit single-quoted module names into a repo that
     ``ruff format`` keeps double-quoted. Every ``tools/build.sh`` run then left
-    ``lib/block_loader.py`` dirty with pure quote churn, and committing that
+    ``src/diablos/core/block_loader.py`` dirty with pure quote churn, and committing that
     state failed the ``ruff format --check`` CI gate. The set-equality test
     above cannot see this, so assert on the rendered bytes.
 
@@ -79,7 +79,7 @@ def test_sync_rewrite_is_byte_identical(tmp_path):
     changed = tool.update_block_loader(tool.scan_block_modules(), path=str(scratch))
 
     assert scratch.read_text() == original, (
-        "tools/sync_block_registry.py re-renders lib/block_loader.py "
+        "tools/sync_block_registry.py re-renders src/diablos/core/block_loader.py "
         "differently than the checked-in copy, so every build will leave the "
         "tree dirty and fail `ruff format --check`."
     )

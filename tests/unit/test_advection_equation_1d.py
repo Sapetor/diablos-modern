@@ -1,4 +1,4 @@
-"""Unit tests for the 1D advection block (blocks/pde/advection_equation_1d.py).
+"""Unit tests for the 1D advection block (src/diablos/blocks/pde/advection_equation_1d.py).
 
 Solves dc/dt + v dc/dx = 0 by method of lines with upwind differencing and an
 explicit RK4 step. The block had no test at all, so the properties pinned here
@@ -18,7 +18,7 @@ are the ones a numerical regression would break first:
 import numpy as np
 import pytest
 
-from blocks.pde.advection_equation_1d import AdvectionEquation1DBlock
+from diablos.blocks.pde.advection_equation_1d import AdvectionEquation1DBlock
 
 
 def _defaults(**overrides):
@@ -273,7 +273,7 @@ class TestAdvection1DBoundaryConditions:
 
     def test_draw_icon_returns_a_painter_path(self, qapp):
         from PyQt6.QtCore import QRect
-        from lib.icon_path import IconPath
+        from diablos.core.icon_path import IconPath
 
         path = AdvectionEquation1DBlock().draw_icon(QRect(0, 0, 100, 60))
         assert isinstance(path, IconPath)

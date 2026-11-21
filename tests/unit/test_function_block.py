@@ -1,5 +1,5 @@
 """
-Unit tests for the Function block (blocks/function.py).
+Unit tests for the Function block (src/diablos/blocks/function.py).
 
 The Function block evaluates a user-supplied Python expression against its
 input ports. Inputs are exposed both as the 0-indexed list ``u`` (``u[0]``,
@@ -12,7 +12,7 @@ comprehensions) is rejected with an error dict rather than executed.
 import numpy as np
 import pytest
 
-from blocks.function import FunctionBlock
+from diablos.blocks.function import FunctionBlock
 
 
 @pytest.mark.unit

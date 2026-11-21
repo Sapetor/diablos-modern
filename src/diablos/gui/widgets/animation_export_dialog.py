@@ -1,0 +1,380 @@
+"""
+Animation Export Dialog for FieldScope visualizations.
+
+Provides a PyQt6 dialog for configuring animation export settings
+including format, FPS, quality, and output path.
+"""
+
+import os
+import logging
+from PyQt6.QtWidgets import (
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFormLayout,
+    QLabel,
+    QSpinBox,
+    QComboBox,
+    QLineEdit,
+    QPushButton,
+    QFileDialog,
+    QGroupBox,
+    QRadioButton,
+    QButtonGroup,
+    QProgressBar,
+    QMessageBox,
+)
+from PyQt6.QtCore import QThread, pyqtSignal
+
+from diablos.core.i18n import tr
+
+logger = logging.getLogger(__name__)
+
+
+class ExportWorker(QThread):
+    """Worker thread for animation export to keep UI responsive."""
+
+    progress = pyqtSignal(int, int)  # current frame, total frames
+    finished = pyqtSignal(bool, str)  # success, message
+
+    def __init__(self, exporter, filepath, format, fps, dpi):
+        super().__init__()
+        self.exporter = exporter
+        self.filepath = filepath
+        self.format = format
+        self.fps = fps
+        self.dpi = dpi
+        self._cancelled = False
+
+    def cancel(self):
+        """Request cancellation of the export."""
+        self._cancelled = True
+
+    def run(self):
+        """Run the export in a separate thread."""
+        try:
+
+            def progress_callback(frame, total):
+                if self._cancelled:
+                    raise InterruptedError("Export cancelled")
+                self.progress.emit(frame, total)
+
+            success = self.exporter.export(
+                self.filepath,
+                format=self.format,
+                fps=self.fps,
+                dpi=self.dpi,
+                progress_callback=progress_callback,
+            )
+
+            if success:
+                self.finished.emit(True, tr("Animation exported to {path}", path=self.filepath))
+            else:
+                self.finished.emit(False, tr("Export failed. Check logs for details."))
+
+        except Exception as e:
+            logger.error(f"Export worker error: {e}")
+            self.finished.emit(False, str(e))
+
+
+class AnimationExportDialog(QDialog):
+    """
+    Dialog for configuring and executing animation export.
+
+    Shows animation info (frames, duration, grid size) and allows
+    configuration of format, FPS, quality, and output path.
+    """
+
+    def __init__(self, exporter, block_name="FieldScope", parent=None):
+        """
+        Initialize the export dialog.
+
+        Args:
+            exporter: AnimationExporter instance with field data
+            block_name: Name of the block being exported
+            parent: Parent widget
+        """
+        super().__init__(parent)
+        self.exporter = exporter
+        self.block_name = block_name
+        self.worker = None
+        self._export_filepath = None
+
+        self.setWindowTitle(tr("Export Animation"))
+        self.setMinimumWidth(400)
+        self.setModal(True)
+
+        self._setup_ui()
+        self._update_playback_duration()
+        self._check_writers()
+
+    def _setup_ui(self):
+        """Set up the dialog UI."""
+        layout = QVBoxLayout(self)
+        layout.setSpacing(12)
+
+        # Info section
+        info_group = QGroupBox(tr("Animation Info"))
+        info_layout = QFormLayout(info_group)
+
+        self.frames_label = QLabel(f"{self.exporter.n_frames}")
+        self.duration_label = QLabel(tr("{d}s", d="{:.2f}".format(self.exporter.duration)))
+        self.grid_label = QLabel(self.exporter.grid_size)
+
+        info_layout.addRow(tr("Frames:"), self.frames_label)
+        info_layout.addRow(tr("Simulation Duration:"), self.duration_label)
+        info_layout.addRow(tr("Grid Size:"), self.grid_label)
+
+        layout.addWidget(info_group)
+
+        # Format section
+        format_group = QGroupBox(tr("Format"))
+        format_layout = QHBoxLayout(format_group)
+
+        self.format_group = QButtonGroup(self)
+        self.gif_radio = QRadioButton("GIF")
+        self.mp4_radio = QRadioButton("MP4")
+        self.gif_radio.setChecked(True)
+
+        self.format_group.addButton(self.gif_radio, 0)
+        self.format_group.addButton(self.mp4_radio, 1)
+
+        format_layout.addWidget(self.gif_radio)
+        format_layout.addWidget(self.mp4_radio)
+        format_layout.addStretch()
+
+        layout.addWidget(format_group)
+
+        # Settings section
+        settings_group = QGroupBox(tr("Settings"))
+        settings_layout = QFormLayout(settings_group)
+
+        # FPS spinner
+        fps_layout = QHBoxLayout()
+        self.fps_spin = QSpinBox()
+        self.fps_spin.setRange(1, 60)
+        self.fps_spin.setValue(self.exporter.get_recommended_fps(5.0))
+        self.fps_spin.valueChanged.connect(self._update_playback_duration)
+
+        self.playback_label = QLabel()
+        fps_layout.addWidget(self.fps_spin)
+        fps_layout.addWidget(QLabel("→"))
+        fps_layout.addWidget(self.playback_label)
+        fps_layout.addStretch()
+
+        settings_layout.addRow(tr("FPS:"), fps_layout)
+
+        # Quality combo
+        self.quality_combo = QComboBox()
+        self.quality_combo.addItems(
+            [tr("Low (72 dpi)"), tr("Medium (100 dpi)"), tr("High (150 dpi)")]
+        )
+        self.quality_combo.setCurrentIndex(1)  # Default to medium
+
+        settings_layout.addRow(tr("Quality:"), self.quality_combo)
+
+        layout.addWidget(settings_group)
+
+        # Output path section
+        path_group = QGroupBox(tr("Output"))
+        path_layout = QHBoxLayout(path_group)
+
+        self.path_edit = QLineEdit()
+        self.path_edit.setPlaceholderText(tr("Select output file..."))
+        default_name = f"{self.block_name}_animation.gif"
+        default_path = os.path.join(os.path.expanduser("~"), default_name)
+        self.path_edit.setText(default_path)
+
+        self.browse_btn = QPushButton(tr("Browse..."))
+        self.browse_btn.clicked.connect(self._browse_file)
+
+        path_layout.addWidget(self.path_edit, 1)
+        path_layout.addWidget(self.browse_btn)
+
+        layout.addWidget(path_group)
+
+        # Progress bar (hidden initially)
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setVisible(False)
+        layout.addWidget(self.progress_bar)
+
+        # Buttons
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+
+        self.cancel_btn = QPushButton(tr("Cancel"))
+        self.cancel_btn.clicked.connect(self.reject)
+
+        self.export_btn = QPushButton(tr("Export"))
+        self.export_btn.setDefault(True)
+        self.export_btn.clicked.connect(self._start_export)
+
+        btn_layout.addWidget(self.cancel_btn)
+        btn_layout.addWidget(self.export_btn)
+
+        layout.addLayout(btn_layout)
+
+        # Connect format change to update file extension
+        self.format_group.buttonClicked.connect(self._update_file_extension)
+
+    def _check_writers(self):
+        """Check available writers and disable unavailable formats."""
+        from diablos.core.plotting.animation_exporter import AnimationExporter
+
+        available = AnimationExporter.check_writers()
+
+        if not available.get("gif", False):
+            self.gif_radio.setEnabled(False)
+            self.gif_radio.setToolTip(tr("Pillow not installed. Install with: pip install Pillow"))
+
+        if not available.get("mp4", False):
+            self.mp4_radio.setEnabled(False)
+            self.mp4_radio.setToolTip(tr("ffmpeg not found. Install ffmpeg to enable MP4 export."))
+
+        # Select first available format
+        if not self.gif_radio.isEnabled() and self.mp4_radio.isEnabled():
+            self.mp4_radio.setChecked(True)
+            self._update_file_extension()
+        elif not self.gif_radio.isEnabled() and not self.mp4_radio.isEnabled():
+            self.export_btn.setEnabled(False)
+            self.export_btn.setToolTip(tr("No export formats available"))
+
+    def _update_playback_duration(self):
+        """Update the playback duration label based on current FPS."""
+        fps = self.fps_spin.value()
+        duration = self.exporter.get_playback_duration(fps)
+        self.playback_label.setText(tr("Playback: {d}s", d="{:.1f}".format(duration)))
+
+    def _update_file_extension(self):
+        """Update file extension when format changes."""
+        current_path = self.path_edit.text()
+        if not current_path:
+            return
+
+        # Get new extension
+        new_ext = ".gif" if self.gif_radio.isChecked() else ".mp4"
+
+        # Replace extension
+        base = os.path.splitext(current_path)[0]
+        self.path_edit.setText(base + new_ext)
+
+    def _browse_file(self):
+        """Open file browser to select output path."""
+        ext = "gif" if self.gif_radio.isChecked() else "mp4"
+        filter_str = tr("{ext} files", ext=ext.upper()) + f" (*.{ext})"
+
+        filepath, _ = QFileDialog.getSaveFileName(
+            self, tr("Save Animation"), self.path_edit.text(), filter_str
+        )
+
+        if filepath:
+            # Ensure correct extension
+            if not filepath.lower().endswith(f".{ext}"):
+                filepath += f".{ext}"
+            self.path_edit.setText(filepath)
+
+    def _get_dpi(self):
+        """Get DPI value from quality selection."""
+        quality_map = {0: 72, 1: 100, 2: 150}
+        return quality_map.get(self.quality_combo.currentIndex(), 100)
+
+    def _start_export(self):
+        """Start the export process."""
+        filepath = self.path_edit.text().strip()
+        if not filepath:
+            QMessageBox.warning(self, tr("Error"), tr("Please specify an output file path."))
+            return
+
+        format = "gif" if self.gif_radio.isChecked() else "mp4"
+        fps = self.fps_spin.value()
+        dpi = self._get_dpi()
+
+        # Disable controls during export
+        self.export_btn.setEnabled(False)
+        self.browse_btn.setEnabled(False)
+        self.fps_spin.setEnabled(False)
+        self.quality_combo.setEnabled(False)
+        self.gif_radio.setEnabled(False)
+        self.mp4_radio.setEnabled(False)
+
+        # Show progress
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setRange(0, self.exporter.n_frames)
+        self.progress_bar.setValue(0)
+
+        # Remember the target path so we can clean up a partial file on failure/cancel
+        self._export_filepath = filepath
+
+        # Ensure any prior worker has fully finished before reassigning, so we
+        # don't orphan a still-running QThread.
+        if self.worker is not None:
+            if self.worker.isRunning():
+                self.worker.cancel()
+                self.worker.wait()
+            self.worker.deleteLater()
+            self.worker = None
+
+        # Start worker thread
+        self.worker = ExportWorker(self.exporter, filepath, format, fps, dpi)
+        self.worker.progress.connect(self._on_progress)
+        self.worker.finished.connect(self._on_export_finished)
+        # Schedule Qt-side cleanup of the thread object once it stops.
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.worker.start()
+
+    def _on_progress(self, current, total):
+        """Update progress bar."""
+        self.progress_bar.setValue(current)
+
+    def _on_export_finished(self, success, message):
+        """Handle export completion."""
+        self.progress_bar.setVisible(False)
+
+        # The worker is scheduled for deleteLater via its finished signal; drop
+        # our reference so a subsequent re-export starts a fresh thread.
+        self.worker = None
+
+        if success:
+            QMessageBox.information(self, tr("Export Complete"), message)
+            self.accept()
+        else:
+            # Remove any partial file left behind by a failed/cancelled export.
+            self._cleanup_partial_file()
+
+            QMessageBox.critical(self, tr("Export Failed"), message)
+            # Re-enable controls
+            self.export_btn.setEnabled(True)
+            self.browse_btn.setEnabled(True)
+            self.fps_spin.setEnabled(True)
+            self.quality_combo.setEnabled(True)
+            # Re-enable both format radios so _check_writers() is the single
+            # source of truth for disabling only the unavailable ones.
+            self.gif_radio.setEnabled(True)
+            self.mp4_radio.setEnabled(True)
+            self._check_writers()  # Re-check to set correct enabled states
+
+    def _cleanup_partial_file(self):
+        """Delete a partially written output file from a failed/cancelled export."""
+        filepath = getattr(self, "_export_filepath", None)
+        if not filepath:
+            return
+        try:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+        except OSError as e:
+            logger.warning(f"Could not remove partial export file '{filepath}': {e}")
+
+    def closeEvent(self, event):
+        """Handle dialog close - stop any running export."""
+        if self.worker and self.worker.isRunning():
+            self.worker.cancel()
+            self.worker.quit()
+            # Block close until the worker truly stops. If the cooperative
+            # cancel does not return in time, forcibly terminate so we don't
+            # leave a thread running after the dialog is gone.
+            if not self.worker.wait(3000):
+                self.worker.terminate()
+                self.worker.wait()
+            # The export was interrupted; remove any partial output file.
+            self._cleanup_partial_file()
+        super().closeEvent(event)

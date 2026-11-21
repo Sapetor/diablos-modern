@@ -19,11 +19,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 def create_test_simulation():
     """Create a medium-complexity test simulation."""
-    from blocks.step import StepBlock
-    from blocks.gain import GainBlock
-    from blocks.sum import SumBlock
-    from blocks.integrator import IntegratorBlock
-    from blocks.scope import ScopeBlock
+    from diablos.blocks.step import StepBlock
+    from diablos.blocks.gain import GainBlock
+    from diablos.blocks.sum import SumBlock
+    from diablos.blocks.integrator import IntegratorBlock
+    from diablos.blocks.scope import ScopeBlock
 
     blocks = []
 
@@ -96,7 +96,7 @@ def run_block_level_simulation(num_steps=1000, dt=0.01):
 
 def run_pde_simulation(num_steps=100, dt=0.001):
     """Run PDE block simulation (more computationally intensive)."""
-    from blocks.pde.heat_equation_1d import HeatEquation1DBlock
+    from diablos.blocks.pde.heat_equation_1d import HeatEquation1DBlock
 
     block = HeatEquation1DBlock()
     params = {
@@ -119,11 +119,11 @@ def run_pde_simulation(num_steps=100, dt=0.001):
 
 def run_optimization_simulation(num_iterations=100):
     """Run optimization primitives simulation."""
-    from blocks.optimization_primitives.state_variable import StateVariableBlock
-    from blocks.optimization_primitives.objective_function import ObjectiveFunctionBlock
-    from blocks.optimization_primitives.numerical_gradient import NumericalGradientBlock
-    from blocks.optimization_primitives.vector_gain import VectorGainBlock
-    from blocks.optimization_primitives.vector_sum import VectorSumBlock
+    from diablos.blocks.optimization_primitives.state_variable import StateVariableBlock
+    from diablos.blocks.optimization_primitives.objective_function import ObjectiveFunctionBlock
+    from diablos.blocks.optimization_primitives.numerical_gradient import NumericalGradientBlock
+    from diablos.blocks.optimization_primitives.vector_gain import VectorGainBlock
+    from diablos.blocks.optimization_primitives.vector_sum import VectorSumBlock
 
     state = StateVariableBlock()
     obj = ObjectiveFunctionBlock()

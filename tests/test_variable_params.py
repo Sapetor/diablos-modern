@@ -6,11 +6,11 @@ from PyQt6.QtCore import QRect
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from lib.lib import DSim
-from lib.simulation.block import DBlock
-from blocks.gain import GainBlock
-from blocks.step import StepBlock
-from blocks.base_block import BaseBlock
+from diablos.core.lib import DSim
+from diablos.core.simulation.block import DBlock
+from diablos.blocks.gain import GainBlock
+from diablos.blocks.step import StepBlock
+from diablos.blocks.base_block import BaseBlock
 
 
 class TermBlock(BaseBlock):

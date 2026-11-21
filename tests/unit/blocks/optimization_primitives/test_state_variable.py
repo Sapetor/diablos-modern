@@ -1,7 +1,7 @@
 """Tests for StateVariable block."""
 
 import numpy as np
-from blocks.optimization_primitives.state_variable import StateVariableBlock
+from diablos.blocks.optimization_primitives.state_variable import StateVariableBlock
 
 
 class TestStateVariableBlock:

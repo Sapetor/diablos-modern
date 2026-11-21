@@ -1,12 +1,12 @@
 """The Function (expression) block runs on the compiled fast path
-(lib/engine/compiler_kernels/function.py) with the interpreter's semantics."""
+(src/diablos/core/engine/compiler_kernels/function.py) with the interpreter's semantics."""
 
 import numpy as np
 import pytest
 
-from blocks.function import FunctionBlock
-from lib.engine.compiler_kernels import BuildContext, get_kernel_builder
-from lib.safe_eval import SafeEvalError
+from diablos.blocks.function import FunctionBlock
+from diablos.core.engine.compiler_kernels import BuildContext, get_kernel_builder
+from diablos.core.safe_eval import SafeEvalError
 
 
 def _kernel(expr, input_sources, n_inputs=None):
@@ -84,7 +84,7 @@ class TestKernelMatchesExecute:
 def _diagram(tmp_path, expr, sources, integrate=False, n_inputs=None):
     """sources -> Function(expr) -> Scope; with ``integrate`` the Function also
     closes a loop through an Integrator: x' = f(x, sources...), Scope on x."""
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     b = DiagramBuilder(sim_time=2.0, sim_dt=0.01)
     n = n_inputs or (len(sources) + (1 if integrate else 0))
@@ -108,9 +108,9 @@ def _diagram(tmp_path, expr, sources, integrate=False, n_inputs=None):
 
 
 def _run(path, fast):
-    from lib.analysis.resim import harvest_scope_signals
-    from lib.cli import load_diagram
-    from lib.engine.system_compiler import SystemCompiler
+    from diablos.core.analysis.resim import harvest_scope_signals
+    from diablos.core.cli import load_diagram
+    from diablos.core.engine.system_compiler import SystemCompiler
 
     calls = []
     original = SystemCompiler.compile_system
@@ -186,8 +186,8 @@ class TestCompiledMatchesInterpreter:
 
 @pytest.mark.unit
 def test_python_export_still_refuses_function(tmp_path):
-    from lib.cli import export_python
-    from lib.export.python_codegen import CodegenUnsupportedError
+    from diablos.core.cli import export_python
+    from diablos.core.export.python_codegen import CodegenUnsupportedError
 
     path = _diagram(tmp_path, "u[0]**2", [SINE])
     with pytest.raises(CodegenUnsupportedError, match="Function"):

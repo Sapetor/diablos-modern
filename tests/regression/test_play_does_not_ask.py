@@ -26,9 +26,9 @@ import pytest
 from PyQt6.QtCore import QPoint
 from PyQt6.QtWidgets import QDialog
 
-import lib.dialogs as lib_dialogs
-import lib.lib as lib_lib
-from lib.dialogs import SimulationDialog
+import diablos.core.dialogs as lib_dialogs
+import diablos.core.lib as lib_lib
+from diablos.core.dialogs import SimulationDialog
 
 pytestmark = [pytest.mark.regression, pytest.mark.qt]
 
@@ -39,7 +39,7 @@ pytestmark = [pytest.mark.regression, pytest.mark.qt]
 
 
 def _spy(monkeypatch, result=QDialog.DialogCode.Rejected, mutate=None):
-    """Replace ``lib.dialogs.SimulationDialog`` with a recording subclass.
+    """Replace ``diablos.core.dialogs.SimulationDialog`` with a recording subclass.
 
     Returns the list its instances are appended to. ``mutate`` (if given) is
     called with the dialog just before ``exec`` returns ``result``, so a test
@@ -73,7 +73,7 @@ def _build_diagram(dsim):
 
 @pytest.fixture
 def dsim(qapp, tmp_path, monkeypatch):
-    from lib.lib import DSim
+    from diablos.core.lib import DSim
 
     monkeypatch.chdir(tmp_path)
     sim = DSim()
@@ -95,7 +95,7 @@ class TestAskBeforeRunPreference:
     def test_defaults_to_off(self, monkeypatch):
         from PyQt6.QtCore import QSettings
 
-        import lib.sim_prefs as sim_prefs
+        import diablos.core.sim_prefs as sim_prefs
 
         store = QSettings("DiaBloS-test", "sim-prefs-default")
         store.clear()
@@ -106,7 +106,7 @@ class TestAskBeforeRunPreference:
     def test_round_trips_through_qsettings(self, monkeypatch, flag):
         from PyQt6.QtCore import QSettings
 
-        import lib.sim_prefs as sim_prefs
+        import diablos.core.sim_prefs as sim_prefs
 
         store = QSettings("DiaBloS-test", "sim-prefs-roundtrip")
         store.clear()
@@ -116,7 +116,7 @@ class TestAskBeforeRunPreference:
 
     def test_a_stored_false_reads_back_as_false(self, monkeypatch):
         """The INI backend hands booleans back as the string "false"."""
-        import lib.sim_prefs as sim_prefs
+        import diablos.core.sim_prefs as sim_prefs
 
         monkeypatch.setattr(
             sim_prefs, "ui_settings", lambda: type("S", (), {"value": lambda s, k, d: "false"})()
@@ -249,7 +249,7 @@ def armed_window(window, tmp_path, monkeypatch):
     The batch run itself is stubbed out: these tests are about what happens
     *before* the solver, and a worker thread would outlive the test.
     """
-    from modern_ui.controllers.simulation_controller import SimulationController
+    from diablos.gui.controllers.simulation_controller import SimulationController
 
     monkeypatch.chdir(tmp_path)
     dsim = window.dsim
@@ -421,7 +421,7 @@ class TestFirstPlayFromTheWindow:
         assert seen == []
 
     def test_cancel_is_reported_as_cancelled_not_as_an_error(self, armed_window, monkeypatch):
-        from modern_ui.controllers.simulation_controller import SimulationController
+        from diablos.gui.controllers.simulation_controller import SimulationController
 
         armed_window.dsim.settings_reviewed = False
         _spy(monkeypatch, result=QDialog.DialogCode.Rejected)

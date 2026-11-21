@@ -1,4 +1,4 @@
-"""GUI tests for the mask editor dialog (``modern_ui/widgets/mask_editor_dialog.py``).
+"""GUI tests for the mask editor dialog (``src/diablos/gui/widgets/mask_editor_dialog.py``).
 
 The dialog is the only place a mask definition is authored, so these tests
 drive its table directly (add / remove / reorder / type coercion) and check
@@ -10,9 +10,9 @@ import pytest
 from PyQt6.QtCore import QRect
 from PyQt6.QtWidgets import QDialog
 
-from lib import i18n
-from lib.masks import MaskError, get_mask, set_mask
-from modern_ui.widgets.mask_editor_dialog import (
+from diablos.core import i18n
+from diablos.core.masks import MaskError, get_mask, set_mask
+from diablos.gui.widgets.mask_editor_dialog import (
     _COL_DEFAULT,
     _COL_DOC,
     _COL_NAME,
@@ -36,7 +36,7 @@ VEHICLE_MASK = {
 
 @pytest.fixture
 def subsystem(qapp):
-    from blocks.subsystem import Subsystem
+    from diablos.blocks.subsystem import Subsystem
 
     block = Subsystem(block_name="Subsystem1", sid=1, coords=QRect(0, 0, 120, 90))
     block.name = "Subsystem1"

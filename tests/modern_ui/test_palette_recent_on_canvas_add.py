@@ -29,8 +29,8 @@ import pytest
 from PyQt6.QtCore import QPoint, QSettings
 from PyQt6.QtWidgets import QMainWindow
 
-from modern_ui.widgets import modern_palette as mp
-from modern_ui.widgets.modern_palette import (
+from diablos.gui.widgets import modern_palette as mp
+from diablos.gui.widgets.modern_palette import (
     ModernBlockPalette,
     CompactBlockRow,
     _PinnedSection,
@@ -62,7 +62,7 @@ def _isolated_settings(tmp_path, monkeypatch):
 
 
 def _make_dsim():
-    from lib.lib import DSim
+    from diablos.core.lib import DSim
 
     dsim = DSim()
     init = getattr(dsim, "menu_blocks_init", None)
@@ -130,7 +130,7 @@ def wired(palette):
     ``block_palette`` exactly like LayoutManager does, so the canvas can reach
     the palette through ``self.window()`` — the real production path.
     """
-    from modern_ui.widgets.modern_canvas import ModernCanvas
+    from diablos.gui.widgets.modern_canvas import ModernCanvas
 
     win = QMainWindow()
     canvas = ModernCanvas(palette.dsim)
@@ -212,8 +212,8 @@ def test_add_calls_record_palette_recent_once_per_add(wired, monkeypatch):
 
 def test_record_palette_recent_no_window_is_silent(qapp):
     """A detached canvas (top-level window has no block_palette) must not raise."""
-    from modern_ui.widgets.modern_canvas import ModernCanvas
-    from lib.lib import DSim
+    from diablos.gui.widgets.modern_canvas import ModernCanvas
+    from diablos.core.lib import DSim
 
     canvas = ModernCanvas(DSim())
     try:
@@ -225,8 +225,8 @@ def test_record_palette_recent_no_window_is_silent(qapp):
 
 def test_record_palette_recent_missing_recorder_is_silent(qapp):
     """A window whose block_palette lacks record_recent must not raise."""
-    from modern_ui.widgets.modern_canvas import ModernCanvas
-    from lib.lib import DSim
+    from diablos.gui.widgets.modern_canvas import ModernCanvas
+    from diablos.core.lib import DSim
 
     win = QMainWindow()
     canvas = ModernCanvas(DSim())

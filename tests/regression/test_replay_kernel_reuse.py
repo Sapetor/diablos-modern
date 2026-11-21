@@ -1,6 +1,6 @@
 """Regression test for Phase 3 (safe partial dedup): the post-solve replay loop
 in ``SimulationEngine.run_compiled_simulation`` reuses the compiled kernel
-executors (``lib.engine.compiler_kernels`` via ``SystemCompiler.block_executors``)
+executors (``diablos.core.engine.compiler_kernels`` via ``SystemCompiler.block_executors``)
 for pure-function blocks, instead of a parallel inline if/elif. This keeps each
 such block's output math in one place (the kernel) shared by the ODE solve and
 the replay.
@@ -17,14 +17,14 @@ from pathlib import Path
 
 import pytest
 
-from lib.engine.simulation_engine import _KERNEL_REPLAY_FNS
+from diablos.core.engine.simulation_engine import _KERNEL_REPLAY_FNS
 
 EXAMPLES_DIR = Path(__file__).parent.parent.parent / "examples"
 
 
 def _load(filename):
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     WorkspaceManager._instance = None
     dsim = DSim()

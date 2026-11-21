@@ -1,4 +1,4 @@
-"""Tests for the FromFile source block (blocks/from_file.py).
+"""Tests for the FromFile source block (src/diablos/blocks/from_file.py).
 
 Writes a small CSV and checks signal replay (linear / zoh / nearest), the
 hold/loop end-behaviors, the load-once cache + reload-on-path-change, and the
@@ -8,7 +8,7 @@ error path for a missing file. State lives in params per the engine contract.
 import numpy as np
 import pytest
 
-from blocks.from_file import FromFileBlock
+from diablos.blocks.from_file import FromFileBlock
 
 
 @pytest.fixture

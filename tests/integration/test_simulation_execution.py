@@ -15,8 +15,8 @@ class TestSimulationExecution:
 
     def test_constant_to_scope(self):
         """Simple diagram: Constant → Scope, verify collected values."""
-        from blocks.constant import ConstantBlock
-        from blocks.scope import ScopeBlock
+        from diablos.blocks.constant import ConstantBlock
+        from diablos.blocks.scope import ScopeBlock
 
         const_block = ConstantBlock()
         scope_block = ScopeBlock()
@@ -37,8 +37,8 @@ class TestSimulationExecution:
 
     def test_step_to_scope(self):
         """Test step signal collection."""
-        from blocks.step import StepBlock
-        from blocks.scope import ScopeBlock
+        from diablos.blocks.step import StepBlock
+        from diablos.blocks.scope import ScopeBlock
 
         step_block = StepBlock()
         scope_block = ScopeBlock()
@@ -65,7 +65,7 @@ class TestSimulationExecution:
 
     def test_sine_amplitude(self):
         """Test sine wave amplitude is correct."""
-        from blocks.sine import SineBlock
+        from diablos.blocks.sine import SineBlock
 
         sine_block = SineBlock()
         params = {"amplitude": 3.0, "omega": 2 * np.pi, "init_angle": 0.0}
@@ -81,7 +81,7 @@ class TestSimulationExecution:
 
     def test_gain_block(self):
         """Test gain block multiplies correctly."""
-        from blocks.gain import GainBlock
+        from diablos.blocks.gain import GainBlock
 
         gain_block = GainBlock()
         params = {"gain": 2.5}
@@ -91,7 +91,7 @@ class TestSimulationExecution:
 
     def test_sum_block(self):
         """Test sum block adds/subtracts correctly."""
-        from blocks.sum import SumBlock
+        from diablos.blocks.sum import SumBlock
 
         sum_block = SumBlock()
         params = {"sign": "+-", "_init_start_": True}
@@ -101,7 +101,7 @@ class TestSimulationExecution:
 
     def test_sum_three_inputs(self):
         """Test sum block with three inputs."""
-        from blocks.sum import SumBlock
+        from diablos.blocks.sum import SumBlock
 
         sum_block = SumBlock()
         params = {"sign": "++-"}
@@ -111,7 +111,7 @@ class TestSimulationExecution:
 
     def test_integrator_ramp(self):
         """Test integrator produces ramp from constant input."""
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         integrator = IntegratorBlock()
         dtime = 0.01
@@ -135,7 +135,7 @@ class TestSimulationExecution:
 
     def test_integrator_initial_condition(self):
         """Test integrator respects initial conditions."""
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         integrator = IntegratorBlock()
         params = {
@@ -155,9 +155,9 @@ class TestSimulationExecution:
 
     def test_chain_constant_gain_scope(self):
         """Test chain: Constant → Gain → Scope."""
-        from blocks.constant import ConstantBlock
-        from blocks.gain import GainBlock
-        from blocks.scope import ScopeBlock
+        from diablos.blocks.constant import ConstantBlock
+        from diablos.blocks.gain import GainBlock
+        from diablos.blocks.scope import ScopeBlock
 
         const_block = ConstantBlock()
         gain_block = GainBlock()
@@ -180,11 +180,11 @@ class TestSimulationExecution:
 
     def test_chain_sine_gain_sum_scope(self):
         """Test more complex chain: Sine → Gain → Sum (with Constant) → Scope."""
-        from blocks.sine import SineBlock
-        from blocks.constant import ConstantBlock
-        from blocks.gain import GainBlock
-        from blocks.sum import SumBlock
-        from blocks.scope import ScopeBlock
+        from diablos.blocks.sine import SineBlock
+        from diablos.blocks.constant import ConstantBlock
+        from diablos.blocks.gain import GainBlock
+        from diablos.blocks.sum import SumBlock
+        from diablos.blocks.scope import ScopeBlock
 
         sine_block = SineBlock()
         const_block = ConstantBlock()
@@ -227,9 +227,9 @@ class TestSimulationExecution:
 
     def test_chain_ramp_function_scope(self):
         """Function block as a nonlinearity: Ramp → Function 'sin(u[0])' → Scope."""
-        from blocks.ramp import RampBlock
-        from blocks.function import FunctionBlock
-        from blocks.scope import ScopeBlock
+        from diablos.blocks.ramp import RampBlock
+        from diablos.blocks.function import FunctionBlock
+        from diablos.blocks.scope import ScopeBlock
 
         ramp_block = RampBlock()
         func_block = FunctionBlock()
@@ -252,9 +252,9 @@ class TestSimulationExecution:
 
     def test_function_block_two_input_product(self):
         """Function block combining two signals: u1*u2."""
-        from blocks.sine import SineBlock
-        from blocks.constant import ConstantBlock
-        from blocks.function import FunctionBlock
+        from diablos.blocks.sine import SineBlock
+        from diablos.blocks.constant import ConstantBlock
+        from diablos.blocks.function import FunctionBlock
 
         sine_block = SineBlock()
         const_block = ConstantBlock()
@@ -274,10 +274,10 @@ class TestSimulationExecution:
 
     def test_feedback_loop_integrator(self):
         """Test simple feedback loop with integrator."""
-        from blocks.constant import ConstantBlock
-        from blocks.sum import SumBlock
-        from blocks.integrator import IntegratorBlock
-        from blocks.gain import GainBlock
+        from diablos.blocks.constant import ConstantBlock
+        from diablos.blocks.sum import SumBlock
+        from diablos.blocks.integrator import IntegratorBlock
+        from diablos.blocks.gain import GainBlock
 
         # System: input → sum → integrator → output (with feedback through gain)
         # This simulates: dx/dt = u - k*x, where u is constant input
@@ -328,9 +328,9 @@ class TestSimulationExecution:
 
     def test_parallel_paths(self):
         """Test signal splitting and parallel processing."""
-        from blocks.constant import ConstantBlock
-        from blocks.gain import GainBlock
-        from blocks.sum import SumBlock
+        from diablos.blocks.constant import ConstantBlock
+        from diablos.blocks.gain import GainBlock
+        from diablos.blocks.sum import SumBlock
 
         # Topology: Constant → (Gain1, Gain2) → Sum
         # Output should be constant * (gain1 + gain2)
@@ -362,10 +362,10 @@ class TestSimulationExecution:
 
     def test_step_response_first_order_system(self):
         """Test step response of first-order system: G(s) = K/(τs + 1)."""
-        from blocks.step import StepBlock
-        from blocks.sum import SumBlock
-        from blocks.gain import GainBlock
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.step import StepBlock
+        from diablos.blocks.sum import SumBlock
+        from diablos.blocks.gain import GainBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         # Build system: Step → Sum → Integrator → (output and feedback via gain)
         # Represents: τ*dy/dt + y = K*u, or dy/dt = (K*u - y)/τ
@@ -435,9 +435,9 @@ class TestSimulationExecution:
 
     def test_multiple_scopes(self):
         """Test multiple scope blocks collecting data simultaneously."""
-        from blocks.sine import SineBlock
-        from blocks.gain import GainBlock
-        from blocks.scope import ScopeBlock
+        from diablos.blocks.sine import SineBlock
+        from diablos.blocks.gain import GainBlock
+        from diablos.blocks.scope import ScopeBlock
 
         sine_block = SineBlock()
         gain_block = GainBlock()
@@ -469,8 +469,8 @@ class TestSimulationExecution:
 
     def test_vector_signals(self):
         """Test blocks handling vector signals."""
-        from blocks.constant import ConstantBlock
-        from blocks.gain import GainBlock
+        from diablos.blocks.constant import ConstantBlock
+        from diablos.blocks.gain import GainBlock
 
         const_block = ConstantBlock()
         gain_block = GainBlock()
@@ -487,7 +487,7 @@ class TestSimulationExecution:
 
     def test_integrator_vector_input(self):
         """Test integrator with vector inputs."""
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         integrator = IntegratorBlock()
         params = {
@@ -510,8 +510,8 @@ class TestSimulationExecution:
 
     def test_time_varying_input(self):
         """Test system with time-varying input (ramp)."""
-        from blocks.ramp import RampBlock
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.ramp import RampBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         ramp_block = RampBlock()
         integrator = IntegratorBlock()
@@ -543,7 +543,7 @@ class TestSimulationExecution:
 
     def test_zero_crossing(self):
         """Test system crossing zero (sine wave)."""
-        from blocks.sine import SineBlock
+        from diablos.blocks.sine import SineBlock
 
         sine_block = SineBlock()
         params = {"amplitude": 1.0, "omega": 2 * np.pi, "init_angle": 0.0}
@@ -565,7 +565,7 @@ class TestSimulationExecution:
 
     def test_saturation_behavior(self):
         """Test gain doesn't saturate (linear behavior maintained)."""
-        from blocks.gain import GainBlock
+        from diablos.blocks.gain import GainBlock
 
         gain_block = GainBlock()
         params = {"gain": 10.0}
@@ -587,8 +587,8 @@ class TestSimulationEdgeCases:
 
     def test_zero_time_step(self):
         """Test blocks at t=0."""
-        from blocks.sine import SineBlock
-        from blocks.step import StepBlock
+        from diablos.blocks.sine import SineBlock
+        from diablos.blocks.step import StepBlock
 
         sine_block = SineBlock()
         step_block = StepBlock()
@@ -611,7 +611,7 @@ class TestSimulationEdgeCases:
 
     def test_large_time_values(self):
         """Test blocks with large time values."""
-        from blocks.sine import SineBlock
+        from diablos.blocks.sine import SineBlock
 
         sine_block = SineBlock()
         params = {"amplitude": 1.0, "omega": 1.0, "init_angle": 0.0}
@@ -623,7 +623,7 @@ class TestSimulationEdgeCases:
 
     def test_negative_gain(self):
         """Test gain with negative value (signal inversion)."""
-        from blocks.gain import GainBlock
+        from diablos.blocks.gain import GainBlock
 
         gain_block = GainBlock()
         params = {"gain": -2.0}
@@ -633,7 +633,7 @@ class TestSimulationEdgeCases:
 
     def test_zero_gain(self):
         """Test gain block with zero gain."""
-        from blocks.gain import GainBlock
+        from diablos.blocks.gain import GainBlock
 
         gain_block = GainBlock()
         params = {"gain": 0.0}
@@ -643,7 +643,7 @@ class TestSimulationEdgeCases:
 
     def test_rapid_oscillation(self):
         """Test sine with very high frequency."""
-        from blocks.sine import SineBlock
+        from diablos.blocks.sine import SineBlock
 
         sine_block = SineBlock()
         params = {"amplitude": 1.0, "omega": 1000.0, "init_angle": 0.0}

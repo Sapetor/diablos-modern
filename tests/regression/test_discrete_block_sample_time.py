@@ -31,7 +31,7 @@ DEN = [1.0, -0.5]
 
 def _run(upstream_ts, block_ts, sim_dt, sim_time=1.0):
     """ramp -> [ZOH @ upstream_ts] -> DiscreteTF -> scope."""
-    from lib.lib import DSim
+    from diablos.core.lib import DSim
 
     dsim = DSim()
     menu = {b.fn_name: b for b in dsim.menu_blocks}
@@ -76,8 +76,8 @@ def _distinct(values):
 @pytest.mark.regression
 class TestDiscreteBlockDefaults:
     def test_default_is_inherit_not_continuous(self, qapp):
-        from blocks.discrete_statespace import DiscreteStateSpaceBlock
-        from blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
+        from diablos.blocks.discrete_statespace import DiscreteStateSpaceBlock
+        from diablos.blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
 
         for cls in (DiscreteTransferFunctionBlock, DiscreteStateSpaceBlock):
             block = cls()
@@ -88,8 +88,8 @@ class TestDiscreteBlockDefaults:
 
     def test_marker_is_opt_in(self, qapp):
         """Continuous blocks legitimately default to -1 and must not warn."""
-        from blocks.integrator import IntegratorBlock
-        from blocks.transfer_function import TransferFunctionBlock
+        from diablos.blocks.integrator import IntegratorBlock
+        from diablos.blocks.transfer_function import TransferFunctionBlock
 
         for cls in (IntegratorBlock, TransferFunctionBlock):
             block = cls()
@@ -141,7 +141,7 @@ class TestUnresolvedRate:
         assert _distinct(y_a) != _distinct(y_b)
 
     def test_warns_when_no_rate_resolves(self, qapp, caplog):
-        with caplog.at_level(logging.WARNING, logger="lib.engine.simulation_engine"):
+        with caplog.at_level(logging.WARNING, logger="diablos.core.engine.simulation_engine"):
             _run(upstream_ts=None, block_ts=None, sim_dt=0.1, sim_time=0.5)
         hits = [r for r in caplog.records if "no resolved sample time" in r.getMessage()]
         assert len(hits) == 1
@@ -150,6 +150,6 @@ class TestUnresolvedRate:
         assert "sampling_time" in msg
 
     def test_does_not_warn_once_a_rate_resolves(self, qapp, caplog):
-        with caplog.at_level(logging.WARNING, logger="lib.engine.simulation_engine"):
+        with caplog.at_level(logging.WARNING, logger="diablos.core.engine.simulation_engine"):
             _run(upstream_ts=0.2, block_ts=None, sim_dt=0.05)
         assert not [r for r in caplog.records if "no resolved sample time" in r.getMessage()]

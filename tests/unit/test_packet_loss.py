@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from blocks.packet_loss import PacketLossBlock
+from diablos.blocks.packet_loss import PacketLossBlock
 
 
 def _fresh_params(**overrides):

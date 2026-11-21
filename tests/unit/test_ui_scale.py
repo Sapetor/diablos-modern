@@ -1,4 +1,4 @@
-"""UI scale preference (lib/ui_scale.py).
+"""UI scale preference (src/diablos/core/ui_scale.py).
 
 Before 2026-11 Preferences > UI Scale only set the app font to 10pt * factor.
 Widgets styled from the fixed TYPE point sizes (menu bar, palette, Properties
@@ -16,7 +16,7 @@ import textwrap
 
 import pytest
 
-from lib import ui_scale
+from diablos.core import ui_scale
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -64,7 +64,7 @@ class TestStoredScale:
         assert "scaling_factor" not in bundled.get("display", {})
 
     def test_packaged_build_keeps_a_previous_choice(self, store, tmp_path, monkeypatch):
-        from lib import app_paths
+        from diablos.core import app_paths
 
         user = tmp_path / "user"
         (user / "config").mkdir(parents=True)

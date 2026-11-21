@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock
 from PyQt6.QtCore import QRect
-from modern_ui.managers.selection_manager import SelectionManager
+from diablos.gui.managers.selection_manager import SelectionManager
 
 
 class TestSelectionManager(unittest.TestCase):

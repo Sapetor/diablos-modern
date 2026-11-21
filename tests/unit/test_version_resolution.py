@@ -1,7 +1,7 @@
 """Version resolution for ``modern_ui.__version__``.
 
 ``[project] version`` in pyproject.toml is the single source of truth; the spec,
-tools/build.sh and the release workflow all parse it. ``modern_ui/__init__.py``
+tools/build.sh and the release workflow all parse it. ``src/diablos/gui/__init__.py``
 has to read it back at runtime, including in a PyInstaller bundle that ships no
 ``.dist-info``. This used to be a hard-coded ``_FALLBACK_VERSION = "1.0.0"``
 literal, so every frozen build reported 1.0.0 forever.

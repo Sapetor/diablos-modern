@@ -14,7 +14,7 @@ import io
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from lib.diagram_builder import DiagramBuilder
+from diablos.core.diagram_builder import DiagramBuilder
 
 
 def create_large_diagram(num_chains=10, chain_length=5):
@@ -112,7 +112,7 @@ def profile_simulation():
     # Load into DSim (headless check)
     try:
         # Profile the block execute() method instead of full simulation
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
         import numpy as np
 
         print("\nProfiling individual block functions:")
@@ -227,7 +227,7 @@ def run_benchmark():
     print(f"{'dt':>12} {'Steps':>10} {'Time (s)':>12} {'Steps/sec':>12}")
     print("-" * 50)
 
-    from blocks.integrator import IntegratorBlock
+    from diablos.blocks.integrator import IntegratorBlock
 
     integrator_block = IntegratorBlock()
 

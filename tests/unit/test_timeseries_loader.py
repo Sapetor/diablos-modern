@@ -1,4 +1,4 @@
-"""Tests for the shared time-series loader (lib/services/timeseries_loader.py).
+"""Tests for the shared time-series loader (src/diablos/core/services/timeseries_loader.py).
 
 Writes small CSV / NPZ / TXT files to a tmp dir and checks column resolution
 (by name and by numeric index), error handling, and length validation. MAT is
@@ -8,7 +8,7 @@ covered only if scipy.io is importable (it always is, since scipy is a dep).
 import numpy as np
 import pytest
 
-from lib.services.timeseries_loader import load_timeseries, TimeseriesLoadError
+from diablos.core.services.timeseries_loader import load_timeseries, TimeseriesLoadError
 
 
 @pytest.mark.unit

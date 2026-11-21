@@ -1,12 +1,12 @@
 """Hidden blocks must be absent from *every* place the user can pick a block.
 
-``blocks/external.py`` is an unimplemented stub (``execute()`` only ever returns
+``src/diablos/blocks/external.py`` is an unimplemented stub (``execute()`` only ever returns
 an error dict), so it declares ``hidden = True``. The block palette already
 filtered on that flag, but the two other pickers did not:
 
-  * the command palette (``modern_ui/managers/command_palette_manager.py``)
+  * the command palette (``src/diablos/gui/managers/command_palette_manager.py``)
     still emitted an "Add External block" command, and
-  * the canvas right-click menu (``modern_ui/managers/menu_manager.py``) still
+  * the canvas right-click menu (``src/diablos/gui/managers/menu_manager.py``) still
     fed the whole ``menu_blocks`` list to its inline search / quick-add.
 
 Both now go through ``visible_menu_blocks()`` -- the same helper the palette
@@ -20,8 +20,8 @@ import pytest
 from PyQt6.QtCore import QPoint
 from PyQt6.QtWidgets import QWidget
 
-from modern_ui.managers import command_palette_manager as cpm_module
-from modern_ui.managers import menu_manager as menu_module
+from diablos.gui.managers import command_palette_manager as cpm_module
+from diablos.gui.managers import menu_manager as menu_module
 
 
 def _menu_block(fn_name, cls):
@@ -37,12 +37,12 @@ class TestPickersShareTheVisibilityHelper:
     """Both managers use the palette's helper rather than re-implementing it."""
 
     def test_command_palette_manager_uses_visible_menu_blocks(self):
-        from modern_ui.widgets.modern_palette import visible_menu_blocks
+        from diablos.gui.widgets.modern_palette import visible_menu_blocks
 
         assert cpm_module.visible_menu_blocks is visible_menu_blocks
 
     def test_menu_manager_uses_visible_menu_blocks(self):
-        from modern_ui.widgets.modern_palette import visible_menu_blocks
+        from diablos.gui.widgets.modern_palette import visible_menu_blocks
 
         assert menu_module.visible_menu_blocks is visible_menu_blocks
 
@@ -72,7 +72,7 @@ class TestCommandPaletteIndex:
 
     def test_real_menu_blocks_register_external_but_do_not_offer_it(self, qapp):
         """External stays registered (saved files reference it) but is not offered."""
-        from lib.lib import DSim
+        from diablos.core.lib import DSim
 
         dsim = DSim()
         assert any(getattr(b, "fn_name", "") == "external" for b in dsim.menu_blocks)

@@ -19,7 +19,7 @@ sys.path.insert(0, os.getcwd())
 
 def test_gain_block():
     """Test GainBlock with scalar, vector, and matrix gains."""
-    from blocks.gain import GainBlock
+    from diablos.blocks.gain import GainBlock
 
     block = GainBlock()
 
@@ -48,7 +48,7 @@ def test_gain_block():
 
 def test_sum_block():
     """Test SumBlock with different sign configurations."""
-    from blocks.sum import SumBlock
+    from diablos.blocks.sum import SumBlock
 
     block = SumBlock()
 
@@ -84,7 +84,7 @@ def test_sum_block():
 
 def test_abs_block():
     """Test AbsBlock takes absolute value."""
-    from blocks.abs_block import AbsBlock
+    from diablos.blocks.abs_block import AbsBlock
 
     block = AbsBlock()
     params = {}
@@ -107,7 +107,7 @@ def test_abs_block():
 
 def test_sigproduct_block():
     """Test SigProductBlock (signal multiplication)."""
-    from blocks.sigproduct import SigProductBlock
+    from diablos.blocks.sigproduct import SigProductBlock
 
     block = SigProductBlock()
     params = {}
@@ -130,7 +130,7 @@ def test_sigproduct_block():
 
 def test_saturation_block():
     """Test SaturationBlock clips values."""
-    from blocks.saturation import SaturationBlock
+    from diablos.blocks.saturation import SaturationBlock
 
     block = SaturationBlock()
 
@@ -152,7 +152,7 @@ def test_saturation_block():
 
 def test_deadband_block():
     """Test DeadbandBlock Dead Zone behavior."""
-    from blocks.deadband import DeadbandBlock
+    from diablos.blocks.deadband import DeadbandBlock
 
     block = DeadbandBlock()
 
@@ -180,7 +180,7 @@ def test_deadband_block():
 
 def test_rate_limiter_block():
     """Test RateLimiterBlock limits rate of change."""
-    from blocks.rate_limiter import RateLimiterBlock
+    from diablos.blocks.rate_limiter import RateLimiterBlock
 
     block = RateLimiterBlock()
 
@@ -202,7 +202,7 @@ def test_rate_limiter_block():
 
 def test_delay_block():
     """Test DelayBlock delays signal."""
-    from blocks.delay import DelayBlock
+    from diablos.blocks.delay import DelayBlock
 
     block = DelayBlock()
 
@@ -228,7 +228,7 @@ def test_delay_block():
 
 def test_hysteresis_block():
     """Test HysteresisBlock with switching thresholds."""
-    from blocks.hysteresis import HysteresisBlock
+    from diablos.blocks.hysteresis import HysteresisBlock
 
     block = HysteresisBlock()
 
@@ -256,7 +256,7 @@ def test_hysteresis_block():
 
 def test_switch_block():
     """Test SwitchBlock selects between two inputs."""
-    from blocks.switch import SwitchBlock
+    from diablos.blocks.switch import SwitchBlock
 
     block = SwitchBlock()
 

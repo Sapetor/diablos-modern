@@ -1,4 +1,4 @@
-"""Tests for the parameter-sweep runner (lib/analysis/parameter_sweep.py).
+"""Tests for the parameter-sweep runner (src/diablos/core/analysis/parameter_sweep.py).
 
 Builds a deterministic Constant -> Gain -> Scope diagram (output = value * gain,
 flat in time) so swept-parameter outcomes are exactly predictable, then checks
@@ -9,8 +9,8 @@ Reuses the _params/_load helper pattern from tests/unit/test_monte_carlo.py.
 import numpy as np
 import pytest
 
-from lib.diagram_builder import DiagramBuilder
-from lib.analysis.parameter_sweep import ParameterSweepRunner
+from diablos.core.diagram_builder import DiagramBuilder
+from diablos.core.analysis.parameter_sweep import ParameterSweepRunner
 
 
 _BLOCK_INSTANCES = None
@@ -19,7 +19,7 @@ _BLOCK_INSTANCES = None
 def _params(block_type, **overrides):
     global _BLOCK_INSTANCES
     if _BLOCK_INSTANCES is None:
-        from lib.block_loader import load_blocks
+        from diablos.core.block_loader import load_blocks
 
         _BLOCK_INSTANCES = {}
         for cls in load_blocks():
@@ -38,8 +38,8 @@ def _params(block_type, **overrides):
 
 
 def _load(builder, tmp_path, name):
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     path = tmp_path / name
     builder.save(str(path))

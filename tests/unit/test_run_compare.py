@@ -5,7 +5,7 @@ import types
 import numpy as np
 import pytest
 
-from lib.plotting.run_compare import param_changes, snapshot_params
+from diablos.core.plotting.run_compare import param_changes, snapshot_params
 
 
 def _blk(name, username="", **params):

@@ -32,7 +32,7 @@ To check a local build the way the release workflow does, run
 
 Both `tools/build.sh` and `diablos.spec` read the version from `[project] version` in `pyproject.toml` -- the single source of truth. `modern_ui.__version__` reads it back at runtime from, in order: `_version.txt` (written into the bundle by `diablos.spec`, since a frozen app ships no `.dist-info`), `pyproject.toml` itself (dev checkout), installed distribution metadata, then a literal fallback. A frozen build therefore reports the real version rather than a hard-coded one. The DMG is named `DiaBloS-<version>-<arch>.dmg` and the bundle's `CFBundleShortVersionString` matches it, so bumping one number in `pyproject.toml` updates the window title, the About/bundle version, and the installer filename together.
 
-> **macOS cursor bug — FIXED.** The native macOS style fails to draw the blinking text caret in any QLineEdit that has a stylesheet `background-color` (QTBUG-109450) — which is every input field in this app. It first bit the PyQt5 5.15 arm64 builds and is not fixed in Qt 6 either. The app therefore switches to the Fusion style on macOS (`_maybe_use_fusion_style` in `modern_ui/styles/qss_styles.py`); Fusion is stylesheet-aware and draws the caret itself. arm64 is also ~10x faster to start than the Rosetta x86_64 build, so it is the preferred release.
+> **macOS cursor bug — FIXED.** The native macOS style fails to draw the blinking text caret in any QLineEdit that has a stylesheet `background-color` (QTBUG-109450) — which is every input field in this app. It first bit the PyQt5 5.15 arm64 builds and is not fixed in Qt 6 either. The app therefore switches to the Fusion style on macOS (`_maybe_use_fusion_style` in `src/diablos/gui/styles/qss_styles.py`); Fusion is stylesheet-aware and draws the caret itself. arm64 is also ~10x faster to start than the Rosetta x86_64 build, so it is the preferred release.
 
 ## Build Venvs
 
@@ -81,17 +81,17 @@ active, so an arm64 interpreter always yields an arm64 app regardless of flags.
 |------|---------|
 | `diablos.spec` | PyInstaller config -- hidden imports, data files, excludes, platform packaging |
 | `tools/build.sh` | One-command build: sync registry, PyInstaller, DMG |
-| `pyproject.toml` | `[project] version` -- single source of truth for the app version (read by the spec, build script, and `modern_ui/__init__.py`) |
+| `pyproject.toml` | `[project] version` -- single source of truth for the app version (read by the spec, build script, and `src/diablos/gui/__init__.py`) |
 | `tools/sync_block_registry.py` | Auto-scans `blocks/` and updates `_BLOCK_MODULES` in `block_loader.py`; `--check` fails instead of writing (run in CI's lint job) |
-| `lib/app_paths.py` | Path resolver: `resource_path()` (read-only assets), `user_data_path()` (writable data) |
-| `lib/block_loader.py` | `_BLOCK_MODULES` static registry for frozen mode |
+| `src/diablos/core/app_paths.py` | Path resolver: `resource_path()` (read-only assets), `user_data_path()` (writable data) |
+| `src/diablos/core/block_loader.py` | `_BLOCK_MODULES` static registry for frozen mode |
 
 ## How It Works
 
 - **Block discovery**: In dev mode, `block_loader.py` scans `blocks/` dynamically. In frozen mode, it uses `_BLOCK_MODULES`. The sync script (`tools/sync_block_registry.py`) keeps this list up to date -- run automatically by `tools/build.sh`, and enforced in CI with `python tools/sync_block_registry.py --check`. The scan skips helper modules that define no block: anything listed in `EXCLUDED_MODULES`, plus any module whose name starts with `_` or ends with `_base`.
 - **Resource paths**: Read-only assets (icons, default configs, examples) use `resource_path()` which resolves to `sys._MEIPASS` when frozen. Writable data (logs, autosave, user configs) use `user_data_path()` / `user_saves_path()` / `user_logs_path()`, which resolve to a per-user directory when frozen (see [Frozen-Mode Path Handling](#frozen-mode-path-handling)).
 - **Excluded packages**: `diablos.spec` excludes ~40 unused packages (torch, pandas, bokeh, selenium, etc.) to keep the bundle small. Only PyQt6, numpy, scipy, matplotlib, pyqtgraph, Pillow, and tqdm are included. `PyQt5`, `PySide2` and `PySide6` are excluded explicitly: a dev machine often has more than one Qt binding installed, and pyqtgraph/matplotlib probe for all of them at import time, which would otherwise drag a second Qt runtime (~100 MB) into the bundle and let the two fight over the platform plugin at startup.
-- **Optional SymPy**: the symbolic features (LaTeX/MathML export via `lib/export/latex_exporter.py`, `lib/engine/symbolic_engine.py`, and each block's `symbolic_execute()`) import SymPy lazily and degrade to a warning when it is missing. SymPy is *not* in `requirements.txt` (only in `requirements-dev.txt`, for the tests), so a default build environment produces a bundle where those features are unavailable. `diablos.spec` no longer hard-excludes it: install it in the build env (`pip install sympy`, or `pip install .[symbolic]`) and the spec picks it up automatically via `collect_submodules('sympy')`. Expect roughly +35-40 MB unpacked. The published releases are currently built **without** SymPy -- symbolic export is a niche feature and the release job installs only `requirements.txt`; add `sympy` there if you want it shipped.
+- **Optional SymPy**: the symbolic features (LaTeX/MathML export via `src/diablos/core/export/latex_exporter.py`, `src/diablos/core/engine/symbolic_engine.py`, and each block's `symbolic_execute()`) import SymPy lazily and degrade to a warning when it is missing. SymPy is *not* in `requirements.txt` (only in `requirements-dev.txt`, for the tests), so a default build environment produces a bundle where those features are unavailable. `diablos.spec` no longer hard-excludes it: install it in the build env (`pip install sympy`, or `pip install .[symbolic]`) and the spec picks it up automatically via `collect_submodules('sympy')`. Expect roughly +35-40 MB unpacked. The published releases are currently built **without** SymPy -- symbolic export is a niche feature and the release job installs only `requirements.txt`; add `sympy` there if you want it shipped.
 - **macOS activation**: Frozen builds use ObjC runtime calls via ctypes to register as a foreground app (required for Finder/Dock launches).
 - **Multiprocessing**: `multiprocessing.freeze_support()` is called at entry point to prevent duplicate process spawning.
 
@@ -99,7 +99,7 @@ active, so an arm64 interpreter always yields an arm64 app regardless of flags.
 
 In frozen mode both the bundle (`sys._MEIPASS`) and the working directory are
 read-only -- a macOS `.app` launched from Finder starts with `cwd == "/"`. Every
-runtime write must therefore resolve through `lib/app_paths.py`; a relative
+runtime write must therefore resolve through `src/diablos/core/app_paths.py`; a relative
 literal such as `open("saves/data_AUTOSAVE.dat", "w")` fails with
 `[Errno 30] Read-only file system`.
 
@@ -217,7 +217,7 @@ Releases are cut from a tag; `.github/workflows/release.yml` does the building.
    `tools/smoke_test_bundle.sh` before uploading it: `DiaBloS self-test`
    (bundled resources, both solvers against a closed form, a 2-process
    Monte-Carlo ensemble, the main window built offscreen; see
-   `lib/self_test.py`) and a headless `DiaBloS run` whose CSV is checked
+   `src/diablos/core/self_test.py`) and a headless `DiaBloS run` whose CSV is checked
    against the analytic step response. The JSON report is uploaded as the
    `smoke-<os>` artifact, pass or fail. It publishes a GitHub release with `DiaBloS-<version>-arm64.dmg`,
    `DiaBloS-<version>-windows-x64.zip` and

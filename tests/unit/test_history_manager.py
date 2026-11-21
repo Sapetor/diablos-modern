@@ -3,9 +3,9 @@ from unittest.mock import MagicMock
 import pytest
 from PyQt6.QtCore import QRect
 
-from blocks.transfer_function import TransferFunctionBlock
-from lib.simulation.block import DBlock
-from modern_ui.managers.history_manager import HistoryManager
+from diablos.blocks.transfer_function import TransferFunctionBlock
+from diablos.core.simulation.block import DBlock
+from diablos.gui.managers.history_manager import HistoryManager
 
 
 @pytest.fixture

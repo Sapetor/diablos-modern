@@ -28,18 +28,18 @@ import pytest
 from PyQt6.QtCore import QPoint
 from PyQt6.QtGui import QImage, QPainter
 
-from modern_ui.managers.appearance_manager import AppearanceManager
-from modern_ui.managers.command_palette_manager import CommandPaletteManager
-from modern_ui.managers.project_manager import ProjectManager
-from modern_ui.managers.property_controller import PropertyController
-from modern_ui.managers.rendering_manager import RenderingManager
-from modern_ui.managers.simulation_actions_manager import SimulationActionsManager
-from modern_ui.managers.window_setup_manager import WindowSetupManager
+from diablos.gui.managers.appearance_manager import AppearanceManager
+from diablos.gui.managers.command_palette_manager import CommandPaletteManager
+from diablos.gui.managers.project_manager import ProjectManager
+from diablos.gui.managers.property_controller import PropertyController
+from diablos.gui.managers.rendering_manager import RenderingManager
+from diablos.gui.managers.simulation_actions_manager import SimulationActionsManager
+from diablos.gui.managers.window_setup_manager import WindowSetupManager
 
 
 @pytest.fixture(scope="module")
 def window(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     yield w
@@ -94,10 +94,10 @@ class TestAppearanceManager:
 
     def test_save_preferences_writes_the_three_ui_prefs(self, window, tmp_path, monkeypatch):
         """Redirected into tmp_path -- never touch the developer's real prefs."""
-        import lib.app_paths
+        import diablos.core.app_paths
 
         target = tmp_path / "user_preferences.json"
-        monkeypatch.setattr(lib.app_paths, "user_data_path", lambda rel: str(target))
+        monkeypatch.setattr(diablos.core.app_paths, "user_data_path", lambda rel: str(target))
 
         window.appearance_manager.save_preferences()
 
@@ -108,11 +108,11 @@ class TestAppearanceManager:
 
     def test_save_preferences_merges_into_an_existing_file(self, window, tmp_path, monkeypatch):
         """Unrelated keys another feature wrote must survive."""
-        import lib.app_paths
+        import diablos.core.app_paths
 
         target = tmp_path / "user_preferences.json"
         target.write_text(json.dumps({"unrelated_setting": 42}))
-        monkeypatch.setattr(lib.app_paths, "user_data_path", lambda rel: str(target))
+        monkeypatch.setattr(diablos.core.app_paths, "user_data_path", lambda rel: str(target))
 
         window.appearance_manager.save_preferences()
 
@@ -160,7 +160,7 @@ class TestProjectManager:
 
         As of 2026-09-05 this is broken: ``ProjectManager.new_diagram`` calls
         ``DiagramService.new_diagram``, which calls ``DSim.new_diagram()`` --
-        a method ``lib/lib.py`` never defines (it has ``clear_all``) -- so the
+        a method ``src/diablos/core/lib.py`` never defines (it has ``clear_all``) -- so the
         action raises ``AttributeError``. That is reported as an ``xfail`` here
         rather than a hard expectation, so this test turns green by itself the
         moment the delegation is fixed.
@@ -280,7 +280,7 @@ class TestSimulationActionsManager:
 @pytest.mark.qt
 class TestWindowSetupManager:
     def test_setup_window_titles_the_window_with_the_app_version(self, window):
-        from modern_ui import __version__
+        from diablos.gui import __version__
 
         window.window_setup_manager.setup_window()
 

@@ -22,7 +22,7 @@ class TestFastPathIsTheDefault:
         assert simulation_engine.real_time is False
 
     def test_dsim_does_not_default_to_real_time(self):
-        from lib.lib import DSim
+        from diablos.core.lib import DSim
 
         assert DSim().real_time is False
 
@@ -33,14 +33,14 @@ class TestSimulationDialogRoundTrips:
 
     @pytest.mark.parametrize("flag", [True, False])
     def test_real_time_round_trips(self, qapp, flag):
-        from lib.dialogs import SimulationDialog
+        from diablos.core.dialogs import SimulationDialog
 
         dlg = SimulationDialog(10.0, 0.01, 100, real_time=flag)
         assert dlg.get_values()["real_time"] is flag
 
     @pytest.mark.parametrize("flag", [True, False])
     def test_dynamic_plot_round_trips(self, qapp, flag):
-        from lib.dialogs import SimulationDialog
+        from diablos.core.dialogs import SimulationDialog
 
         dlg = SimulationDialog(10.0, 0.01, 100, dynamic_plot=flag)
         assert dlg.get_values()["dynamic_plot"] is flag

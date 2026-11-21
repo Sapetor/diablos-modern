@@ -1,4 +1,4 @@
-"""Semantic diff of .diablos diagrams (lib/diagram_diff.py, ``diablos diff``)."""
+"""Semantic diff of .diablos diagrams (src/diablos/core/diagram_diff.py, ``diablos diff``)."""
 
 import copy
 import json
@@ -6,8 +6,8 @@ import os
 
 import pytest
 
-from lib.cli import main as cli_main
-from lib.diagram_diff import diff_diagrams, format_diff, is_empty, load
+from diablos.core.cli import main as cli_main
+from diablos.core.diagram_diff import diff_diagrams, format_diff, is_empty, load
 
 EXAMPLE = os.path.join(os.path.dirname(__file__), "..", "..", "examples", "discrete_pi_zoh.diablos")
 SUBSYS = os.path.join(

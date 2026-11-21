@@ -1,4 +1,4 @@
-"""Tests for the Monte-Carlo ensemble runner (lib/analysis/monte_carlo.py).
+"""Tests for the Monte-Carlo ensemble runner (src/diablos/core/analysis/monte_carlo.py).
 
 Builds small stochastic diagrams via DiagramBuilder, runs ensembles, and checks
 per-run seed injection (runs differ but are reproducible from a master seed),
@@ -8,8 +8,8 @@ end-to-end packet loss, parameter sampling, and a random-delay integration.
 import numpy as np
 import pytest
 
-from lib.diagram_builder import DiagramBuilder
-from lib.analysis.monte_carlo import MonteCarloRunner, derive_seed
+from diablos.core.diagram_builder import DiagramBuilder
+from diablos.core.analysis.monte_carlo import MonteCarloRunner, derive_seed
 
 
 _BLOCK_INSTANCES = None
@@ -18,7 +18,7 @@ _BLOCK_INSTANCES = None
 def _params(block_type, **overrides):
     global _BLOCK_INSTANCES
     if _BLOCK_INSTANCES is None:
-        from lib.block_loader import load_blocks
+        from diablos.core.block_loader import load_blocks
 
         _BLOCK_INSTANCES = {}
         for cls in load_blocks():
@@ -37,8 +37,8 @@ def _params(block_type, **overrides):
 
 
 def _load(builder, tmp_path, name):
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     path = tmp_path / name
     builder.save(str(path))
@@ -75,7 +75,7 @@ def test_derive_seed_stable_across_processes():
     import subprocess
     import sys
 
-    code = "from lib.analysis.monte_carlo import derive_seed; print(derive_seed(7, 3, 'noise1'))"
+    code = "from diablos.core.analysis.monte_carlo import derive_seed; print(derive_seed(7, 3, 'noise1'))"
     root = os.path.join(os.path.dirname(__file__), "..", "..")
     outs = set()
     for hash_seed in ("1", "2", "12345"):

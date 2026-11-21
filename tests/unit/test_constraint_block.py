@@ -1,4 +1,4 @@
-"""Unit tests for the optimization Constraint block (blocks/optimization/constraint.py).
+"""Unit tests for the optimization Constraint block (src/diablos/blocks/optimization/constraint.py).
 
 The block plays two roles and both were untested:
 
@@ -16,7 +16,7 @@ for all three constraint types and all four evaluation modes.
 import numpy as np
 import pytest
 
-from blocks.optimization.constraint import ConstraintBlock
+from diablos.blocks.optimization.constraint import ConstraintBlock
 
 
 def _defaults(**overrides):
@@ -229,7 +229,7 @@ class TestConstraintPenaltyAndReset:
 
     def test_draw_icon_returns_a_painter_path(self, qapp):
         from PyQt6.QtCore import QRect
-        from lib.icon_path import IconPath
+        from diablos.core.icon_path import IconPath
 
         path = ConstraintBlock().draw_icon(QRect(0, 0, 100, 60))
         assert isinstance(path, IconPath)

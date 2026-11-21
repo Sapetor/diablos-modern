@@ -10,7 +10,7 @@
 #
 #   1. `DiaBloS self-test`: bundled resources, both solvers against a closed
 #      form, a 2-process Monte-Carlo ensemble, and the main window built
-#      offscreen (lib/self_test.py). Its JSON report is checked, not only the
+#      offscreen (src/diablos/core/self_test.py). Its JSON report is checked, not only the
 #      exit code -- a windowed Windows build has no stdout.
 #   2. `DiaBloS run`: the headless CLI simulates an example to CSV, and the CSV
 #      is checked against y = 1 - exp(-(t - 1) / 2).

@@ -80,8 +80,8 @@ def implicated_block(tb_text):
 def run_one(example_file):
     """Returns dict with keys: name, status, exc_type, message, signature, block,
     solver, n_states, block_fns."""
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     prev_instance = WorkspaceManager._instance
     WorkspaceManager._instance = None

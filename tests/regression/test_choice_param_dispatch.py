@@ -24,7 +24,7 @@ This module locks that class of bug down three ways:
 
 NB: the property editor renders a QComboBox for ANY param carrying an ``options``
 or ``choices`` list regardless of its declared ``type`` (see
-``modern_ui/widgets/property_editor.py``), so "dropdown param" here means "has an
+``src/diablos/gui/widgets/property_editor.py``), so "dropdown param" here means "has an
 options/choices list", not ``type == 'choice'``.
 """
 
@@ -34,7 +34,7 @@ import re
 import numpy as np
 import pytest
 
-from lib.block_loader import load_blocks
+from diablos.core.block_loader import load_blocks
 
 pytestmark = pytest.mark.regression
 
@@ -57,203 +57,203 @@ def _spec(factory, *, inputs=None, params=None, time=0.5, dtime=0.01, needs_csv=
 
 
 def _math_function():
-    from blocks.math_function import MathFunctionBlock
+    from diablos.blocks.math_function import MathFunctionBlock
 
     return MathFunctionBlock()
 
 
 def _logical():
-    from blocks.logical_operator import LogicalOperatorBlock
+    from diablos.blocks.logical_operator import LogicalOperatorBlock
 
     return LogicalOperatorBlock()
 
 
 def _relational():
-    from blocks.relational_operator import RelationalOperatorBlock
+    from diablos.blocks.relational_operator import RelationalOperatorBlock
 
     return RelationalOperatorBlock()
 
 
 def _pid():
-    from blocks.pid import PIDBlock
+    from diablos.blocks.pid import PIDBlock
 
     return PIDBlock()
 
 
 def _compare():
-    from blocks.compare_to_constant import CompareToConstantBlock
+    from diablos.blocks.compare_to_constant import CompareToConstantBlock
 
     return CompareToConstantBlock()
 
 
 def _chirp():
-    from blocks.chirp import ChirpBlock
+    from diablos.blocks.chirp import ChirpBlock
 
     return ChirpBlock()
 
 
 def _wave():
-    from blocks.wave_generator import WaveGeneratorBlock
+    from diablos.blocks.wave_generator import WaveGeneratorBlock
 
     return WaveGeneratorBlock()
 
 
 def _random_source():
-    from blocks.random_source import RandomSourceBlock
+    from diablos.blocks.random_source import RandomSourceBlock
 
     return RandomSourceBlock()
 
 
 def _packet_loss():
-    from blocks.packet_loss import PacketLossBlock
+    from diablos.blocks.packet_loss import PacketLossBlock
 
     return PacketLossBlock()
 
 
 def _network_channel():
-    from blocks.network_channel import NetworkChannelBlock
+    from diablos.blocks.network_channel import NetworkChannelBlock
 
     return NetworkChannelBlock()
 
 
 def _residual_norm():
-    from blocks.optimization_primitives.residual_norm import ResidualNormBlock
+    from diablos.blocks.optimization_primitives.residual_norm import ResidualNormBlock
 
     return ResidualNormBlock()
 
 
 def _numerical_gradient():
-    from blocks.optimization_primitives.numerical_gradient import NumericalGradientBlock
+    from diablos.blocks.optimization_primitives.numerical_gradient import NumericalGradientBlock
 
     return NumericalGradientBlock()
 
 
 def _linear_solver():
-    from blocks.optimization_primitives.linear_system_solver import LinearSystemSolverBlock
+    from diablos.blocks.optimization_primitives.linear_system_solver import LinearSystemSolverBlock
 
     return LinearSystemSolverBlock()
 
 
 def _lookup_1d():
-    from blocks.lookup_table import LookupTable1DBlock
+    from diablos.blocks.lookup_table import LookupTable1DBlock
 
     return LookupTable1DBlock()
 
 
 def _lookup_2d():
-    from blocks.lookup_table import LookupTable2DBlock
+    from diablos.blocks.lookup_table import LookupTable2DBlock
 
     return LookupTable2DBlock()
 
 
 def _from_file():
-    from blocks.from_file import FromFileBlock
+    from diablos.blocks.from_file import FromFileBlock
 
     return FromFileBlock()
 
 
 def _export():
-    from blocks.export import ExportBlock
+    from diablos.blocks.export import ExportBlock
 
     return ExportBlock()
 
 
 def _switch():
-    from blocks.switch import SwitchBlock
+    from diablos.blocks.switch import SwitchBlock
 
     return SwitchBlock()
 
 
 def _field_probe():
-    from blocks.pde.field_processing import FieldProbeBlock
+    from diablos.blocks.pde.field_processing import FieldProbeBlock
 
     return FieldProbeBlock()
 
 
 def _field_max():
-    from blocks.pde.field_processing import FieldMaxBlock
+    from diablos.blocks.pde.field_processing import FieldMaxBlock
 
     return FieldMaxBlock()
 
 
 def _field_probe_2d():
-    from blocks.pde.field_processing_2d import FieldProbe2DBlock
+    from diablos.blocks.pde.field_processing_2d import FieldProbe2DBlock
 
     return FieldProbe2DBlock()
 
 
 def _heat_1d():
-    from blocks.pde.heat_equation_1d import HeatEquation1DBlock
+    from diablos.blocks.pde.heat_equation_1d import HeatEquation1DBlock
 
     return HeatEquation1DBlock()
 
 
 def _heat_2d():
-    from blocks.pde.heat_equation_2d import HeatEquation2DBlock
+    from diablos.blocks.pde.heat_equation_2d import HeatEquation2DBlock
 
     return HeatEquation2DBlock()
 
 
 def _wave_1d():
-    from blocks.pde.wave_equation_1d import WaveEquation1DBlock
+    from diablos.blocks.pde.wave_equation_1d import WaveEquation1DBlock
 
     return WaveEquation1DBlock()
 
 
 def _wave_2d():
-    from blocks.pde.wave_equation_2d import WaveEquation2DBlock
+    from diablos.blocks.pde.wave_equation_2d import WaveEquation2DBlock
 
     return WaveEquation2DBlock()
 
 
 def _diffusion_reaction_1d():
-    from blocks.pde.diffusion_reaction_1d import DiffusionReaction1DBlock
+    from diablos.blocks.pde.diffusion_reaction_1d import DiffusionReaction1DBlock
 
     return DiffusionReaction1DBlock()
 
 
 # --- blocks that gained a `zero_crossing` dropdown (compiled-solver event
-# detection, see lib/engine/zero_crossing.py). execute() ignores the param --
+# detection, see src/diablos/core/engine/zero_crossing.py). execute() ignores the param --
 # it steers the fast solver, not the interpreter -- so these stimuli only
 # assert the option list cannot make a block misbehave.
 def _abs_block():
-    from blocks.abs_block import AbsBlock
+    from diablos.blocks.abs_block import AbsBlock
 
     return AbsBlock()
 
 
 def _saturation():
-    from blocks.saturation import SaturationBlock
+    from diablos.blocks.saturation import SaturationBlock
 
     return SaturationBlock()
 
 
 def _deadband():
-    from blocks.deadband import DeadbandBlock
+    from diablos.blocks.deadband import DeadbandBlock
 
     return DeadbandBlock()
 
 
 def _hysteresis():
-    from blocks.hysteresis import HysteresisBlock
+    from diablos.blocks.hysteresis import HysteresisBlock
 
     return HysteresisBlock()
 
 
 def _step():
-    from blocks.step import StepBlock
+    from diablos.blocks.step import StepBlock
 
     return StepBlock()
 
 
 def _ramp():
-    from blocks.ramp import RampBlock
+    from diablos.blocks.ramp import RampBlock
 
     return RampBlock()
 
 
 def _prbs():
-    from blocks.prbs import PRBSBlock
+    from diablos.blocks.prbs import PRBSBlock
 
     return PRBSBlock()
 
@@ -481,7 +481,7 @@ def test_specs_and_allowlist_are_disjoint():
 # 3. The precise cube guard: options list == dispatched function set.
 # --------------------------------------------------------------------------- #
 def test_math_function_options_match_dispatch():
-    from blocks.math_function import MathFunctionBlock
+    from diablos.blocks.math_function import MathFunctionBlock
 
     src = inspect.getsource(MathFunctionBlock.execute)
     handled = set(re.findall(r'func == "([^"]+)"', src))

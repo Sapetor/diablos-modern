@@ -27,8 +27,8 @@ EXAMPLE = REPO / "examples" / "monte_carlo_robustness.diablos"
 
 
 def diablos_ensemble(master_seed):
-    from lib.analysis.monte_carlo import MonteCarloRunner
-    from lib.cli import load_diagram
+    from diablos.core.analysis.monte_carlo import MonteCarloRunner
+    from diablos.core.cli import load_diagram
 
     dsim, _ = load_diagram(str(EXAMPLE))
     dsim.use_fast_solver = True

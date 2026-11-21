@@ -8,7 +8,7 @@ from PyQt6.QtCore import QPoint
 
 @pytest.fixture
 def window(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     yield w

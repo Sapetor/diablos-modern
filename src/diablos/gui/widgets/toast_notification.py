@@ -1,0 +1,145 @@
+"""Toast Notification Widget
+Brief visual feedback for keyboard shortcuts and actions.
+"""
+
+from PyQt6.QtWidgets import QLabel, QGraphicsOpacityEffect
+from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
+from diablos.gui.themes.theme_manager import theme_manager, get_ui_font, TYPE, WEIGHT
+
+
+class ToastNotification(QLabel):
+    """A brief notification message that fades in and out."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.Tool
+            | Qt.WindowType.WindowStaysOnTopHint
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+
+        # Styling
+        self.setFont(get_ui_font(TYPE["body_strong"], WEIGHT["bold"]))
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.setMinimumWidth(200)
+        self.setMaximumWidth(400)
+        self.setWordWrap(True)
+
+        # Opacity effect
+        self.opacity_effect = QGraphicsOpacityEffect(self)
+        self.setGraphicsEffect(self.opacity_effect)
+
+        # Animation
+        self.fade_animation = QPropertyAnimation(self.opacity_effect, b"opacity")
+        self.fade_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        # Connect once; hide only when a fade-OUT (end value 0.0) completes so the
+        # fade-IN's finished signal does not hide a freshly shown toast.
+        self.fade_animation.finished.connect(self._on_fade_finished)
+
+        # Auto-hide timer
+        self.hide_timer = QTimer(self)
+        self.hide_timer.setSingleShot(True)
+        self.hide_timer.timeout.connect(self._start_fade_out)
+
+        # Whether the current message is an error (drives red styling). Must be
+        # set before the first _apply_styling() call below.
+        self._is_error = False
+        self._on_click = None
+        self._apply_styling()
+
+        # Connect to theme changes
+        theme_manager.theme_changed.connect(self._apply_styling)
+
+    def _apply_styling(self):
+        """Apply theme-aware styling (red error variant when ``self._is_error``)."""
+        if self._is_error:
+            bg_color = theme_manager.get_color("error_bg")
+            text_color = theme_manager.get_color("text_primary")
+            border_color = theme_manager.get_color("error")
+        else:
+            bg_color = theme_manager.get_color("surface_elevated")
+            text_color = theme_manager.get_color("text_primary")
+            border_color = theme_manager.get_color("accent_primary")
+
+        self.setStyleSheet(f"""
+            QLabel {{
+                background-color: {bg_color.name()};
+                color: {text_color.name()};
+                border: 2px solid {border_color.name()};
+                border-radius: 8px;
+                padding: 12px 20px;
+            }}
+        """)
+
+    def mousePressEvent(self, event):
+        """A toast shown with ``on_click`` runs it when clicked, then dismisses."""
+        callback = self._on_click
+        if callback is not None and event.button() == Qt.MouseButton.LeftButton:
+            self._on_click = None
+            self.hide_timer.stop()
+            self.hide()
+            callback()
+            return
+        super().mousePressEvent(event)
+
+    def show_message(
+        self, message: str, duration: int = 2000, is_error: bool = False, on_click=None
+    ):
+        """
+        Show a toast notification with a message.
+
+        Args:
+            message: The message to display
+            duration: How long to show the message in milliseconds (default 2000ms)
+            is_error: When True, style the toast with the theme's error colors
+                (red border + tinted background) instead of the neutral accent.
+            on_click: Optional callable run (and the toast dismissed) when the
+                toast is clicked; the toast then shows a pointing-hand cursor.
+        """
+        self._on_click = on_click
+        self.setCursor(
+            Qt.CursorShape.PointingHandCursor if on_click else Qt.CursorShape.ArrowCursor
+        )
+        # Re-style only when the error state changes, so the common (non-error)
+        # path keeps using the already-applied stylesheet.
+        if is_error != self._is_error:
+            self._is_error = is_error
+            self._apply_styling()
+
+        self.setText(message)
+        self.adjustSize()
+
+        # Position in bottom-right of parent
+        if self.parent():
+            parent_rect = self.parent().rect()
+            x = parent_rect.width() - self.width() - 20
+            y = parent_rect.height() - self.height() - 20
+            self.move(x, y)
+
+        # Fade in
+        self.opacity_effect.setOpacity(0.0)
+        self.show()
+
+        self.fade_animation.stop()
+        self.fade_animation.setDuration(300)
+        self.fade_animation.setStartValue(0.0)
+        self.fade_animation.setEndValue(0.95)
+        self.fade_animation.start()
+
+        # Schedule fade out
+        self.hide_timer.start(duration)
+
+    def _start_fade_out(self):
+        """Start the fade out animation."""
+        self.fade_animation.stop()
+        self.fade_animation.setDuration(300)
+        self.fade_animation.setStartValue(0.95)
+        self.fade_animation.setEndValue(0.0)
+        self.fade_animation.start()
+
+    def _on_fade_finished(self):
+        """Hide the toast only when a fade-out animation has finished."""
+        if self.fade_animation.endValue() == 0.0:
+            self.hide()

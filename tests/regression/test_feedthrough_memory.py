@@ -1,7 +1,7 @@
 """
 Regression tests for feedthrough memory blocks delivering a stale output.
 
-lib/engine/memory_blocks.py defines a memory block as one whose output "depends
+src/diablos/core/engine/memory_blocks.py defines a memory block as one whose output "depends
 only on *past* inputs ... not on the current input".  ZeroOrderHold, RateLimiter
 and PID are all in OUTPUT_ONLY_SAFE_BLOCK_FNS, but none of them satisfies that:
 each has direct feedthrough (b_type == 2), and a ZOH at a sample instant outputs
@@ -34,7 +34,7 @@ from PyQt6.QtCore import QPoint
 
 def _run(src_fn, src_params, mid_fn, mid_params, sim_dt, sim_time=0.8):
     """source -> block under test -> scope."""
-    from lib.lib import DSim
+    from diablos.core.lib import DSim
 
     dsim = DSim()
     menu = {b.fn_name: b for b in dsim.menu_blocks}
@@ -108,7 +108,7 @@ class TestPidIntegralStartsAtZero:
 
     def test_no_integral_accrues_before_time_passes(self, qapp):
         """Directly: the first execute must not advance the integral."""
-        from blocks.pid import PIDBlock
+        from diablos.blocks.pid import PIDBlock
 
         block = PIDBlock()
         params = {"Kp": 0.0, "Ki": 1.0, "Kd": 0.0, "dtime": 0.1, "_init_start_": True}
@@ -126,7 +126,7 @@ class TestPidIntegralStartsAtZero:
 class TestRefreshDoesNotRecount:
     def test_refresh_leaves_data_received_alone(self, qapp):
         """Re-counting would let a multi-input consumer fire before it is ready."""
-        from lib.engine.simulation_engine import SimulationEngine
+        from diablos.core.engine.simulation_engine import SimulationEngine
 
         dsim_engine = SimulationEngine.__new__(SimulationEngine)
 

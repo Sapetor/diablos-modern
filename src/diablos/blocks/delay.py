@@ -1,0 +1,119 @@
+import numpy as np
+from diablos.blocks.base_block import BaseBlock
+
+
+class DelayBlock(BaseBlock):
+    """
+    Delays the input signal by a specified number of time steps.
+    Uses a circular buffer to store past values.
+    """
+
+    @property
+    def block_name(self):
+        return "Delay"
+
+    @property
+    def category(self):
+        return "Control"
+
+    @property
+    def color(self):
+        return "cyan"
+
+    @property
+    def doc(self):
+        return (
+            "Discrete Integer Delay (z^-N)."
+            "\n\nDelays the input by a fixed number of execution steps."
+            "\ny[k] = u[k - N]"
+            "\n\nParameters:"
+            "\n- Delay Steps: Number of steps (N)."
+            "\n- Initial Value: Output for k < N."
+            "\n\nUsage:"
+            "\nModels digital latency or buffer pipelines."
+        )
+
+    @property
+    def params(self):
+        return {
+            "delay_steps": {"type": "int", "default": 1, "doc": "Number of time steps to delay."},
+            "initial_value": {
+                "type": "float",
+                "default": 0.0,
+                "doc": "Output before delay buffer fills.",
+            },
+            "_buffer_": {"type": "list", "default": [], "doc": "Internal buffer (do not edit)."},
+            "_init_start_": {"type": "bool", "default": True, "doc": "Initialization flag."},
+        }
+
+    @property
+    def inputs(self):
+        return [{"name": "in", "type": "any"}]
+
+    @property
+    def outputs(self):
+        return [{"name": "out", "type": "any"}]
+
+    @property
+    def b_type(self):
+        """Delay is a memory block - can break algebraic loops."""
+        return 1
+
+    def draw_icon(self, block_rect):
+        """Draw a sampled staircase and the same staircase shifted N samples."""
+        from diablos.core.icon_path import IconPath
+
+        path = IconPath()
+        # Input: sampled ramp-up (upper band)
+        path.moveTo(0.04, 0.42)
+        path.lineTo(0.18, 0.42)
+        path.lineTo(0.18, 0.24)
+        path.lineTo(0.32, 0.24)
+        path.lineTo(0.32, 0.06)
+        path.lineTo(0.96, 0.06)
+        # Output: the same staircase, delayed (lower band)
+        path.moveTo(0.04, 0.96)
+        path.lineTo(0.40, 0.96)
+        path.lineTo(0.40, 0.78)
+        path.lineTo(0.54, 0.78)
+        path.lineTo(0.54, 0.60)
+        path.lineTo(0.96, 0.60)
+        # Sample shift
+        path.moveTo(0.18, 0.51)
+        path.lineTo(0.40, 0.51)
+        path.moveTo(0.33, 0.45)
+        path.lineTo(0.40, 0.51)
+        path.lineTo(0.33, 0.57)
+        return path
+
+    def execute(self, time, inputs, params, output_only=False, **kwargs):
+        delay_steps = max(1, int(params.get("delay_steps", 1)))
+        initial_value = params.get("initial_value", 0.0)
+
+        # Initialize buffer on first call.
+        # The buffer is a fixed-size ring: `_head_` indexes the oldest sample.
+        # It used to be a plain list shifted with `pop(0)` on every step, which
+        # is O(N) per step (and O(N*steps) per run) for no reason. A list plus an
+        # index (rather than a collections.deque) keeps the parameter a plain
+        # JSON-friendly type, matching the "_buffer_" list param declared above.
+        if params.get("_init_start_", True) or not params.get("_buffer_"):
+            params["_buffer_"] = [np.atleast_1d(initial_value) for _ in range(delay_steps)]
+            params["_head_"] = 0
+            params["_init_start_"] = False
+
+        buffer = params["_buffer_"]
+        head = int(params.get("_head_", 0)) % len(buffer)
+
+        # For output_only mode (used in init), just return current buffer head
+        if output_only:
+            return {0: buffer[head]}
+
+        current_input = np.atleast_1d(inputs.get(0, initial_value))
+
+        # Take the oldest value, overwrite that slot with the newest input and
+        # advance the head: same FIFO semantics as pop(0)/append, but O(1).
+        output = buffer[head]
+        buffer[head] = current_input
+        params["_head_"] = (head + 1) % len(buffer)
+
+        return {0: output}

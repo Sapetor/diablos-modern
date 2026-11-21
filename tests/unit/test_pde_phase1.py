@@ -1,7 +1,7 @@
 """Unit tests for the PDE Phase 1 features: periodic BCs, 2D Robin BCs,
 dynamic (input-driven) Robin coefficients, and the extra initial conditions.
 
-These exercise the shared operators in ``lib/engine/pde_ops.py`` and the block
+These exercise the shared operators in ``src/diablos/core/engine/pde_ops.py`` and the block
 wrappers directly. The compiled-vs-interpreted equivalence of the same features
 is covered separately in ``tests/regression/test_equiv_pde_phase1.py``.
 """
@@ -9,12 +9,12 @@ is covered separately in ``tests/regression/test_equiv_pde_phase1.py``.
 import numpy as np
 import pytest
 
-from lib.engine.pde_helpers import (
+from diablos.core.engine.pde_helpers import (
     companion_seed,
     parse_pde_2d_initial_condition,
     parse_pde_initial_condition,
 )
-from lib.engine.pde_ops import (
+from diablos.core.engine.pde_ops import (
     heat_rhs_1d,
     heat_rhs_2d,
     is_periodic,
@@ -281,7 +281,7 @@ class TestDynamicRobinCoefficients:
     """h fed from an input port instead of a static param."""
 
     def test_block_reads_h_from_input_port(self):
-        from blocks.pde.heat_equation_1d import HeatEquation1DBlock
+        from diablos.blocks.pde.heat_equation_1d import HeatEquation1DBlock
 
         block = HeatEquation1DBlock()
         params = {"h_left": 1.0, "h_right": 1.0, "k_thermal": 1.0}
@@ -299,7 +299,7 @@ class TestDynamicRobinCoefficients:
         assert strong[0] < weak[0] < 0
 
     def test_2d_block_reads_h_from_input_ports(self):
-        from blocks.pde.heat_equation_2d import HeatEquation2DBlock
+        from diablos.blocks.pde.heat_equation_2d import HeatEquation2DBlock
 
         block = HeatEquation2DBlock()
         params = {"h_left": 1.0, "h_right": 2.0, "h_bottom": 3.0, "h_top": 4.0}
@@ -310,7 +310,7 @@ class TestDynamicRobinCoefficients:
     def test_2d_dynamic_ambient_moves_the_field(self):
         """Raising the ambient temperature mid-run reverses the sign of the edge
         derivative: the plate stops cooling and starts warming."""
-        from blocks.pde.heat_equation_2d import HeatEquation2DBlock
+        from diablos.blocks.pde.heat_equation_2d import HeatEquation2DBlock
 
         block = HeatEquation2DBlock()
         params = {
@@ -361,7 +361,7 @@ class TestNewInitialConditions:
         assert np.all((a >= 0.0) & (a < 1.0))
 
     def test_1d_random_seed_zero_is_not_reproducible(self):
-        """seed == 0 means entropy, matching the blocks/noise.py convention."""
+        """seed == 0 means entropy, matching the src/diablos/blocks/noise.py convention."""
         a = parse_pde_initial_condition("random", 64, 1.0, seed=0)
         b = parse_pde_initial_condition("random", 64, 1.0, seed=0)
         assert not np.array_equal(a, b)
@@ -399,7 +399,7 @@ class TestBlockInitialConditionDelegation:
     and the compiled path (which call the same helpers) cannot drift apart."""
 
     def test_heat_1d_block_matches_parser(self):
-        from blocks.pde.heat_equation_1d import HeatEquation1DBlock
+        from diablos.blocks.pde.heat_equation_1d import HeatEquation1DBlock
 
         params = {"N": 17, "L": 2.0, "init_conds": "random", "seed": 42}
         block_ic = HeatEquation1DBlock().get_initial_conditions(params)
@@ -407,7 +407,7 @@ class TestBlockInitialConditionDelegation:
         assert np.array_equal(block_ic, parser_ic)
 
     def test_heat_2d_block_matches_parser(self):
-        from blocks.pde.heat_equation_2d import HeatEquation2DBlock
+        from diablos.blocks.pde.heat_equation_2d import HeatEquation2DBlock
 
         params = {"Nx": 6, "Ny": 4, "init_temp": "random", "seed": 11, "init_amplitude": 3.0}
         block_ic = HeatEquation2DBlock().get_initial_state(params)
@@ -417,7 +417,7 @@ class TestBlockInitialConditionDelegation:
     def test_wave_1d_random_u_and_v_are_independent(self):
         """One seed drives both fields; the companion offset keeps them from
         being the identical array."""
-        from blocks.pde.wave_equation_1d import WaveEquation1DBlock
+        from diablos.blocks.pde.wave_equation_1d import WaveEquation1DBlock
 
         params = {
             "N": 20,
@@ -435,7 +435,7 @@ class TestBlockInitialConditionDelegation:
         )
 
     def test_wave_2d_checkerboard_reaches_the_block(self):
-        from blocks.pde.wave_equation_2d import WaveEquation2DBlock
+        from diablos.blocks.pde.wave_equation_2d import WaveEquation2DBlock
 
         params = {"Nx": 5, "Ny": 5, "init_displacement": "checkerboard", "init_amplitude": 1.0}
         state = WaveEquation2DBlock().get_initial_state(params)

@@ -1,4 +1,4 @@
-"""Unit tests for the compile_system phases in lib.engine.system_compiler.
+"""Unit tests for the compile_system phases in diablos.core.engine.system_compiler.
 
 ``compile_system`` is a short sequence over module-level helpers: wiring
 (``_build_input_map``), state layout (``STATE_ALLOCATORS`` / ``_allocate_states``),
@@ -13,7 +13,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from lib.engine import system_compiler as sc
+from diablos.core.engine import system_compiler as sc
 
 
 def _block(name, fn, **params):
@@ -112,7 +112,7 @@ class TestAllocateStates:
 
     def test_failure_is_logged_and_reraised(self, caplog):
         blocks = [_block("bad", "StateSpace", A="not a matrix", B=1, C=1, D=0)]
-        with caplog.at_level("ERROR", logger="lib.engine.system_compiler"):
+        with caplog.at_level("ERROR", logger="diablos.core.engine.system_compiler"):
             with pytest.raises(Exception):
                 sc._allocate_states(blocks)
         assert any("Failed to compile StateSpace bad" in r.message for r in caplog.records)

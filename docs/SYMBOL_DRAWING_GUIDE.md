@@ -14,14 +14,14 @@ This guide outlines the standards for drawing block symbols in the `modern_ui` f
 ## Drawing Implementation
 
 A block draws its symbol in its own `draw_icon(block_rect)` method by building
-an `IconPath` (`lib/icon_path.py`) and returning it. `IconPath` records the
+an `IconPath` (`src/diablos/core/icon_path.py`) and returning it. `IconPath` records the
 same calls as Qt's `QPainterPath` (numbers only), so the block needs no GUI
 toolkit; the renderer replays the path onto a `QPainterPath`.
 
 ### Code Structure
 
 ```python
-from lib.icon_path import IconPath
+from diablos.core.icon_path import IconPath
 
 class MyBlock(BaseBlock):
     def draw_icon(self, block_rect):
@@ -61,7 +61,7 @@ path.moveTo(0.45, 0.75); path.lineTo(0.45, 0.72); path.lineTo(0.51, 0.75); path.
 - **Stroke Width**: Standard stroke width is **2px**. Selected blocks use **3px**.
 - **Colors**:
     - **Stroke**: Dark Grey (`#1F2937`) or Theme Border Color.
-    - **Fill**: Block Category Color (defined in `lib/simulation/block.py`).
+    - **Fill**: Block Category Color (defined in `src/diablos/core/simulation/block.py`).
 - **Shadows**: Handled automatically by the base drawing logic.
 
 ## Examples

@@ -1,7 +1,7 @@
 """Tests for Adam block."""
 
 import numpy as np
-from blocks.optimization_primitives.adam import AdamBlock
+from diablos.blocks.optimization_primitives.adam import AdamBlock
 
 
 class TestAdamBlock:

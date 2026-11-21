@@ -4,7 +4,7 @@ import pytest
 from PyQt6.QtCore import QPoint, QPointF, QRect
 from PyQt6.QtGui import QColor, QFont, QPainter, QPixmap
 
-from modern_ui.renderers.block_renderer import (
+from diablos.gui.renderers.block_renderer import (
     BlockRenderer,
     block_outline_path,
     resolve_block_shape,
@@ -56,13 +56,13 @@ def _paint(fn):
 
 class TestShapeResolution:
     def test_shape_hook_is_read_from_the_block_instance(self):
-        from blocks.gain import GainBlock
-        from blocks.matrix_gain import MatrixGainBlock
-        from blocks.sum import SumBlock
-        from blocks.product import ProductBlock
-        from blocks.goto import GotoBlock
-        from blocks.from_block import FromBlock
-        from blocks.abs_block import AbsBlock
+        from diablos.blocks.gain import GainBlock
+        from diablos.blocks.matrix_gain import MatrixGainBlock
+        from diablos.blocks.sum import SumBlock
+        from diablos.blocks.product import ProductBlock
+        from diablos.blocks.goto import GotoBlock
+        from diablos.blocks.from_block import FromBlock
+        from diablos.blocks.abs_block import AbsBlock
 
         assert resolve_block_shape(_StubBlock("Gain", GainBlock())) == "triangle"
         assert resolve_block_shape(_StubBlock("MatrixGain", MatrixGainBlock())) == "triangle"
@@ -73,7 +73,7 @@ class TestShapeResolution:
         assert resolve_block_shape(_StubBlock("Abs", AbsBlock())) == "rect"
 
     def test_circle_falls_back_to_rect_with_many_ports(self):
-        from blocks.sum import SumBlock
+        from diablos.blocks.sum import SumBlock
 
         assert resolve_block_shape(_StubBlock("Sum", SumBlock(), in_ports=3)) == "circle"
         assert resolve_block_shape(_StubBlock("Sum", SumBlock(), in_ports=4)) == "rect"
@@ -148,11 +148,11 @@ class TestGainLabel:
 
 class TestDrawing:
     def test_draws_every_shape_without_error(self):
-        from blocks.gain import GainBlock
-        from blocks.matrix_gain import MatrixGainBlock
-        from blocks.sum import SumBlock
-        from blocks.product import ProductBlock
-        from blocks.goto import GotoBlock
+        from diablos.blocks.gain import GainBlock
+        from diablos.blocks.matrix_gain import MatrixGainBlock
+        from diablos.blocks.sum import SumBlock
+        from diablos.blocks.product import ProductBlock
+        from diablos.blocks.goto import GotoBlock
 
         renderer = BlockRenderer()
         blocks = [

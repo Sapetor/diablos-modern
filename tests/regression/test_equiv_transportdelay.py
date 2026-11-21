@@ -10,7 +10,7 @@ which has the closed-form response y(t) = sin(3*(t - 0.5)) for t >= 0.5 and the
 initial output 0 before the delay elapses.
 
 Note on the two paths: TransportDelay compiles by the method of steps
-(``lib/engine/compiled_delays.py``, 2026-10-12; before that the fast path fell
+(``src/diablos/core/engine/compiled_delays.py``, 2026-10-12; before that the fast path fell
 back to the interpreter). This test therefore guards two invariants at once:
 
   * the fast-solver path and the interpreter agree on the scope trajectory,
@@ -51,13 +51,13 @@ def _defaults(block):
 def _build_dsim():
     """Build a Sine -> TransportDelay -> Scope DSim from scratch."""
     from PyQt6.QtCore import QRect, QPoint
-    from blocks.sine import SineBlock
-    from blocks.transport_delay import TransportDelayBlock
-    from blocks.scope import ScopeBlock
-    from lib.lib import DSim
-    from lib.simulation.block import DBlock
-    from lib.simulation.connection import DLine
-    from lib.workspace import WorkspaceManager
+    from diablos.blocks.sine import SineBlock
+    from diablos.blocks.transport_delay import TransportDelayBlock
+    from diablos.blocks.scope import ScopeBlock
+    from diablos.core.lib import DSim
+    from diablos.core.simulation.block import DBlock
+    from diablos.core.simulation.connection import DLine
+    from diablos.core.workspace import WorkspaceManager
 
     WorkspaceManager._instance = None
     dsim = DSim()

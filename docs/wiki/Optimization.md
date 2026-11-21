@@ -14,9 +14,9 @@ The optimization workflow consists of:
 
 There is currently **no menu entry** for this family in the modern UI. The
 optimizer is driven programmatically through `DSim.run_optimization()`
-(`lib/lib.py`), which collects the Parameter / CostFunction / Constraint /
+(`src/diablos/core/lib.py`), which collects the Parameter / CostFunction / Constraint /
 Optimizer blocks in the diagram and hands them to
-`lib/engine/optimization_engine.py`:
+`src/diablos/core/engine/optimization_engine.py`:
 
 ```python
 result = dsim.run_optimization()

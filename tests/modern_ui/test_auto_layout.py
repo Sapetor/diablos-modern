@@ -4,7 +4,7 @@ import itertools
 
 import pytest
 
-from modern_ui.tools.auto_layout import layered_layout
+from diablos.gui.tools.auto_layout import layered_layout
 
 
 def _nodes(*names, w=60, h=40):
@@ -81,7 +81,7 @@ class TestLayeredLayout:
 
 @pytest.fixture
 def window(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     w.resize(1200, 800)

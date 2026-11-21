@@ -21,7 +21,7 @@ ROOT = ["Subsystem1", "gain0", "scope0", "step0", "sum0"]
 
 @pytest.fixture
 def dsim(qapp):
-    from lib.cli import load_diagram
+    from diablos.core.cli import load_diagram
 
     sim, _ = load_diagram(EXAMPLE)
     return sim
@@ -66,7 +66,7 @@ class TestSaveFromInsideASubsystem:
         assert dsim.dirty is False
 
     def test_reopening_the_save_restores_everything(self, dsim, tmp_path):
-        from lib.cli import load_diagram
+        from diablos.core.cli import load_diagram
 
         dsim.enter_subsystem(_subsystem(dsim.model.blocks_list))
         out = tmp_path / "reopen.diablos"
@@ -103,7 +103,7 @@ class TestSaveFromInsideASubsystem:
     def test_diagram_service_route_writes_the_root(self, dsim, tmp_path):
         from types import SimpleNamespace
 
-        from lib.services.diagram_service import DiagramService
+        from diablos.core.services.diagram_service import DiagramService
 
         window = SimpleNamespace(
             dsim=dsim,
@@ -130,7 +130,7 @@ class TestPortsAddedInsideAreSaved:
     def _add_inport(self, dsim):
         from PyQt6.QtCore import QRect
 
-        from blocks.inport import Inport
+        from diablos.blocks.inport import Inport
 
         existing = [b for b in dsim.model.blocks_list if b.block_fn == "Inport"]
         top = max(b.top for b in existing) + 80 if existing else 100
@@ -139,7 +139,7 @@ class TestPortsAddedInsideAreSaved:
         dsim.model.blocks_list.append(port)
 
     def test_saved_parent_ports_match_the_inside(self, dsim, tmp_path):
-        from lib.cli import load_diagram
+        from diablos.core.cli import load_diagram
 
         sub = _subsystem(dsim.model.blocks_list)
         before = len(sub.ports.get("in", []))

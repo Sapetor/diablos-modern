@@ -24,7 +24,7 @@ A, B = 1.0, 10.0  # the two root sources; a Sum "+-" of them gives A - B = -9
 
 @pytest.fixture
 def dsim(qapp):
-    from lib.cli import new_headless_dsim
+    from diablos.core.cli import new_headless_dsim
 
     return new_headless_dsim()
 
@@ -38,8 +38,8 @@ def _add(dsim, fn_name, x, y, **params):
 
 def _boundary(dsim, kind, name, top):
     """Add an Inport/Outport called ``name`` to the current scope, ``top`` px down."""
-    from blocks.inport import Inport
-    from blocks.outport import Outport
+    from diablos.blocks.inport import Inport
+    from diablos.blocks.outport import Outport
 
     cls, x = (Inport, 20) if kind == "in" else (Outport, 600)
     sid = max([b.sid for b in dsim.model.blocks_list] + [0]) + 1
@@ -80,7 +80,7 @@ def _root_sources(dsim):
 
 def _save_reopen_run(dsim, path):
     """Save ``dsim`` to ``path``, reopen the file and simulate it; return the reopened DSim."""
-    from lib.cli import load_diagram
+    from diablos.core.cli import load_diagram
 
     assert dsim.save(filepath=str(path)) == 0
     again, _ = load_diagram(str(path))
@@ -90,7 +90,7 @@ def _save_reopen_run(dsim, path):
 
 
 def _final(dsim, label):
-    from lib.analysis.resim import harvest_scope_signals
+    from diablos.core.analysis.resim import harvest_scope_signals
 
     signals = harvest_scope_signals(dsim)["signals"]
     return float(np.atleast_1d(signals[label])[-1])
@@ -263,7 +263,7 @@ class TestLegacySubsystemWithoutPortsMap:
         """A file saved before ``ports_map`` was written keeps its wiring on resync."""
         import os
 
-        from lib.cli import load_diagram
+        from diablos.core.cli import load_diagram
 
         example = os.path.join(
             os.path.dirname(__file__), "..", "..", "examples", "library_block_demo.diablos"

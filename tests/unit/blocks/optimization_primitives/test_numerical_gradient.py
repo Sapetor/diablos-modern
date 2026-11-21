@@ -1,7 +1,7 @@
 """Tests for NumericalGradient block."""
 
 import numpy as np
-from blocks.optimization_primitives.numerical_gradient import NumericalGradientBlock
+from diablos.blocks.optimization_primitives.numerical_gradient import NumericalGradientBlock
 
 
 class TestNumericalGradientBlock:

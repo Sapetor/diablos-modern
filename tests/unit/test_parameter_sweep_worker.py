@@ -1,5 +1,5 @@
 """Tests for the parameter-sweep background worker
-(modern_ui/widgets/parameter_sweep_worker.py).
+(src/diablos/gui/widgets/parameter_sweep_worker.py).
 
 Drives the worker by calling ``run()`` directly (no ``start()``), so it executes
 in the test thread and its signal handlers fire synchronously during emission.
@@ -7,8 +7,8 @@ in the test thread and its signal handlers fire synchronously during emission.
 
 import pytest
 
-from lib.diagram_builder import DiagramBuilder
-from modern_ui.widgets.parameter_sweep_worker import ParameterSweepWorker
+from diablos.core.diagram_builder import DiagramBuilder
+from diablos.gui.widgets.parameter_sweep_worker import ParameterSweepWorker
 
 
 _BLOCK_INSTANCES = None
@@ -17,7 +17,7 @@ _BLOCK_INSTANCES = None
 def _params(block_type, **overrides):
     global _BLOCK_INSTANCES
     if _BLOCK_INSTANCES is None:
-        from lib.block_loader import load_blocks
+        from diablos.core.block_loader import load_blocks
 
         _BLOCK_INSTANCES = {}
         for cls in load_blocks():
@@ -36,8 +36,8 @@ def _params(block_type, **overrides):
 
 
 def _load(builder, tmp_path, name):
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     path = tmp_path / name
     builder.save(str(path))

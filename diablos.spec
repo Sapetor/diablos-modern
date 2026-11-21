@@ -50,7 +50,7 @@ def _project_version(default='1.0.0'):
 VERSION = _project_version()
 
 # Bundle the version as a plain-text data file. A frozen bundle ships no
-# `.dist-info`, so `modern_ui/__init__.py` cannot read the version back through
+# `.dist-info`, so `src/diablos/gui/__init__.py` cannot read the version back through
 # `importlib.metadata`; it reads `sys._MEIPASS/_version.txt` instead. Written
 # into build/ (gitignored) so the source tree stays clean.
 _BUILD_DIR = os.path.join(PROJECT_ROOT, 'build')
@@ -60,7 +60,7 @@ with open(VERSION_FILE, 'w', encoding='utf-8') as _fh:
     _fh.write(VERSION + '\n')
 
 # --- Hidden imports ---
-# Blocks are loaded dynamically via importlib (lib/block_loader.py),
+# Blocks are loaded dynamically via importlib (src/diablos/core/block_loader.py),
 # so PyInstaller can't discover them through static analysis.
 # Auto-scanned from blocks/ directory at build time.
 sys.path.insert(0, PROJECT_ROOT)
@@ -74,7 +74,7 @@ hidden_imports_numpy = [m for m in collect_submodules('numpy')
                         if '.tests' not in m and '.testing' not in m]
 
 # SymPy powers the optional symbolic features (LaTeX/MathML export,
-# `lib/engine/symbolic_engine.py`, the per-block `symbolic_execute`). It is an
+# `src/diablos/core/engine/symbolic_engine.py`, the per-block `symbolic_execute`). It is an
 # optional dependency (`pip install .[symbolic]`), NOT part of requirements.txt,
 # so it is bundled only when the build environment has it -- see
 # docs/building.md. It used to be listed in `excludes` below, which meant even a
@@ -96,7 +96,7 @@ hidden_imports = (
         'PIL',
         'tqdm',
         # QSvgGenerator (vector "Export diagram as SVG") is imported lazily
-        # inside modern_ui/tools/diagram_image_exporter.py, and QtSvg is a
+        # inside src/diablos/gui/tools/diagram_image_exporter.py, and QtSvg is a
         # separate shared library in Qt6 -- name it so PyInstaller ships the
         # module and its Qt6Svg dylib/DLL. (QSvgWidget lives in
         # PyQt6.QtSvgWidgets in Qt6; nothing here uses it, so it stays out.)
@@ -112,9 +112,9 @@ hidden_imports = (
 datas = [
     ('config/default_config.json', 'config'),
     ('config/logging.json', 'config'),
-    ('config/block_sizes.py', 'config'),
+    ('src/diablos/core/block_sizes.py', 'config'),
     ('examples', 'examples'),
-    ('modern_ui/icons', 'modern_ui/icons'),
+    ('src/diablos/gui/icons', 'src/diablos/gui/icons'),
     (VERSION_FILE, '.'),
     ('locales', 'locales'),
     # Licence notices must travel with the binary: MIT requires the copyright

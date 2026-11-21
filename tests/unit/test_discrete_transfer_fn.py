@@ -10,7 +10,7 @@ class TestDiscreteTransferFunction:
 
     def test_block_properties(self):
         """Test basic block properties."""
-        from blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
+        from diablos.blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
 
         block = DiscreteTransferFunctionBlock()
         assert block.block_name == "DiscreteTranFn"
@@ -19,7 +19,7 @@ class TestDiscreteTransferFunction:
 
     def test_default_params(self):
         """Test default parameter values."""
-        from blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
+        from diablos.blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
 
         block = DiscreteTransferFunctionBlock()
         params = block.params
@@ -35,7 +35,7 @@ class TestDiscreteTransferFunction:
 
     def test_unity_gain(self):
         """H(z) = 1/1 should pass input through."""
-        from blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
+        from diablos.blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
 
         block = DiscreteTransferFunctionBlock()
         params = {"numerator": [1.0], "denominator": [1.0], "_init_start_": True}
@@ -64,7 +64,7 @@ class TestDiscreteTransferFunction:
         k=2: x=1.5, y=0.75, x_next=1.75
         k=3: x=1.75, y=0.875, ...
         """
-        from blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
+        from diablos.blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
 
         block = DiscreteTransferFunctionBlock()
         params = {"numerator": [0.5], "denominator": [1.0, -0.5], "_init_start_": True}
@@ -89,7 +89,7 @@ class TestDiscreteTransferFunction:
         This is a backward Euler integrator with sampling time Ts.
         y[k] = y[k-1] + Ts*u[k-1]
         """
-        from blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
+        from diablos.blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
 
         block = DiscreteTransferFunctionBlock()
         Ts = 0.1
@@ -118,7 +118,7 @@ class TestDiscreteTransferFunction:
         H(z) = (z + 0.5) / (z - 0.8)
         In z^-1 form: H(z) = (1 + 0.5*z^-1) / (1 - 0.8*z^-1)
         """
-        from blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
+        from diablos.blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
 
         block = DiscreteTransferFunctionBlock()
         params = {"numerator": [1.0, 0.5], "denominator": [1.0, -0.8], "_init_start_": True}
@@ -144,7 +144,7 @@ class TestDiscreteTransferFunction:
 
     def test_held_output_between_samples(self):
         """With sampling_time > 0, output should be held between sample times."""
-        from blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
+        from diablos.blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
 
         block = DiscreteTransferFunctionBlock()
         Ts = 0.1
@@ -179,7 +179,7 @@ class TestDiscreteTransferFunction:
 
     def test_sampling_time_negative(self):
         """Negative sampling_time means continuous update (every call)."""
-        from blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
+        from diablos.blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
 
         block = DiscreteTransferFunctionBlock()
         params = {
@@ -199,7 +199,7 @@ class TestDiscreteTransferFunction:
 
     def test_error_handling_invalid_coeffs(self):
         """Test error return for invalid transfer function."""
-        from blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
+        from diablos.blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
 
         block = DiscreteTransferFunctionBlock()
 
@@ -212,7 +212,7 @@ class TestDiscreteTransferFunction:
 
     def test_zero_input(self):
         """Test with zero input - should decay to zero."""
-        from blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
+        from diablos.blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
 
         block = DiscreteTransferFunctionBlock()
         params = {"numerator": [1.0], "denominator": [1.0, -0.5], "_init_start_": True}
@@ -225,7 +225,7 @@ class TestDiscreteTransferFunction:
 
     def test_output_only_mode(self):
         """Test output_only mode - should not update state."""
-        from blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
+        from diablos.blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
 
         block = DiscreteTransferFunctionBlock()
         params = {"numerator": [1.0], "denominator": [1.0, -0.5], "_init_start_": True}
@@ -247,7 +247,7 @@ class TestDiscreteTransferFunction:
         H(z) = (z^2 + 0.5*z) / (z^2 - 1.5*z + 0.5)
         In z^-1 form: H(z) = (1 + 0.5*z^-1) / (1 - 1.5*z^-1 + 0.5*z^-2)
         """
-        from blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
+        from diablos.blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
 
         block = DiscreteTransferFunctionBlock()
         params = {
@@ -273,7 +273,7 @@ class TestDiscreteTransferFunction:
 
     def test_initialization_with_init_conds(self):
         """Test initialization with custom initial conditions."""
-        from blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
+        from diablos.blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
 
         block = DiscreteTransferFunctionBlock()
         params = {
@@ -292,7 +292,7 @@ class TestDiscreteTransferFunction:
 
     def test_multiple_initializations(self):
         """Test that re-initialization works correctly."""
-        from blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
+        from diablos.blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
 
         block = DiscreteTransferFunctionBlock()
         params = {"numerator": [1.0], "denominator": [1.0, -0.5], "_init_start_": True}
@@ -313,7 +313,7 @@ class TestDiscreteTransferFunction:
 
         H(z) = 2 - this is just H(z) = 2/1 with D=2
         """
-        from blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
+        from diablos.blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
 
         block = DiscreteTransferFunctionBlock()
         params = {"numerator": [2.0], "denominator": [1.0], "_init_start_": True}
@@ -325,7 +325,7 @@ class TestDiscreteTransferFunction:
 
     def test_no_input_provided(self):
         """Test behavior when no input is provided (defaults to 0)."""
-        from blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
+        from diablos.blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
 
         block = DiscreteTransferFunctionBlock()
         params = {"numerator": [1.0], "denominator": [1.0, -0.5], "_init_start_": True}

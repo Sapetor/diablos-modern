@@ -1,9 +1,9 @@
 """
 Tests for the Monte-Carlo ensemble results window
-(modern_ui/widgets/ensemble_result_window.py).
+(src/diablos/gui/widgets/ensemble_result_window.py).
 
 The window CONSUMES the shared Monte-Carlo result-dict contract (produced by
-``lib/analysis/monte_carlo.py`` ``MonteCarloRunner.run``) and only plots the
+``src/diablos/core/analysis/monte_carlo.py`` ``MonteCarloRunner.run``) and only plots the
 arrays already present in it -- it performs no statistics of its own. These
 tests build hand-crafted sample result dicts and assert the widget constructs
 without error and exposes the expected layout.
@@ -17,7 +17,7 @@ import pytest
 
 from PyQt6.QtWidgets import QWidget, QComboBox
 
-from modern_ui.widgets.ensemble_result_window import EnsembleResultWindow
+from diablos.gui.widgets.ensemble_result_window import EnsembleResultWindow
 
 
 def _signal_stats(n_ok, L, base):
@@ -153,7 +153,7 @@ class TestEnsembleResultWindow:
 
     # --------------------------------------------------------- histogram view
     def test_view_and_metric_combos_present(self, qapp, make_window):
-        from lib.analysis.monte_carlo import OUTCOME_METRIC_LABELS, OUTCOME_METRICS
+        from diablos.core.analysis.monte_carlo import OUTCOME_METRIC_LABELS, OUTCOME_METRICS
 
         win = make_window(_sample_result(n_signals=2))
         assert win.view_combo is not None and win.metric_combo is not None
@@ -185,7 +185,7 @@ class TestEnsembleResultWindow:
 
     def test_histogram_derives_from_runs_without_metrics_key(self, qapp, make_window):
         """_sample_result carries no 'metrics'; the window derives from 'runs'."""
-        from lib.analysis.monte_carlo import OUTCOME_METRIC_LABELS
+        from diablos.core.analysis.monte_carlo import OUTCOME_METRIC_LABELS
 
         win = make_window(_sample_result(n_signals=1))
         win.view_combo.setCurrentIndex(1)
@@ -194,7 +194,7 @@ class TestEnsembleResultWindow:
         assert "Scope_A" in title and OUTCOME_METRIC_LABELS["max"] in title
 
     def test_histogram_uses_supplied_metrics_when_present(self, qapp, make_window):
-        from lib.analysis.monte_carlo import OUTCOME_METRIC_LABELS
+        from diablos.core.analysis.monte_carlo import OUTCOME_METRIC_LABELS
 
         result = _sample_result(n_signals=1)
         name = next(iter(result["signals"]))

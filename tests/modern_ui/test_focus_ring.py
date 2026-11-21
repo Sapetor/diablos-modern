@@ -28,8 +28,8 @@ def _focus_blocks(css: str):
 
 class TestButtonFocusRing:
     def test_button_focus_rule_references_accent_value(self):
-        from modern_ui.styles.qss_styles import ModernStyles
-        from modern_ui.themes.theme_manager import theme_manager
+        from diablos.gui.styles.qss_styles import ModernStyles
+        from diablos.gui.themes.theme_manager import theme_manager
 
         css = ModernStyles.get_button_style()
         accent = theme_manager.get_color("accent_primary").name().upper()
@@ -43,7 +43,7 @@ class TestButtonFocusRing:
         )
 
     def test_focus_ring_is_two_px_and_distinct_from_hover(self):
-        from modern_ui.styles.qss_styles import ModernStyles
+        from diablos.gui.styles.qss_styles import ModernStyles
 
         css = ModernStyles.get_button_style()
         blocks = _focus_blocks(css)
@@ -51,7 +51,7 @@ class TestButtonFocusRing:
         assert any("2px solid" in b for b in blocks), "focus ring is not a 2px solid border"
 
     def test_transport_buttons_have_focus_rule(self):
-        from modern_ui.styles.qss_styles import ModernStyles
+        from diablos.gui.styles.qss_styles import ModernStyles
 
         css = ModernStyles.get_toolbar_style()
         # Each transport object-name carries a :focus selector.
@@ -64,7 +64,7 @@ class TestButtonFocusRing:
             assert f"#{name}:focus" in css, f"#{name} has no :focus rule"
 
     def test_command_palette_button_has_focus_rule(self):
-        from modern_ui.styles.qss_styles import ModernStyles
+        from diablos.gui.styles.qss_styles import ModernStyles
 
         css = ModernStyles.get_toolbar_style()
         assert "#CommandPaletteBtn:focus" in css
@@ -72,13 +72,13 @@ class TestButtonFocusRing:
 
 class TestFocusRingTokensResolved:
     def test_button_style_has_no_unresolved_tokens(self):
-        from modern_ui.styles.qss_styles import ModernStyles
+        from diablos.gui.styles.qss_styles import ModernStyles
 
         css = ModernStyles.get_button_style()
         assert not re.findall(r"@[a-z_]+", css), "button style has unresolved @tokens"
 
     def test_complete_stylesheet_has_no_unresolved_tokens(self):
-        from modern_ui.styles.qss_styles import ModernStyles
+        from diablos.gui.styles.qss_styles import ModernStyles
 
         css = ModernStyles.get_complete_stylesheet()
         assert not re.findall(r"@[a-z_]+", css), "stylesheet has unresolved @tokens"

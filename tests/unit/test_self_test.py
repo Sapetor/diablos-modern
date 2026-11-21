@@ -5,7 +5,7 @@ import json
 
 import pytest
 
-from lib import self_test
+from diablos.core import self_test
 
 
 @pytest.mark.unit

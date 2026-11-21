@@ -17,14 +17,14 @@ without synthesising Qt mouse events:
 import pytest
 from PyQt6.QtCore import QPoint
 
-from lib.lib import DSim
+from diablos.core.lib import DSim
 
 pytestmark = pytest.mark.qt
 
 
 @pytest.fixture
 def canvas(qapp):
-    from modern_ui.widgets.modern_canvas import ModernCanvas
+    from diablos.gui.widgets.modern_canvas import ModernCanvas
 
     dsim = DSim()
     c = ModernCanvas(dsim)
@@ -265,7 +265,7 @@ class TestUndo:
 
 class TestPreviewPath:
     def test_preview_follows_routing_mode(self):
-        from modern_ui.renderers.canvas_renderer import CanvasRenderer
+        from diablos.gui.renderers.canvas_renderer import CanvasRenderer
 
         start, end = QPoint(100, 100), QPoint(300, 200)
         bez = CanvasRenderer.preview_path(start, end, "bezier")
@@ -274,7 +274,7 @@ class TestPreviewPath:
         assert not any(ortho.elementAt(i).isCurveTo() for i in range(ortho.elementCount()))
 
     def test_reverse_preview_starts_at_cursor(self):
-        from modern_ui.renderers.canvas_renderer import CanvasRenderer
+        from diablos.gui.renderers.canvas_renderer import CanvasRenderer
 
         port, cursor = QPoint(300, 200), QPoint(100, 100)
         path = CanvasRenderer.preview_path(port, cursor, "bezier", reverse=True)

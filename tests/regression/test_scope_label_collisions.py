@@ -16,7 +16,7 @@ EXPECTED = {"x": 1.0, "x#1": 2.0, "x#1#1": 3.0}
 
 
 def _builder(labels=LABELS, vector=False):
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     b = DiagramBuilder(sim_time=0.5, sim_dt=0.1)
     consts = [
@@ -53,14 +53,14 @@ class TestScopeLabelCollisions:
     @pytest.mark.parametrize("solver", ["compiled", "interpreter"])
     @pytest.mark.parametrize("vector", [False, True])
     def test_api_keeps_every_channel(self, qapp, solver, vector):
-        from lib import api
+        from diablos.core import api
 
         result = api.from_builder(_builder(vector=vector)).run(solver=solver)
         assert _last(result.signals) == EXPECTED
 
     @pytest.mark.parametrize("vector", [False, True])
     def test_exported_script_names_match_the_app(self, qapp, tmp_path, vector):
-        from lib import cli
+        from diablos.core import cli
 
         path = str(tmp_path / "labels.diablos")
         _builder(vector=vector).save(path)

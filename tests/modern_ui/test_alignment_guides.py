@@ -15,7 +15,7 @@ Run with:
 import pytest
 from PyQt6.QtCore import QPoint, QRect
 
-from modern_ui.renderers.canvas_renderer import compute_alignment_guides
+from diablos.gui.renderers.canvas_renderer import compute_alignment_guides
 
 
 # ---------------------------------------------------------------------------
@@ -132,7 +132,7 @@ def _qt(qapp):
 
 
 def _make_block(sid, x, y, w=100, h=80, name=None):
-    from lib.simulation.block import DBlock
+    from diablos.core.simulation.block import DBlock
 
     block = DBlock(
         block_fn="TestBlock",
@@ -155,8 +155,8 @@ def _make_block(sid, x, y, w=100, h=80, name=None):
 
 @pytest.fixture
 def canvas(qapp):
-    from lib.lib import DSim
-    from modern_ui.widgets.modern_canvas import ModernCanvas
+    from diablos.core.lib import DSim
+    from diablos.gui.widgets.modern_canvas import ModernCanvas
 
     dsim = DSim()
     c = ModernCanvas(dsim)

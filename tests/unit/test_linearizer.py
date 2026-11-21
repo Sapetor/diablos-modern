@@ -1,5 +1,5 @@
 """
-Tests for numerical linearization (lib/analysis/linearizer.py).
+Tests for numerical linearization (src/diablos/core/analysis/linearizer.py).
 
 Builds small diagrams with known dynamics via DiagramBuilder, loads them into a
 DSim, and checks that Linearizer.linearize_at_point recovers the correct A/B/C/D
@@ -10,8 +10,8 @@ by finite-differencing the compiled ODE right-hand side.
 import numpy as np
 import pytest
 
-from lib.diagram_builder import DiagramBuilder
-from lib.analysis.linearizer import Linearizer
+from diablos.core.diagram_builder import DiagramBuilder
+from diablos.core.analysis.linearizer import Linearizer
 
 
 _BLOCK_INSTANCES = None
@@ -27,7 +27,7 @@ def _params(block_type, **overrides):
     """
     global _BLOCK_INSTANCES
     if _BLOCK_INSTANCES is None:
-        from lib.block_loader import load_blocks
+        from diablos.core.block_loader import load_blocks
 
         _BLOCK_INSTANCES = {}
         for cls in load_blocks():
@@ -47,8 +47,8 @@ def _params(block_type, **overrides):
 
 def _load(builder, tmp_path, name):
     """Save a built diagram and load it into a fresh DSim."""
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     path = tmp_path / name
     builder.save(str(path))
@@ -192,7 +192,7 @@ class TestLinearizer:
         linearizing afterwards must use the parameters set since, not those."""
         import os
 
-        from lib import cli
+        from diablos.core import cli
 
         path = os.path.join(
             os.path.dirname(__file__), "..", "..", "examples", "library_block_demo.diablos"
@@ -209,7 +209,7 @@ class TestLinearizer:
         """Navigated into a Subsystem, linearization still covers the whole diagram."""
         import os
 
-        from lib import cli
+        from diablos.core import cli
 
         path = os.path.join(
             os.path.dirname(__file__), "..", "..", "examples", "library_block_demo.diablos"

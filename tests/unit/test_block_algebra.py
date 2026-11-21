@@ -1,11 +1,11 @@
-"""Closed-loop transfer functions by Mason's rule (lib/analysis/block_algebra.py)."""
+"""Closed-loop transfer functions by Mason's rule (src/diablos/core/analysis/block_algebra.py)."""
 
 import types
 
 import numpy as np
 import pytest
 
-from lib.analysis.block_algebra import AlgebraError, Rational, sink_input_signal, transfer_function
+from diablos.core.analysis.block_algebra import AlgebraError, Rational, sink_input_signal, transfer_function
 
 
 def B(name, fn, **params):
@@ -160,8 +160,8 @@ def test_matches_the_engine_on_the_pid_example(tmp_path):
 
     from scipy import signal
 
-    from lib.analysis.resim import harvest_scope_signals
-    from lib.cli import run_diagram
+    from diablos.core.analysis.resim import harvest_scope_signals
+    from diablos.core.cli import run_diagram
 
     src = os.path.join(
         os.path.dirname(__file__), "..", "..", "examples", "pid_second_order.diablos"

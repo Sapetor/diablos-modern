@@ -1,6 +1,6 @@
 """Streaming aggregation + process-pool parallelism for Monte-Carlo / sweeps.
 
-Covers ``lib/analysis/streaming.py`` and ``lib/analysis/parallel.py``:
+Covers ``src/diablos/core/analysis/streaming.py`` and ``src/diablos/core/analysis/parallel.py``:
 
   * the streaming ensemble statistics equal the old batch (full trace matrix)
     statistics, for every ``keep_traces`` mode;
@@ -16,17 +16,17 @@ to a handful of tiny diagrams.
 import numpy as np
 import pytest
 
-from lib.analysis import parallel as parallel_mod
-from lib.analysis.monte_carlo import MonteCarloRunner
-from lib.analysis.parameter_sweep import ParameterSweepRunner
-from lib.analysis.resim import OUTCOME_METRICS
-from lib.analysis.streaming import (
+from diablos.core.analysis import parallel as parallel_mod
+from diablos.core.analysis.monte_carlo import MonteCarloRunner
+from diablos.core.analysis.parameter_sweep import ParameterSweepRunner
+from diablos.core.analysis.resim import OUTCOME_METRICS
+from diablos.core.analysis.streaming import (
     EnsembleAccumulator,
     SweepAccumulator,
     reduce_run,
     trace_sample_indices,
 )
-from lib.diagram_builder import DiagramBuilder
+from diablos.core.diagram_builder import DiagramBuilder
 from tests.unit.test_monte_carlo import _load, _name_of, _params
 
 
@@ -308,7 +308,7 @@ class TestProcessPool:
     def test_gui_worker_falls_back_in_process_on_broken_pool(self):
         from concurrent.futures.process import BrokenProcessPool
 
-        from modern_ui.widgets.monte_carlo_worker import run_with_pool_fallback
+        from diablos.gui.widgets.monte_carlo_worker import run_with_pool_fallback
 
         calls = []
 

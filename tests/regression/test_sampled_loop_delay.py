@@ -24,7 +24,7 @@ import pytest
 from scipy import signal
 from scipy.linalg import expm
 
-from lib.app_paths import resource_path
+from diablos.core.app_paths import resource_path
 
 T, T_STEP, T_END = 0.1, 0.93, 3.0
 NUM_C, DEN_C = [2.0], [1.0, 3.0, 2.0]
@@ -61,8 +61,8 @@ def _exact(query_t):
 
 
 def _run(path, sim_dt):
-    from lib.analysis.resim import harvest_scope_signals
-    from lib.cli import load_diagram
+    from diablos.core.analysis.resim import harvest_scope_signals
+    from diablos.core.cli import load_diagram
 
     dsim, _ = load_diagram(str(path))
     dsim.use_fast_solver = False
@@ -105,7 +105,7 @@ class TestAlgebraicLoopThroughZohStillRuns:
         """ZOH -> Gain -> Sum -> ZOH is algebraic at sample instants. Holding
         consumers back until the ZOH has sampled would deadlock here, so the
         hold must be released and the old (stale-value) loop break kept."""
-        from lib.diagram_builder import DiagramBuilder
+        from diablos.core.diagram_builder import DiagramBuilder
 
         b = DiagramBuilder(sim_time=0.5, sim_dt=0.1)
         c = b.add_block("Constant", 0, 0, name="c", params={"value": 1.0})

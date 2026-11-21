@@ -24,7 +24,7 @@ from PyQt6.QtCore import QPoint
 
 def _build_sine_scope():
     """Wire Sine -> Scope on a real DSim (both blocks are compilable)."""
-    from lib.lib import DSim
+    from diablos.core.lib import DSim
 
     dsim = DSim()
     menu_by_fn = {b.fn_name: b for b in dsim.menu_blocks}

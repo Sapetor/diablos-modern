@@ -1,7 +1,7 @@
 """Unit tests for the extracted compiled-solver diagnostics helpers.
 
 These functions used to be private methods on SimulationEngine; extracting them
-into ``lib/engine/solver_diagnostics.py`` lets us exercise the dict-building and
+into ``src/diablos/core/engine/solver_diagnostics.py`` lets us exercise the dict-building and
 formatting logic without standing up an engine or running a simulation.
 """
 
@@ -9,7 +9,7 @@ import types
 
 import pytest
 
-from lib.engine.solver_diagnostics import (
+from diablos.core.engine.solver_diagnostics import (
     build_diagnostics,
     format_diagnostics_for_log,
     solver_attr,

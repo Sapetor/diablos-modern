@@ -80,7 +80,7 @@ def _defaults(block_name):
         # Constructing a block builds Qt paint objects for its icon, so the
         # QApplication has to exist first.
         ensure_qapp()
-        from lib.block_loader import load_blocks
+        from diablos.core.block_loader import load_blocks
 
         for cls in load_blocks():
             try:
@@ -96,9 +96,9 @@ def _defaults(block_name):
 
 
 def build(sim_time, sim_dt):
-    """A fresh :class:`~lib.diagram_builder.DiagramBuilder` for the given run."""
+    """A fresh :class:`~diablos.core.diagram_builder.DiagramBuilder` for the given run."""
     ensure_qapp()
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     return DiagramBuilder(sim_time=sim_time, sim_dt=sim_dt)
 
@@ -121,12 +121,12 @@ def read_scopes(dsim):
     Scope's *username* to the whole ``(n_samples, n_channels)`` capture, which
     is how a PDE field arrives.
 
-    ``lib.analysis.resim.harvest_scope_signals`` applies the same naming rule
+    ``diablos.core.analysis.resim.harvest_scope_signals`` applies the same naming rule
     for the ensemble/sweep UI (label first, block name as the fallback); this
     reader additionally returns the whole-capture ``fields`` view and
     disambiguates duplicate labels with a trailing ``'`` rather than ``#n``.
     """
-    from lib.engine.block_params import runtime_params
+    from diablos.core.engine.block_params import runtime_params
 
     blocks = getattr(dsim.engine, "active_blocks_list", None) or dsim.blocks_list
     signals = {}
@@ -228,8 +228,8 @@ def run(
     Returns:
         :class:`RunResult`.
     """
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     ensure_qapp()
     if require_compiled is None:

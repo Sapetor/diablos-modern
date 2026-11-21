@@ -1,4 +1,4 @@
-"""Window layout under a UI scale (QT_SCALE_FACTOR, see lib/ui_scale.py).
+"""Window layout under a UI scale (QT_SCALE_FACTOR, see src/diablos/core/ui_scale.py).
 
 The screen's devicePixelRatio includes the UI scale, so at 150% a standard
 screen read as high-DPI and PlatformConfig widened the Properties panel by
@@ -12,8 +12,8 @@ import pytest
 from PyQt6.QtCore import QRect
 from PyQt6.QtWidgets import QApplication, QDialogButtonBox, QMainWindow
 
-from modern_ui import platform_config
-from modern_ui.managers import window_setup_manager
+from diablos.gui import platform_config
+from diablos.gui.managers import window_setup_manager
 
 pytestmark = pytest.mark.qt
 
@@ -69,7 +69,7 @@ def test_minimum_window_size_fits_a_small_scaled_screen(qapp, monkeypatch):
 
 @pytest.mark.parametrize("width,height", [(1440, 900), (1280, 720)])
 def test_main_canvas_fits_a_small_scaled_window(qtbot, monkeypatch, width, height):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     cfg = _config(monkeypatch, 1.5, 1.0, width, height)
     monkeypatch.setattr(platform_config, "_platform_config", cfg)
@@ -86,7 +86,7 @@ def test_main_canvas_fits_a_small_scaled_window(qtbot, monkeypatch, width, heigh
 
 
 def test_tikz_export_dialog_fits_a_small_scaled_screen(qtbot, monkeypatch):
-    from modern_ui.widgets.tikz_export_dialog import TikZExportDialog
+    from diablos.gui.widgets.tikz_export_dialog import TikZExportDialog
 
     available = QRect(0, 0, 853, 480)
     monkeypatch.setattr(TikZExportDialog, "screen", lambda self: _fake_screen(1.5, 853, 480))

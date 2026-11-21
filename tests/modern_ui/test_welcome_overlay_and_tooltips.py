@@ -7,12 +7,12 @@ import pytest
 from PyQt6.QtCore import QPoint
 from PyQt6.QtTest import QTest
 
-from modern_ui.widgets.welcome_overlay import curated_examples
+from diablos.gui.widgets.welcome_overlay import curated_examples
 
 
 @pytest.fixture
 def window(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     w.resize(1200, 800)
@@ -139,7 +139,7 @@ def test_each_example_loads(window, qapp, fname):
 
 
 def test_overlay_subsystem_mode_shows_light_hint(window, qapp):
-    from modern_ui.widgets.welcome_overlay import MODE_SUBSYSTEM
+    from diablos.gui.widgets.welcome_overlay import MODE_SUBSYSTEM
 
     window.dsim.subsystem_manager.current_subsystem = "sub0"
     window.welcome_overlay.refresh()
@@ -153,7 +153,7 @@ def test_tooltip_has_full_elided_name(window, qapp):
     canvas = window.canvas
     blk = _add(canvas, "Gain")
     blk.username = "A very long descriptive block name that surely gets elided"
-    from modern_ui.renderers.block_renderer import block_label_layout
+    from diablos.gui.renderers.block_renderer import block_label_layout
 
     rect, shown = block_label_layout(blk)
     assert shown != blk.username  # really elided
@@ -175,7 +175,7 @@ def test_layout_survives_the_app_stylesheet(qapp, window):
     cards, and the palette header clipped "Library"; check under the real QSS."""
     from PyQt6.QtGui import QFontMetrics
 
-    from modern_ui.styles.qss_styles import ModernStyles
+    from diablos.gui.styles.qss_styles import ModernStyles
 
     window.setStyleSheet(ModernStyles.get_complete_stylesheet())
     _settle(qapp, window)

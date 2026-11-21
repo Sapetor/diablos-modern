@@ -6,7 +6,7 @@ PyQt6 widgets for the DiaBloS Modern interface.
 
 Main application window.
 
-::: modern_ui.main_window.ModernDiaBloSWindow
+::: diablos.gui.main_window.ModernDiaBloSWindow
     options:
       show_root_heading: true
 
@@ -14,7 +14,7 @@ Main application window.
 
 Canvas widget for block diagram editing.
 
-::: modern_ui.widgets.modern_canvas.ModernCanvas
+::: diablos.gui.widgets.modern_canvas.ModernCanvas
     options:
       show_root_heading: true
       members:
@@ -31,7 +31,7 @@ Canvas widget for block diagram editing.
 
 Handles copy/paste operations.
 
-::: modern_ui.managers.clipboard_manager.ClipboardManager
+::: diablos.gui.managers.clipboard_manager.ClipboardManager
     options:
       show_root_heading: true
 
@@ -39,7 +39,7 @@ Handles copy/paste operations.
 
 Handles zoom and pan operations.
 
-::: modern_ui.managers.zoom_pan_manager.ZoomPanManager
+::: diablos.gui.managers.zoom_pan_manager.ZoomPanManager
     options:
       show_root_heading: true
 
@@ -47,7 +47,7 @@ Handles zoom and pan operations.
 
 Handles undo/redo operations.
 
-::: modern_ui.managers.history_manager.HistoryManager
+::: diablos.gui.managers.history_manager.HistoryManager
     options:
       show_root_heading: true
 
@@ -55,6 +55,6 @@ Handles undo/redo operations.
 
 Handles block selection.
 
-::: modern_ui.managers.selection_manager.SelectionManager
+::: diablos.gui.managers.selection_manager.SelectionManager
     options:
       show_root_heading: true

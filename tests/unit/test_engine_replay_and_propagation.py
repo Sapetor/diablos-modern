@@ -12,7 +12,7 @@ Four independent behaviours are pinned here:
   map; it must deliver exactly what the previous per-block/per-line scan did,
   and the cache must not survive a re-initialization.
 * ``SimulationEngine.count_rk45_integrators`` -- must resolve method aliases
-  the same way ``blocks.integrator`` does, or a diagram saved with the legacy
+  the same way ``diablos.blocks.integrator`` does, or a diagram saved with the legacy
   "RK45" spelling silently loses the interpreter's 4-sub-step schedule.
 """
 
@@ -23,10 +23,10 @@ import pytest
 from PyQt6.QtCore import QPoint, QRect
 from PyQt6.QtGui import QColor
 
-from lib.engine import graph_analysis
-from lib.engine.simulation_engine import SimulationEngine
-from lib.simulation.block import DBlock
-from lib.simulation.connection import DLine
+from diablos.core.engine import graph_analysis
+from diablos.core.engine.simulation_engine import SimulationEngine
+from diablos.core.simulation.block import DBlock
+from diablos.core.simulation.connection import DLine
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 EXAMPLES = os.path.join(REPO_ROOT, "examples")
@@ -80,7 +80,7 @@ def workspace_tf_coeffs():
     ``len(den) > len(num)`` on the raw strings, so equal-length names made a
     strictly proper 1/(s+1) look like a feedthrough block.
     """
-    from lib.workspace import WorkspaceManager
+    from diablos.core.workspace import WorkspaceManager
 
     prev_instance = WorkspaceManager._instance
     WorkspaceManager._instance = None
@@ -100,7 +100,7 @@ class TestReplayFeedthroughClassification:
     ones, so the two could disagree on execution order)."""
 
     def _resolve(self, block):
-        from lib.workspace import WorkspaceManager
+        from diablos.core.workspace import WorkspaceManager
 
         block.exec_params = WorkspaceManager().resolve_params(block.params)
         return block
@@ -118,7 +118,7 @@ class TestReplayFeedthroughClassification:
         assert SimulationEngine._replay_has_feedthrough(variable, {}) is False
 
     def test_proper_tf_is_feedthrough_with_and_without_workspace_vars(self):
-        from lib.workspace import WorkspaceManager
+        from diablos.core.workspace import WorkspaceManager
 
         prev_instance = WorkspaceManager._instance
         WorkspaceManager._instance = None
@@ -155,9 +155,9 @@ class TestReplayFeedthroughClassification:
 
 def _step_tf_scope(numerator, denominator):
     """Step -> TranFn -> Scope, with the TF coefficients supplied by caller."""
-    from blocks.scope import ScopeBlock
-    from blocks.step import StepBlock
-    from blocks.transfer_function import TransferFunctionBlock
+    from diablos.blocks.scope import ScopeBlock
+    from diablos.blocks.step import StepBlock
+    from diablos.blocks.transfer_function import TransferFunctionBlock
 
     step = _block(
         "Step",
@@ -335,7 +335,7 @@ class TestPropagationOnAnExampleDiagram:
         "diagram_name", ["c01_tank_feedback.diablos", "c05_mass_spring_state_space.diablos"]
     )
     def test_example_diagram_targets_match_the_legacy_scan(self, qapp, diagram_name):
-        from lib import cli
+        from diablos.core import cli
 
         dsim, _params = cli.load_diagram(os.path.join(EXAMPLES, diagram_name))
         engine = dsim.engine
@@ -374,7 +374,7 @@ class TestCountRk45Integrators:
 
     @pytest.mark.parametrize("method", ["RK4", "RK45"])
     def test_both_spellings_of_rk4_are_detected(self, qapp, method):
-        from blocks.integrator import resolve_method
+        from diablos.blocks.integrator import resolve_method
 
         assert resolve_method(method) == "RK4"
         assert self._engine_with_integrator(method).count_rk45_integrators() is True

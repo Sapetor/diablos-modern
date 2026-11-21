@@ -1,4 +1,4 @@
-"""Tests for the 1-D / 2-D Lookup Table blocks (blocks/lookup_table.py).
+"""Tests for the 1-D / 2-D Lookup Table blocks (src/diablos/blocks/lookup_table.py).
 
 Instantiates each block and calls execute() with hand-chosen tables so the
 interpolated/extrapolated outputs are exactly predictable.
@@ -9,7 +9,7 @@ import logging
 import numpy as np
 import pytest
 
-from blocks.lookup_table import LookupTable1DBlock, LookupTable2DBlock
+from diablos.blocks.lookup_table import LookupTable1DBlock, LookupTable2DBlock
 
 
 def _p1(**ov):
@@ -130,7 +130,7 @@ class TestLookupTableParameterErrors:
 
     @pytest.mark.parametrize("bad", ["[0, 1, ", "not a list", "[0, 'a', 2]", ""])
     def test_1d_bad_x_values_returns_an_error_dict(self, bad):
-        from blocks.lookup_table import LookupTable1DBlock
+        from diablos.blocks.lookup_table import LookupTable1DBlock
 
         block = LookupTable1DBlock()
         params = {"x_values": bad, "y_values": "[0, 1, 4, 9]", "interpolation": "linear"}
@@ -141,7 +141,7 @@ class TestLookupTableParameterErrors:
         assert 0 not in result
 
     def test_1d_bad_y_values_returns_an_error_dict(self):
-        from blocks.lookup_table import LookupTable1DBlock
+        from diablos.blocks.lookup_table import LookupTable1DBlock
 
         block = LookupTable1DBlock()
         params = {"x_values": "[0, 1, 2, 3]", "y_values": "[0, 1,", "interpolation": "linear"}
@@ -151,7 +151,7 @@ class TestLookupTableParameterErrors:
         assert "y_values" in result["error"]
 
     def test_1d_missing_parameter_returns_an_error_dict(self):
-        from blocks.lookup_table import LookupTable1DBlock
+        from diablos.blocks.lookup_table import LookupTable1DBlock
 
         block = LookupTable1DBlock()
         result = block.execute(0.0, {0: 1.0}, {"y_values": "[0, 1]"})
@@ -160,17 +160,17 @@ class TestLookupTableParameterErrors:
         assert "x_values" in result["error"]
 
     def test_1d_parse_failure_is_logged(self, caplog):
-        from blocks.lookup_table import LookupTable1DBlock
+        from diablos.blocks.lookup_table import LookupTable1DBlock
 
         block = LookupTable1DBlock()
-        with caplog.at_level(logging.WARNING, logger="blocks.lookup_table"):
+        with caplog.at_level(logging.WARNING, logger="diablos.blocks.lookup_table"):
             block.execute(0.0, {0: 1.0}, {"x_values": "oops", "y_values": "[0, 1]"})
 
         assert any("x_values" in rec.getMessage() for rec in caplog.records)
         assert any(rec.levelno == logging.WARNING for rec in caplog.records)
 
     def test_2d_bad_z_table_returns_an_error_dict(self):
-        from blocks.lookup_table import LookupTable2DBlock
+        from diablos.blocks.lookup_table import LookupTable2DBlock
 
         block = LookupTable2DBlock()
         params = {"x_values": "[0, 1, 2]", "y_values": "[0, 1]", "z_table": "[[0, 1], [2,"}
@@ -185,7 +185,7 @@ class TestLookupTableInterpolatorCache:
     """The interpolator is rebuilt only when the table (or a mode) changes."""
 
     def test_1d_interpolator_is_reused_across_steps(self):
-        from blocks.lookup_table import LookupTable1DBlock
+        from diablos.blocks.lookup_table import LookupTable1DBlock
 
         block = LookupTable1DBlock()
         params = {"x_values": "[0, 1, 2, 3]", "y_values": "[0, 1, 4, 9]"}
@@ -197,7 +197,7 @@ class TestLookupTableInterpolatorCache:
         assert params["_interp1d_"] is first
 
     def test_1d_interpolator_is_rebuilt_when_the_table_changes(self):
-        from blocks.lookup_table import LookupTable1DBlock
+        from diablos.blocks.lookup_table import LookupTable1DBlock
 
         block = LookupTable1DBlock()
         params = {"x_values": "[0, 1, 2, 3]", "y_values": "[0, 1, 4, 9]"}
@@ -212,7 +212,7 @@ class TestLookupTableInterpolatorCache:
         np.testing.assert_allclose(second_out, np.asarray(first_out) * 10.0)
 
     def test_1d_interpolator_is_rebuilt_when_the_mode_changes(self):
-        from blocks.lookup_table import LookupTable1DBlock
+        from diablos.blocks.lookup_table import LookupTable1DBlock
 
         block = LookupTable1DBlock()
         params = {"x_values": "[0, 1, 2, 3]", "y_values": "[0, 1, 4, 9]"}
@@ -227,7 +227,7 @@ class TestLookupTableInterpolatorCache:
         np.testing.assert_allclose(result, [1.0])
 
     def test_2d_interpolator_is_reused_across_steps(self):
-        from blocks.lookup_table import LookupTable2DBlock
+        from diablos.blocks.lookup_table import LookupTable2DBlock
 
         block = LookupTable2DBlock()
         params = {
@@ -243,7 +243,7 @@ class TestLookupTableInterpolatorCache:
         assert params["_rgi_"] is first
 
     def test_2d_interpolator_is_rebuilt_when_the_table_changes(self):
-        from blocks.lookup_table import LookupTable2DBlock
+        from diablos.blocks.lookup_table import LookupTable2DBlock
 
         block = LookupTable2DBlock()
         params = {

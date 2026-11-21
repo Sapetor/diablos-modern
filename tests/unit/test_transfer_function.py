@@ -10,7 +10,7 @@ uses the same ``_process_input`` check as StateSpace.
 import numpy as np
 import pytest
 
-from blocks.transfer_function import TransferFunctionBlock
+from diablos.blocks.transfer_function import TransferFunctionBlock
 
 
 def _params(**ov):
@@ -79,7 +79,7 @@ class TestTransferFunctionVectorInput:
         assert 0 not in result
 
     def test_error_matches_the_statespace_wording(self):
-        """Same check, same message as blocks/statespace_base.py::_process_input."""
+        """Same check, same message as src/diablos/blocks/statespace_base.py::_process_input."""
         block = TransferFunctionBlock()
         params = _params()
 

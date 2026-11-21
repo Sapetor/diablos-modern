@@ -8,16 +8,16 @@ as subscriptable objects (previously caused false algebraic-loop errors).
 import pytest
 from PyQt6.QtCore import QRect, QPoint
 
-from lib.lib import DSim
-from lib.simulation.block import DBlock
-from lib.simulation.connection import DLine
-from blocks.step import StepBlock
-from blocks.sum import SumBlock
-from blocks.integrator import IntegratorBlock
-from blocks.scope import ScopeBlock
-from blocks.goto import GotoBlock
-from blocks.from_block import FromBlock
-from modern_ui.widgets.modern_canvas import ModernCanvas
+from diablos.core.lib import DSim
+from diablos.core.simulation.block import DBlock
+from diablos.core.simulation.connection import DLine
+from diablos.blocks.step import StepBlock
+from diablos.blocks.sum import SumBlock
+from diablos.blocks.integrator import IntegratorBlock
+from diablos.blocks.scope import ScopeBlock
+from diablos.blocks.goto import GotoBlock
+from diablos.blocks.from_block import FromBlock
+from diablos.gui.widgets.modern_canvas import ModernCanvas
 
 
 @pytest.mark.unit

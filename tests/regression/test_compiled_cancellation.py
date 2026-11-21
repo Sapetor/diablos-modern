@@ -36,7 +36,7 @@ OSCILLATOR = [1.0, 0.001, 1e4]  # lightly damped, omega = 100 rad/s
 
 def _build(sim_time, sim_dt, method, den=STIFF, extra=None):
     """Step [-> ZOH | TransportDelay] -> TransferFunction -> Scope."""
-    from lib.lib import DSim
+    from diablos.core.lib import DSim
 
     dsim = DSim()
     menu = {b.fn_name: b for b in dsim.menu_blocks}
@@ -153,7 +153,7 @@ def test_the_next_run_after_a_cancel_matches_a_fresh_one(qapp, extra):
 @pytest.mark.regression
 def test_cancel_during_the_replay_keeps_only_replayed_samples(qapp):
     """Cancelled after the solve: Scope and timeline cut to the same length."""
-    from lib.engine.compiled_runner import _RunMonitor
+    from diablos.core.engine.compiled_runner import _RunMonitor
 
     dsim, scope = _build(20.0, 0.001, "LSODA", [1.0, 1.0])
     engine = dsim.engine

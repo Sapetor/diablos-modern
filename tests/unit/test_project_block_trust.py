@@ -12,7 +12,7 @@ import os
 
 import pytest
 
-import lib.user_blocks as ub
+import diablos.core.user_blocks as ub
 
 PAYLOAD = """\
 import pathlib
@@ -82,7 +82,7 @@ def test_the_gui_prompt_defaults_to_not_trusting(qapp, project):
     """With no button clicked (dialogs are stubbed in tests) nothing is trusted."""
     from PyQt6.QtWidgets import QWidget
 
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     host = QWidget()
     host._current_diagram_path = lambda: project["diagram"]

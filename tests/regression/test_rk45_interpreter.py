@@ -34,7 +34,7 @@ from PyQt6.QtCore import QPoint
 
 
 def _new_dsim():
-    from lib.lib import DSim
+    from diablos.core.lib import DSim
 
     dsim = DSim()
     dsim.execution_init_time = lambda: dsim.sim_time
@@ -206,7 +206,7 @@ class TestIntegratorOutputIsNotAliased:
 
     def test_sync_integrator_output_copies(self, qapp):
         """The engine helper must break the reference, not rebind it."""
-        from lib.engine.simulation_engine import SimulationEngine
+        from diablos.core.engine.simulation_engine import SimulationEngine
 
         block = type(
             "B", (), {"block_fn": "Integrator", "exec_params": {"mem": np.array([1.0, 2.0])}}
@@ -218,7 +218,7 @@ class TestIntegratorOutputIsNotAliased:
         assert np.allclose(out, [1.0, 2.0]), "output followed an in-place update to mem"
 
     def test_sync_integrator_output_ignores_other_blocks(self, qapp):
-        from lib.engine.simulation_engine import SimulationEngine
+        from diablos.core.engine.simulation_engine import SimulationEngine
 
         block = type("B", (), {"block_fn": "Gain", "exec_params": {"mem": np.array([1.0])}})()
         SimulationEngine.sync_integrator_output(block)

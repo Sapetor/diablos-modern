@@ -6,7 +6,7 @@ These blocks' post-solve replay output was historically computed by an inline
 golden-master suite never exercised (no example diagram used them through the
 compiled path -- confirmed by a coverage run: those branches were entirely
 uncovered). This module pins the compiled-replay output so that migrating these
-blocks onto the shared compiler-kernel registry (``lib.engine.compiler_kernels``,
+blocks onto the shared compiler-kernel registry (``diablos.core.engine.compiler_kernels``,
 so the ODE solve and the post-solve replay share one source of truth) is
 provably behavior-preserving.
 
@@ -25,8 +25,8 @@ from PyQt6.QtGui import QColor
 
 
 def _dsim():
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     WorkspaceManager._instance = None
     return DSim()
@@ -34,7 +34,7 @@ def _dsim():
 
 def _mk(dsim, block_fn, sid, in_ports, out_ports, params):
     """Build a DBlock and attach a real block_instance (mirrors file_service)."""
-    from lib.simulation.block import DBlock
+    from diablos.core.simulation.block import DBlock
 
     menu = next((mb for mb in dsim.model.menu_blocks if mb.block_fn == block_fn), None)
     assert menu is not None, f"{block_fn} not registered in menu_blocks"
@@ -56,7 +56,7 @@ def _mk(dsim, block_fn, sid, in_ports, out_ports, params):
 
 
 def _ln(sid, src, sp, dst, dp):
-    from lib.simulation.connection import DLine
+    from diablos.core.simulation.connection import DLine
 
     return DLine(
         sid=sid,

@@ -44,7 +44,7 @@ def _block(name, params):
 
 @pytest.fixture
 def controller(qapp):
-    from modern_ui.controllers.tuning_controller import TuningController
+    from diablos.gui.controllers.tuning_controller import TuningController
 
     dsim = _StubDSim()
     ctrl = TuningController(dsim, _StubPlotter())

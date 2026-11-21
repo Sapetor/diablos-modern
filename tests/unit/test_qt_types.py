@@ -1,4 +1,4 @@
-"""The pure-Python stand-ins in lib/qt_types.py against the real Qt classes.
+"""The pure-Python stand-ins in src/diablos/core/qt_types.py against the real Qt classes.
 
 lib/ uses QPoint/QRect/QColor/QPainterPath for the diagram model. Without
 PyQt6 it falls back to stand-ins; a mismatch with Qt would make a headless
@@ -43,7 +43,7 @@ def _p(pt):
 
 
 def test_real_qt_is_used_when_available():
-    from lib import qt_types
+    from diablos.core import qt_types
 
     assert qt_types.HAS_QT and qt_types.QRect is QRect
 

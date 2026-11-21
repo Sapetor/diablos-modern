@@ -22,8 +22,8 @@ def _qt(qapp):
 
 @pytest.fixture
 def toolbar(qapp):
-    from modern_ui.styles.qss_styles import ModernStyles
-    from modern_ui.widgets.modern_toolbar import ModernToolBar
+    from diablos.gui.styles.qss_styles import ModernStyles
+    from diablos.gui.widgets.modern_toolbar import ModernToolBar
 
     tb = ModernToolBar()
     tb.setStyleSheet(ModernStyles.get_complete_stylesheet())

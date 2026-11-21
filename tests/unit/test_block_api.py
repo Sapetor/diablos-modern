@@ -1,4 +1,4 @@
-"""The block contract (``blocks/base_block.py``) and its validator.
+"""The block contract (``src/diablos/blocks/base_block.py``) and its validator.
 
 ``validate_block_class`` is the mechanical statement of what ``docs/BLOCK_API.md``
 promises third-party authors.  Two things must stay true:
@@ -19,7 +19,7 @@ import os
 import numpy as np
 import pytest
 
-from blocks.base_block import (
+from diablos.blocks.base_block import (
     BLOCK_API_VERSION,
     BaseBlock,
     BlockContractError,
@@ -88,7 +88,7 @@ class TestApiVersion:
 class TestEveryBuiltInBlock:
     def test_all_registered_blocks_satisfy_the_contract(self):
         """Every block the app registers must pass ``validate_block_class``."""
-        from lib.block_loader import load_builtin_blocks
+        from diablos.core.block_loader import load_builtin_blocks
 
         failures = {}
         for cls in load_builtin_blocks():
@@ -103,7 +103,7 @@ class TestEveryBuiltInBlock:
 
     def test_block_names_are_unique(self):
         """A duplicate name would make saved diagrams ambiguous."""
-        from lib.block_loader import load_builtin_blocks
+        from diablos.core.block_loader import load_builtin_blocks
 
         seen = {}
         for cls in load_builtin_blocks():
@@ -283,14 +283,14 @@ class TestShippedTemplates:
         assert np.isclose(out[0][0], 4.0)
 
     def test_kernel_template_registers_a_kernel_and_events(self):
-        from lib.engine.compiler_kernels import get_event_builder, get_kernel_builder
+        from diablos.core.engine.compiler_kernels import get_event_builder, get_kernel_builder
 
         _import_example("custom_kernel_template.py")
         assert get_kernel_builder("Softclip") is not None
         assert get_event_builder("Softclip") is not None
 
     def test_kernel_template_name_matches_canonical_fn(self):
-        from lib.engine.block_names import canonical_fn
+        from diablos.core.engine.block_names import canonical_fn
 
         module = _import_example("custom_kernel_template.py")
         assert canonical_fn(module.SoftClipBlock().block_name) == "Softclip"

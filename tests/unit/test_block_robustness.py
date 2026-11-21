@@ -15,7 +15,7 @@ import warnings
 import numpy as np
 import pytest
 
-from lib.block_loader import load_builtin_blocks
+from diablos.core.block_loader import load_builtin_blocks
 
 # Blocks allowed to raise on a given variant.  Keep empty unless a raise is
 # intentional; every entry needs a reason.

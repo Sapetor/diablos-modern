@@ -31,7 +31,7 @@ class TestFileDialogFilters:
             # Simulate the user cancelling so load() returns early.
             return ("", "")
 
-        monkeypatch.setattr("lib.services.file_service.QFileDialog.getOpenFileName", fake_open)
+        monkeypatch.setattr("diablos.core.services.file_service.QFileDialog.getOpenFileName", fake_open)
 
         result = file_service.load()  # no filepath -> opens dialog
         assert result is None  # cancelled
@@ -48,7 +48,7 @@ class TestFileDialogFilters:
             # Simulate the user cancelling so save() returns early (code 1).
             return ("", "")
 
-        monkeypatch.setattr("lib.services.file_service.QFileDialog.getSaveFileName", fake_save)
+        monkeypatch.setattr("diablos.core.services.file_service.QFileDialog.getSaveFileName", fake_save)
 
         rc = file_service.save()  # not autosave, no filepath -> opens dialog
         assert rc == 1  # cancelled
@@ -68,7 +68,7 @@ class TestFileDialogFilters:
             saved_paths.append(filename)
             return True
 
-        monkeypatch.setattr("lib.services.file_service.QFileDialog.getSaveFileName", fake_save)
+        monkeypatch.setattr("diablos.core.services.file_service.QFileDialog.getSaveFileName", fake_save)
         monkeypatch.setattr(file_service, "save_to_file", fake_save_to_file)
 
         rc = file_service.save()
@@ -87,7 +87,7 @@ class TestFileDialogFilters:
             saved_paths.append(filename)
             return True
 
-        monkeypatch.setattr("lib.services.file_service.QFileDialog.getSaveFileName", fake_save)
+        monkeypatch.setattr("diablos.core.services.file_service.QFileDialog.getSaveFileName", fake_save)
         monkeypatch.setattr(file_service, "save_to_file", fake_save_to_file)
 
         rc = file_service.save()

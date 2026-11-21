@@ -10,7 +10,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from lib.qt_setup import configure_qt_env  # noqa: E402
+from diablos.core.qt_setup import configure_qt_env  # noqa: E402
 
 # Force a headless Qt / matplotlib backend for the whole suite, unless the
 # developer explicitly opts into visible windows (DIABLOS_SHOW_WINDOWS=1).
@@ -28,7 +28,7 @@ from lib.qt_setup import configure_qt_env  # noqa: E402
 # win on platforms where the shell env does propagate.
 configure_qt_env(headless=not os.environ.get("DIABLOS_SHOW_WINDOWS"))
 
-# Point lib.app_paths.ui_settings() at a throwaway INI file for the session.
+# Point diablos.core.app_paths.ui_settings() at a throwaway INI file for the session.
 # Otherwise the suite runs against the developer's real QSettings store (the
 # registry on Windows): a stored preference such as "ask before every run"
 # flips test outcomes that pass in CI, and tests overwrite real preferences.
@@ -106,7 +106,7 @@ def _no_modal_dialogs():
 #
 # Session-scoped AND autouse on purpose: Qt allows one QApplication per process,
 # and destroying it destroys every QObject, including module-level singletons
-# such as ``lib.theming.theme_manager.theme_manager``. A test module that builds
+# such as ``diablos.core.theming.theme_manager.theme_manager``. A test module that builds
 # its own QApplication in a narrower-scoped fixture (or a bare local variable)
 # lets it be garbage-collected when that scope ends, and every later test that
 # touches a singleton created in between fails with "wrapped C/C++ object ...
@@ -150,7 +150,7 @@ def sample_position():
 @pytest.fixture
 def simulation_model(qapp, sample_colors):
     """Create a SimulationModel instance for testing."""
-    from lib.models.simulation_model import SimulationModel
+    from diablos.core.models.simulation_model import SimulationModel
 
     model = SimulationModel()
     return model
@@ -159,7 +159,7 @@ def simulation_model(qapp, sample_colors):
 @pytest.fixture
 def simulation_engine(qapp, simulation_model):
     """Create a SimulationEngine instance for testing."""
-    from lib.engine.simulation_engine import SimulationEngine
+    from diablos.core.engine.simulation_engine import SimulationEngine
 
     engine = SimulationEngine(simulation_model)
     return engine
@@ -168,7 +168,7 @@ def simulation_engine(qapp, simulation_model):
 @pytest.fixture
 def file_service(qapp, simulation_model):
     """Create a FileService instance for testing."""
-    from lib.services.file_service import FileService
+    from diablos.core.services.file_service import FileService
 
     service = FileService(simulation_model)
     return service
@@ -177,7 +177,7 @@ def file_service(qapp, simulation_model):
 @pytest.fixture
 def sample_block(qapp, sample_block_rect, sample_colors):
     """Create a sample DBlock for testing."""
-    from lib.simulation.block import DBlock
+    from diablos.core.simulation.block import DBlock
 
     block = DBlock(
         block_fn="TestBlock",
@@ -199,7 +199,7 @@ def sample_block(qapp, sample_block_rect, sample_colors):
 @pytest.fixture
 def sample_line(qapp):
     """Create a sample DLine for testing."""
-    from lib.simulation.connection import DLine
+    from diablos.core.simulation.connection import DLine
     from PyQt6.QtCore import QPoint
 
     line = DLine(
@@ -223,7 +223,7 @@ def _no_background_autosave():
     "recover" a test diagram. Autosave tests call ``_auto_save()`` directly
     with their own path.
     """
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     original = ModernDiaBloSWindow.__init__
 
@@ -244,15 +244,15 @@ def temp_diagram_file(tmp_path):
 
 @pytest.fixture
 def user_data_dir(tmp_path, monkeypatch):
-    """Redirect ``lib.app_paths.get_user_data_dir`` at a throwaway directory.
+    """Redirect ``diablos.core.app_paths.get_user_data_dir`` at a throwaway directory.
 
-    Every runtime write in the app resolves through ``lib.app_paths``
+    Every runtime write in the app resolves through ``diablos.core.app_paths``
     (``user_data_path`` / ``user_saves_path`` / ``user_logs_path``), so patching
     the one accessor relocates autosaves, config, exports and run history into
     ``tmp_path`` without touching the developer's real data directory or the
     checkout's ``saves/``. Returns the ``Path`` that now backs it.
     """
-    import lib.app_paths as app_paths
+    import diablos.core.app_paths as app_paths
 
     target = tmp_path / "userdata"
     target.mkdir(parents=True, exist_ok=True)
@@ -263,6 +263,6 @@ def user_data_dir(tmp_path, monkeypatch):
 @pytest.fixture
 def saves_dir(user_data_dir):
     """The writable ``saves/`` folder inside the redirected user data dir."""
-    from lib.app_paths import user_saves_dir
+    from diablos.core.app_paths import user_saves_dir
 
     return Path(user_saves_dir(create=True))

@@ -1,0 +1,141 @@
+import numpy as np
+from collections import deque
+from diablos.blocks.delay_base import DelayBufferBlock
+
+
+class TransportDelayBlock(DelayBufferBlock):
+    """
+    Continuous-time transport delay: e^(-τs)
+    Delays the input signal by a specified time duration (in seconds).
+    Uses linear interpolation for sub-sample accuracy.
+    """
+
+    @property
+    def block_name(self):
+        return "TransportDelay"
+
+    @property
+    def category(self):
+        return "Control"
+
+    @property
+    def color(self):
+        return "cyan"
+
+    @property
+    def doc(self):
+        return (
+            "Transport Delay / Time Delay."
+            "\n\nDelays the input signal by a specified time amount."
+            "\ny(t) = u(t - Delay)"
+            "\n\nParameters:"
+            "\n- Time Delay: Amount of delay in seconds."
+            "\n- Initial Output: Output value before t < Delay."
+            "\n\nUsage:"
+            "\nModels pipe flow, conveyor belts, or communication latency."
+        )
+
+    @property
+    def params(self):
+        return {
+            "delay_time": {"type": "float", "default": 0.1, "doc": "Delay time τ in seconds."},
+            "initial_value": {
+                "type": "float",
+                "default": 0.0,
+                "doc": "Output before delay time elapses.",
+            },
+            "_time_buffer_": {
+                "type": "list",
+                "default": [],
+                "doc": "Internal time history (do not edit).",
+            },
+            "_value_buffer_": {
+                "type": "list",
+                "default": [],
+                "doc": "Internal value history (do not edit).",
+            },
+            "_init_start_": {"type": "bool", "default": True, "doc": "Initialization flag."},
+        }
+
+    @property
+    def inputs(self):
+        return [{"name": "in", "type": "any"}]
+
+    @property
+    def outputs(self):
+        return [{"name": "out", "type": "any"}]
+
+    def draw_icon(self, block_rect):
+        """Draw a step and its time-shifted copy, spanned by a tau arrow."""
+        from diablos.core.icon_path import IconPath
+
+        path = IconPath()
+        # Input step (upper band)
+        path.moveTo(0.04, 0.38)
+        path.lineTo(0.28, 0.38)
+        path.lineTo(0.28, 0.06)
+        path.lineTo(0.96, 0.06)
+        # Delayed output step (lower band)
+        path.moveTo(0.04, 0.94)
+        path.lineTo(0.64, 0.94)
+        path.lineTo(0.64, 0.62)
+        path.lineTo(0.96, 0.62)
+        # Double-headed arrow spanning the delay
+        path.moveTo(0.28, 0.50)
+        path.lineTo(0.64, 0.50)
+        path.moveTo(0.35, 0.44)
+        path.lineTo(0.28, 0.50)
+        path.lineTo(0.35, 0.56)
+        path.moveTo(0.57, 0.44)
+        path.lineTo(0.64, 0.50)
+        path.lineTo(0.57, 0.56)
+        return path
+
+    def execute(self, time, inputs, params, **kwargs):
+        delay_time = max(0.0, float(params.get("delay_time", 0.1)))
+        initial_value = float(params.get("initial_value", 0.0))
+
+        # Initialize buffers on first call
+        if params.get("_init_start_", True):
+            params["_time_buffer_"] = deque()
+            params["_value_buffer_"] = deque()
+            params["_init_start_"] = False
+
+        time_buffer = params["_time_buffer_"]
+        value_buffer = params["_value_buffer_"]
+
+        # Target time for output (current time minus delay)
+        target_time = float(time) - delay_time
+
+        # Output-only path (init / no input available): return the held output
+        # without appending a spurious sample to the interpolation history.
+        if kwargs.get("output_only") or 0 not in inputs:
+            if target_time < 0 or len(time_buffer) < 2:
+                return {0: np.atleast_1d(initial_value)}
+            return {0: self._interpolate(time_buffer, value_buffer, target_time, initial_value)}
+
+        # Get current input
+        current_input = np.atleast_1d(inputs.get(0, initial_value))
+
+        # Add current time and value to buffer
+        time_buffer.append(float(time))
+        value_buffer.append(current_input.copy())
+
+        # If target time is before simulation start, return initial value
+        if target_time < 0 or len(time_buffer) < 2:
+            output = np.atleast_1d(initial_value)
+        else:
+            # Find interpolation points
+            output = self._interpolate(time_buffer, value_buffer, target_time, initial_value)
+
+        # Prune old buffer entries (keep only what's needed for delay)
+        # Keep a margin of 2x delay time for safety
+        prune_time = float(time) - 2.0 * delay_time
+        while len(time_buffer) > 2 and time_buffer[0] < prune_time:
+            time_buffer.popleft()
+            value_buffer.popleft()
+
+        params["_time_buffer_"] = time_buffer
+        params["_value_buffer_"] = value_buffer
+
+        return {0: output}

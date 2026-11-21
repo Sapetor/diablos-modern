@@ -2,7 +2,7 @@
 
 Two audit findings are covered:
 
-1. ``lib/analysis/analyzers/lqr.py`` and ``root_locus.py`` built a
+1. ``src/diablos/core/analysis/analyzers/lqr.py`` and ``root_locus.py`` built a
    ``QMessageBox`` themselves. ``lib/`` is the engine layer -- it must stay
    headless-safe and must not import the widget toolkit -- so the GUI now
    injects a ``(title, message) -> None`` sink (``ControlSystemAnalyzer(
@@ -19,11 +19,11 @@ import types
 
 import pytest
 
-from lib.analysis.analyzers.bode import BodeAnalyzer
-from lib.analysis.analyzers.error_reporting import report_error
-from lib.analysis.analyzers.lqr import LQRAnalyzer
-from lib.analysis.analyzers.nyquist import NyquistAnalyzer
-from lib.analysis.analyzers.root_locus import RootLocusAnalyzer
+from diablos.core.analysis.analyzers.bode import BodeAnalyzer
+from diablos.core.analysis.analyzers.error_reporting import report_error
+from diablos.core.analysis.analyzers.lqr import LQRAnalyzer
+from diablos.core.analysis.analyzers.nyquist import NyquistAnalyzer
+from diablos.core.analysis.analyzers.root_locus import RootLocusAnalyzer
 
 ANALYZERS = (BodeAnalyzer, NyquistAnalyzer, RootLocusAnalyzer, LQRAnalyzer)
 
@@ -57,15 +57,15 @@ def _canvas_without_lti_source():
 @pytest.mark.unit
 class TestNoQtImportsInAnalysis:
     def test_analysis_package_does_not_import_qmessagebox(self):
-        """No module under lib/analysis may import or construct a QMessageBox."""
+        """No module under src/diablos/core/analysis may import or construct a QMessageBox."""
         import pathlib
         import re
 
-        import lib.analysis
+        import diablos.core.analysis
 
         # Imports and constructions -- prose mentions in docstrings are fine.
         pattern = re.compile(r"import[^\n]*QMessageBox|QMessageBox\s*\(|QMessageBox\.")
-        analysis_dir = pathlib.Path(lib.analysis.__file__).parent
+        analysis_dir = pathlib.Path(diablos.core.analysis.__file__).parent
         offenders = [
             str(path)
             for path in analysis_dir.rglob("*.py")
@@ -146,7 +146,7 @@ class TestLastErrorReachesTheUser:
 @pytest.mark.unit
 class TestFacadeForwardsTheCallback:
     def test_control_system_analyzer_passes_error_cb_to_each_analyzer(self):
-        from lib.analysis.control_system_analyzer import ControlSystemAnalyzer
+        from diablos.core.analysis.control_system_analyzer import ControlSystemAnalyzer
 
         recorder = Recorder()
         facade = ControlSystemAnalyzer(canvas=None, parent=None, error_cb=recorder)
@@ -154,7 +154,7 @@ class TestFacadeForwardsTheCallback:
             assert getattr(facade, name).error_cb is recorder
 
     def test_error_cb_is_optional(self):
-        from lib.analysis.control_system_analyzer import ControlSystemAnalyzer
+        from diablos.core.analysis.control_system_analyzer import ControlSystemAnalyzer
 
         facade = ControlSystemAnalyzer(canvas=None)
         assert facade.bode_analyzer.error_cb is None
@@ -168,7 +168,7 @@ class TestLqrWorkspaceLookup:
 
         import numpy as np
 
-        from lib.workspace import Workspace
+        from diablos.core.workspace import Workspace
 
         # The analyzed diagram's own workspace (canvas.dsim.workspace).
         ws = Workspace({"Amat": [[0.0, 1.0], [-2.0, -3.0]]})

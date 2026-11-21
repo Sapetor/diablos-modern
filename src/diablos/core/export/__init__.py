@@ -1,0 +1,15 @@
+"""
+Export package - LaTeX, MathML, and Mathematica equation export utilities.
+"""
+
+# These exporters work without SymPy for basic features,
+# but full functionality requires SymPy
+try:
+    from diablos.core.export.latex_exporter import LaTeXExporter, MathMLExporter, MathematicaExporter
+
+    __all__ = ["LaTeXExporter", "MathMLExporter", "MathematicaExporter"]
+except ImportError:
+    LaTeXExporter = None
+    MathMLExporter = None
+    MathematicaExporter = None
+    __all__ = []

@@ -17,7 +17,7 @@ import pytest
 def _block(block_fn, name, in_ports, out_ports, params, b_type):
     from PyQt6.QtCore import QRect
     from PyQt6.QtGui import QColor
-    from lib.simulation.block import DBlock
+    from diablos.core.simulation.block import DBlock
 
     blk = DBlock(
         block_fn=block_fn,
@@ -36,7 +36,7 @@ def _block(block_fn, name, in_ports, out_ports, params, b_type):
 
 def _line(src, dst):
     from PyQt6.QtCore import QPoint
-    from lib.simulation.connection import DLine
+    from diablos.core.simulation.connection import DLine
 
     return DLine(
         sid=0,
@@ -51,10 +51,10 @@ def _line(src, dst):
 @pytest.mark.regression
 class TestExpBlockCompiled:
     def test_exp_block_fn_is_compilable(self, qapp):
-        from lib.engine.block_names import canonical_fn
-        from lib.engine.compiler_kernels import get_kernel_builder
-        from lib.engine.compiled_runner import _KERNEL_REPLAY_FNS
-        from lib.engine.system_compiler import SystemCompiler
+        from diablos.core.engine.block_names import canonical_fn
+        from diablos.core.engine.compiler_kernels import get_kernel_builder
+        from diablos.core.engine.compiled_runner import _KERNEL_REPLAY_FNS
+        from diablos.core.engine.system_compiler import SystemCompiler
 
         blocks = [
             _block("Constant", "constant0", 0, 1, {"value": 2.0}, 0),
@@ -68,7 +68,7 @@ class TestExpBlockCompiled:
     def test_exp_runs_after_its_input_in_compiled_path(self, qapp):
         """Constant(2) -> Exp(a=1, b=0.5) -> 1/(s+1): steady state is e^1."""
         from scipy.integrate import solve_ivp
-        from lib.engine.system_compiler import SystemCompiler
+        from diablos.core.engine.system_compiler import SystemCompiler
 
         blocks = [
             _block("Constant", "constant0", 0, 1, {"value": 2.0}, 0),

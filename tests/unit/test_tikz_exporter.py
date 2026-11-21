@@ -8,7 +8,7 @@ Tests are organized by component, with regression tests for known bugs.
 import re
 from types import SimpleNamespace
 
-from lib.export.tikz_exporter import (
+from diablos.core.export.tikz_exporter import (
     _poly_to_latex,
     _escape_latex,
     _name_to_math,

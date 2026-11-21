@@ -1,7 +1,7 @@
 """Tests for VectorGain block."""
 
 import numpy as np
-from blocks.optimization_primitives.vector_gain import VectorGainBlock
+from diablos.blocks.optimization_primitives.vector_gain import VectorGainBlock
 
 
 class TestVectorGainBlock:

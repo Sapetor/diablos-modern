@@ -11,7 +11,7 @@ pytestmark = [pytest.mark.regression, pytest.mark.qt]
 
 @pytest.fixture
 def panel(window):
-    from modern_ui.styles.qss_styles import ModernStyles
+    from diablos.gui.styles.qss_styles import ModernStyles
 
     # The main entry point installs this app-wide; window fixtures do not.
     window.setStyleSheet(ModernStyles.get_complete_stylesheet())

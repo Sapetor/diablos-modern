@@ -6,10 +6,10 @@ import numpy as np
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from lib.simulation.block import DBlock
-from lib.simulation.connection import DLine
-from lib.engine.system_compiler import SystemCompiler
-from lib.engine.simulation_engine import SimulationEngine
+from diablos.core.simulation.block import DBlock
+from diablos.core.simulation.connection import DLine
+from diablos.core.engine.system_compiler import SystemCompiler
+from diablos.core.engine.simulation_engine import SimulationEngine
 
 
 class TestFastSolverExpansion(unittest.TestCase):

@@ -1,7 +1,7 @@
 """Tests for the diagram image export / clipboard-copy feature.
 
 Covers the pure exporter functions in
-``modern_ui/tools/diagram_image_exporter.py`` and the MainWindow facades
+``src/diablos/gui/tools/diagram_image_exporter.py`` and the MainWindow facades
 (``export_image`` / ``copy_diagram_image``), all against a real ModernCanvas /
 DSim built the same way as the other tests in this directory
 (test_empty_canvas_hint.py, test_main_window_view_actions.py).
@@ -22,11 +22,11 @@ from PyQt6.QtCore import QRect, QPoint
 from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtWidgets import QApplication, QFileDialog
 
-from lib.lib import DSim
-from lib.simulation.block import DBlock
-from lib.simulation.connection import DLine
-from modern_ui.themes.theme_manager import theme_manager
-from modern_ui.tools import diagram_image_exporter as exporter
+from diablos.core.lib import DSim
+from diablos.core.simulation.block import DBlock
+from diablos.core.simulation.connection import DLine
+from diablos.gui.themes.theme_manager import theme_manager
+from diablos.gui.tools import diagram_image_exporter as exporter
 
 pytestmark = pytest.mark.qt
 
@@ -53,7 +53,7 @@ def _make_block(sid, x, y, w=100, h=80, name=None):
 @pytest.fixture
 def canvas(qapp):
     dsim = DSim()
-    from modern_ui.widgets.modern_canvas import ModernCanvas
+    from diablos.gui.widgets.modern_canvas import ModernCanvas
 
     c = ModernCanvas(dsim)
     c.resize(800, 600)
@@ -147,7 +147,7 @@ class TestRenderImage:
 def test_capture_screen_uses_backend_coordinates_and_saves_physical_pixels(
     qapp, tmp_path, monkeypatch, platform, offset
 ):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     pixmap = QPixmap(450, 300)
     pixmap.fill()
@@ -218,7 +218,7 @@ class TestMainWindowFacades:
     # never pay for (or depend on) a full MainWindow construction.
     @pytest.fixture(scope="class")
     def window(self, qapp):
-        from modern_ui.main_window import ModernDiaBloSWindow
+        from diablos.gui.main_window import ModernDiaBloSWindow
 
         w = ModernDiaBloSWindow()
         yield w

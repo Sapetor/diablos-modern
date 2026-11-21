@@ -18,9 +18,9 @@ from types import SimpleNamespace
 import pytest
 from PyQt6.QtCore import QRect
 
-from blocks.subsystem import Subsystem
-from lib.masks import _has_default_username, apply_mask_appearance, set_mask
-from modern_ui.managers.clipboard_manager import ClipboardManager
+from diablos.blocks.subsystem import Subsystem
+from diablos.core.masks import _has_default_username, apply_mask_appearance, set_mask
+from diablos.gui.managers.clipboard_manager import ClipboardManager
 
 MOTOR = {"name": "Motor", "parameters": []}
 PUMP = {"name": "Pump", "parameters": []}

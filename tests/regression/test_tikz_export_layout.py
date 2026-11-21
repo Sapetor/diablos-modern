@@ -42,8 +42,8 @@ LAYOUT_EXAMPLES = [
 
 def _load(name):
     """Return (blocks_list, line_list) for an example, as the GUI would."""
-    from lib.models.simulation_model import SimulationModel
-    from lib.services.file_service import FileService
+    from diablos.core.models.simulation_model import SimulationModel
+    from diablos.core.services.file_service import FileService
 
     model = SimulationModel()
     service = FileService(model)
@@ -56,7 +56,7 @@ def _load(name):
 @pytest.fixture(scope="module")
 def exports(qapp):
     """{name: (exporter, picture)} for every layout example, built once."""
-    from lib.export.tikz_exporter import TikZExporter
+    from diablos.core.export.tikz_exporter import TikZExporter
 
     built = {}
     for name in LAYOUT_EXAMPLES:

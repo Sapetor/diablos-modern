@@ -6,7 +6,7 @@ Uses the same SimpleNamespace mock pattern as test_tikz_exporter.py.
 
 from types import SimpleNamespace
 
-from lib.export.blox_exporter import BloxExporter
+from diablos.core.export.blox_exporter import BloxExporter
 
 
 # ---------------------------------------------------------------------------

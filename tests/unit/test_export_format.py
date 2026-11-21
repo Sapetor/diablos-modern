@@ -2,8 +2,8 @@
 Unit tests for the Export block output FORMAT feature.
 
 Covers:
-- The ``format`` parameter on :class:`blocks.export.ExportBlock`.
-- :meth:`lib.lib.DSim.export_data` branching on that format and writing a
+- The ``format`` parameter on :class:`diablos.blocks.export.ExportBlock`.
+- :meth:`diablos.core.lib.DSim.export_data` branching on that format and writing a
   readable npz / csv / mat file with the expected time + signal data.
 """
 
@@ -20,7 +20,7 @@ def _populated_export_block(values, str_name="default", fmt="npz"):
     returned block has the same ``params`` layout the simulation engine leaves
     behind: ``vector``, ``vec_dim``, ``vec_labels`` and the chosen ``format``.
     """
-    from blocks.export import ExportBlock
+    from diablos.blocks.export import ExportBlock
 
     block = ExportBlock()
     params = {
@@ -54,7 +54,7 @@ class _StubDSim:
 
 
 # Bind the real method onto the stub so we exercise production code unchanged.
-from lib.lib import DSim  # noqa: E402
+from diablos.core.lib import DSim  # noqa: E402
 
 _StubDSim.export_data = DSim.export_data
 
@@ -64,7 +64,7 @@ class TestExportBlockFormatParam:
     """The Export block advertises a selectable output format."""
 
     def test_format_param_present_with_choices(self):
-        from blocks.export import ExportBlock
+        from diablos.blocks.export import ExportBlock
 
         block = ExportBlock()
         assert "format" in block.params, "Export should expose a 'format' param"

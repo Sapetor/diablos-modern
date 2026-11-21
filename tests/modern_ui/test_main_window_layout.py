@@ -26,14 +26,14 @@ Run with:
 import pytest
 from PyQt6.QtWidgets import QSplitter
 
-from modern_ui.widgets.modern_canvas import ModernCanvas
-from modern_ui.widgets.property_editor import PropertyEditor
-from modern_ui.platform_config import get_platform_config
+from diablos.gui.widgets.modern_canvas import ModernCanvas
+from diablos.gui.widgets.property_editor import PropertyEditor
+from diablos.gui.platform_config import get_platform_config
 
 
 @pytest.fixture(scope="module")
 def window(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     yield w

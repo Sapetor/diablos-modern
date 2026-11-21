@@ -11,9 +11,9 @@ import pytest
 from PyQt6.QtCore import QPoint, QRect
 from PyQt6.QtWidgets import QComboBox, QDoubleSpinBox, QLabel, QLineEdit
 
-from lib.library import LIBRARY_ENV_VAR, get_library_ref, write_library_file
-from lib.masks import get_mask, set_mask
-from lib.simulation.block import DBlock
+from diablos.core.library import LIBRARY_ENV_VAR, get_library_ref, write_library_file
+from diablos.core.masks import get_mask, set_mask
+from diablos.core.simulation.block import DBlock
 
 VEHICLE_MASK = {
     "name": "Vehicle",
@@ -36,7 +36,7 @@ VEHICLE_MASK = {
 
 
 def _masked_subsystem(name="Subsystem1", mask=VEHICLE_MASK):
-    from blocks.subsystem import Subsystem
+    from diablos.blocks.subsystem import Subsystem
 
     block = Subsystem(block_name=name, sid=1, coords=QRect(100, 100, 120, 90))
     block.name = name
@@ -64,7 +64,7 @@ def _masked_subsystem(name="Subsystem1", mask=VEHICLE_MASK):
 @pytest.mark.qt
 class TestPropertyEditorShowsMaskParameters:
     def test_mask_parameters_replace_the_raw_internals(self, qapp):
-        from modern_ui.widgets.property_editor import PropertyEditor
+        from diablos.gui.widgets.property_editor import PropertyEditor
 
         editor = PropertyEditor()
         try:
@@ -76,7 +76,7 @@ class TestPropertyEditorShowsMaskParameters:
             editor.setParent(None)
 
     def test_widgets_are_typed_from_the_mask_spec(self, qapp):
-        from modern_ui.widgets.property_editor import PropertyEditor
+        from diablos.gui.widgets.property_editor import PropertyEditor
 
         editor = PropertyEditor()
         try:
@@ -95,7 +95,7 @@ class TestPropertyEditorShowsMaskParameters:
             editor.setParent(None)
 
     def test_docs_come_from_the_mask(self, qapp):
-        from modern_ui.widgets.property_editor import PropertyEditor
+        from diablos.gui.widgets.property_editor import PropertyEditor
 
         editor = PropertyEditor()
         try:
@@ -110,8 +110,8 @@ class TestPropertyEditorShowsMaskParameters:
             editor.setParent(None)
 
     def test_an_unmasked_subsystem_still_uses_the_generic_path(self, qapp):
-        from blocks.subsystem import Subsystem
-        from modern_ui.widgets.property_editor import PropertyEditor
+        from diablos.blocks.subsystem import Subsystem
+        from diablos.gui.widgets.property_editor import PropertyEditor
 
         editor = PropertyEditor()
         try:
@@ -129,8 +129,8 @@ class TestPropertyEditorShowsMaskParameters:
 @pytest.fixture
 def library_dir(tmp_path, monkeypatch, qapp):
     """A temp library folder holding one 'Vehicle' block, wired to the env var."""
-    from lib.models.simulation_model import SimulationModel
-    from lib.services.file_service import FileService
+    from diablos.core.models.simulation_model import SimulationModel
+    from diablos.core.services.file_service import FileService
 
     folder = tmp_path / "library"
     folder.mkdir()
@@ -144,8 +144,8 @@ def library_dir(tmp_path, monkeypatch, qapp):
 @pytest.mark.qt
 class TestPaletteLibraryBlocks:
     def test_library_block_is_registered_and_listed(self, qapp, library_dir):
-        from lib.models.simulation_model import SimulationModel
-        from modern_ui.widgets.modern_palette import CompactBlockRow, ModernBlockPalette
+        from diablos.core.models.simulation_model import SimulationModel
+        from diablos.gui.widgets.modern_palette import CompactBlockRow, ModernBlockPalette
 
         model = SimulationModel()
         assert model.load_library_blocks() == 1
@@ -170,7 +170,7 @@ class TestPaletteLibraryBlocks:
             palette.setParent(None)
 
     def test_dropping_a_library_block_creates_an_independent_copy(self, qapp, library_dir):
-        from lib.models.simulation_model import SimulationModel
+        from diablos.core.models.simulation_model import SimulationModel
 
         model = SimulationModel()
         model.load_library_blocks()
@@ -205,7 +205,7 @@ class TestPaletteLibraryBlocks:
 
 @pytest.fixture(scope="module")
 def window(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     win = ModernDiaBloSWindow()
     yield win
@@ -278,7 +278,7 @@ class TestMaskEditUndo:
 class TestSaveAndReloadLibraryBlock:
     def test_save_then_reload_keeps_the_instance_values(self, qapp, window, tmp_path):
         """A library update re-syncs contents but not the instance's tuning."""
-        from lib.library import read_library_file
+        from diablos.core.library import read_library_file
 
         dsim = window.canvas.dsim
         block = _masked_subsystem()
@@ -295,8 +295,8 @@ class TestSaveAndReloadLibraryBlock:
         block.params["m"] = 900.0
         updated = dict(VEHICLE_MASK)
         updated["description"] = "Updated model."
-        from lib.library import write_library_file as _write
-        from lib.services.file_service import FileService
+        from diablos.core.library import write_library_file as _write
+        from diablos.core.services.file_service import FileService
 
         fresh = _masked_subsystem(mask=updated)
         fresh.sub_blocks[0].params["numerator"] = [2.0]
@@ -352,7 +352,7 @@ class TestMaskMenuEntries:
         assert "Refresh Block Librar&y" in labels
 
     def test_context_menu_offers_mask_actions_for_a_subsystem(self, qapp, window, monkeypatch):
-        from modern_ui.managers import menu_manager as mm
+        from diablos.gui.managers import menu_manager as mm
 
         dsim = window.canvas.dsim
         block = _masked_subsystem()

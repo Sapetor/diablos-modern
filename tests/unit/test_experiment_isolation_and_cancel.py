@@ -25,7 +25,7 @@ from PyQt6.QtCore import QPoint
 
 def _diagram(sim_time=0.2, sim_dt=0.01):
     """Step -> Integrator -> Scope on a fresh DSim (interpreter path)."""
-    from lib.lib import DSim
+    from diablos.core.lib import DSim
 
     dsim = DSim()
     menu = {b.fn_name: b for b in dsim.menu_blocks}
@@ -131,7 +131,7 @@ class _StubDSim:
 @pytest.mark.unit
 class TestRunnersForwardCancel:
     def test_monte_carlo_forwards_cancel_cb_and_stops_mid_run(self):
-        from lib.analysis.monte_carlo import MonteCarloRunner
+        from diablos.core.analysis.monte_carlo import MonteCarloRunner
 
         dsim = _StubDSim()
         flag = {"cancel": False}
@@ -151,7 +151,7 @@ class TestRunnersForwardCancel:
         assert result["n_runs"] < 10
 
     def test_parameter_sweep_forwards_cancel_cb(self):
-        from lib.analysis.parameter_sweep import ParameterSweepRunner
+        from diablos.core.analysis.parameter_sweep import ParameterSweepRunner
 
         dsim = _StubDSim()
         block = type("B", (), {})()

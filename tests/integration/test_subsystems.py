@@ -18,7 +18,7 @@ class TestSubsystemPatterns:
 
     def test_pass_through_pattern(self):
         """Test pass-through: input → gain(1) → output."""
-        from blocks.gain import GainBlock
+        from diablos.blocks.gain import GainBlock
 
         gain = GainBlock()
         params = {"gain": 1.0}
@@ -31,7 +31,7 @@ class TestSubsystemPatterns:
 
     def test_gain_chain_pattern(self):
         """Test chained gains (simulating nested subsystems with processing)."""
-        from blocks.gain import GainBlock
+        from diablos.blocks.gain import GainBlock
 
         gain1 = GainBlock()
         gain2 = GainBlock()
@@ -51,7 +51,7 @@ class TestSubsystemPatterns:
 
     def test_multi_input_sum_pattern(self):
         """Test multi-input sum (simulating subsystem with multiple inputs)."""
-        from blocks.sum import SumBlock
+        from diablos.blocks.sum import SumBlock
 
         sum_block = SumBlock()
         params = {"sign": "+++", "_init_start_": True}
@@ -63,8 +63,8 @@ class TestSubsystemPatterns:
 
     def test_split_merge_pattern(self):
         """Test signal split and merge (simulating subsystem with parallel paths)."""
-        from blocks.gain import GainBlock
-        from blocks.sum import SumBlock
+        from diablos.blocks.gain import GainBlock
+        from diablos.blocks.sum import SumBlock
 
         gain1 = GainBlock()
         gain2 = GainBlock()
@@ -87,8 +87,8 @@ class TestSubsystemPatterns:
 
     def test_feedback_pattern(self):
         """Test feedback loop (simulating subsystem with internal feedback)."""
-        from blocks.integrator import IntegratorBlock
-        from blocks.gain import GainBlock
+        from diablos.blocks.integrator import IntegratorBlock
+        from diablos.blocks.gain import GainBlock
 
         integrator = IntegratorBlock()
         gain = GainBlock()
@@ -142,7 +142,7 @@ class TestNestedProcessing:
 
     def test_two_level_nesting_simulation(self):
         """Simulate 2-level nesting with gains."""
-        from blocks.gain import GainBlock
+        from diablos.blocks.gain import GainBlock
 
         # Level 1: outer gain
         # Level 2: inner gain (nested)
@@ -161,8 +161,8 @@ class TestNestedProcessing:
 
     def test_three_level_nesting_simulation(self):
         """Simulate 3-level nesting with processing at each level."""
-        from blocks.gain import GainBlock
-        from blocks.sum import SumBlock
+        from diablos.blocks.gain import GainBlock
+        from diablos.blocks.sum import SumBlock
 
         level1_gain = GainBlock()
         level2_sum = SumBlock()
@@ -185,8 +185,8 @@ class TestNestedProcessing:
 
     def test_complex_nested_structure(self):
         """Test complex nested structure with multiple paths."""
-        from blocks.gain import GainBlock
-        from blocks.sum import SumBlock
+        from diablos.blocks.gain import GainBlock
+        from diablos.blocks.sum import SumBlock
 
         # Structure:
         # input → gain1 → sum1 ←+→ gain2 → output
@@ -218,7 +218,7 @@ class TestSubsystemEdgeCases:
 
     def test_empty_processing(self):
         """Test with no processing (pass-through only)."""
-        from blocks.gain import GainBlock
+        from diablos.blocks.gain import GainBlock
 
         gain = GainBlock()
         params = {"gain": 1.0}  # Unity gain = pass-through
@@ -229,7 +229,7 @@ class TestSubsystemEdgeCases:
 
     def test_vector_signal_flow(self):
         """Test vector signals through processing chain."""
-        from blocks.gain import GainBlock
+        from diablos.blocks.gain import GainBlock
 
         gain1 = GainBlock()
         gain2 = GainBlock()
@@ -247,9 +247,9 @@ class TestSubsystemEdgeCases:
 
     def test_time_varying_chain(self):
         """Test processing chain over multiple time steps."""
-        from blocks.sine import SineBlock
-        from blocks.gain import GainBlock
-        from blocks.scope import ScopeBlock
+        from diablos.blocks.sine import SineBlock
+        from diablos.blocks.gain import GainBlock
+        from diablos.blocks.scope import ScopeBlock
 
         sine = SineBlock()
         gain = GainBlock()
@@ -337,7 +337,7 @@ class TestSubsystemManagerUnconnectedPorts:
 
     def test_unconnected_gain_blocks_get_ports(self, qapp, mock_dsim):
         """Test that unconnected blocks get Inport/Outport when grouped."""
-        from lib.managers.subsystem_manager import SubsystemManager
+        from diablos.core.managers.subsystem_manager import SubsystemManager
         from PyQt6.QtCore import QPoint
 
         model, dsim, MockBlock = mock_dsim
@@ -383,8 +383,8 @@ class TestSubsystemManagerUnconnectedPorts:
 
     def test_mixed_connected_and_unconnected_ports(self, qapp, mock_dsim):
         """Test subsystem with both boundary connections and unconnected ports."""
-        from lib.managers.subsystem_manager import SubsystemManager
-        from lib.simulation.connection import DLine
+        from diablos.core.managers.subsystem_manager import SubsystemManager
+        from diablos.core.simulation.connection import DLine
         from PyQt6.QtCore import QPoint
 
         model, dsim, MockBlock = mock_dsim
@@ -442,7 +442,7 @@ class TestSubsystemManagerUnconnectedPorts:
 
     def test_single_block_gets_all_ports(self, qapp, mock_dsim):
         """Test that a single unconnected block gets Inport and Outport."""
-        from lib.managers.subsystem_manager import SubsystemManager
+        from diablos.core.managers.subsystem_manager import SubsystemManager
         from PyQt6.QtCore import QPoint
 
         model, dsim, MockBlock = mock_dsim
@@ -469,7 +469,7 @@ class TestSubsystemManagerUnconnectedPorts:
 
     def test_block_with_multiple_ports(self, qapp, mock_dsim):
         """Test block with multiple input/output ports."""
-        from lib.managers.subsystem_manager import SubsystemManager
+        from diablos.core.managers.subsystem_manager import SubsystemManager
         from PyQt6.QtCore import QPoint
 
         model, dsim, MockBlock = mock_dsim

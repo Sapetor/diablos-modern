@@ -20,13 +20,13 @@ try:
     from PyQt6.QtCore import QRect
 
     print("Importing DBlock...")
-    from lib.simulation.block import DBlock
+    from diablos.core.simulation.block import DBlock
 
     print("Importing Line...")
-    from lib.simulation.connection import DLine as Line
+    from diablos.core.simulation.connection import DLine as Line
 
     print("Importing SimulationEngine...")
-    from lib.engine.simulation_engine import SimulationEngine
+    from diablos.core.engine.simulation_engine import SimulationEngine
 
     print("Imports success.")
 except ImportError as e:

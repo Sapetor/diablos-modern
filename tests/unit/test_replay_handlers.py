@@ -1,4 +1,4 @@
-"""Unit tests for lib.engine.replay_handlers -- the per-block replay dispatch.
+"""Unit tests for diablos.core.engine.replay_handlers -- the per-block replay dispatch.
 
 The end-to-end invariant (compiled replay == the traces it produced before the
 handlers were extracted from ``replay_compiled_signals``) is pinned by
@@ -11,7 +11,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from lib.engine import replay_handlers as rh
+from diablos.core.engine import replay_handlers as rh
 
 
 def _block(name="b", fn="Test", params=None, exec_params=None, **attrs):
@@ -218,7 +218,7 @@ class TestFallback:
 
         blk = _block("bad", block_instance=SimpleNamespace(execute=boom))
         failed = set()
-        with caplog.at_level("WARNING", logger="lib.engine.replay_handlers"):
+        with caplog.at_level("WARNING", logger="diablos.core.engine.replay_handlers"):
             assert rh.replay_fallback(blk, {}, 0.0, 0.01, failed) == 0.0
             assert rh.replay_fallback(blk, {}, 0.0, 0.01, failed) == 0.0
         assert failed == {"bad"}
@@ -243,7 +243,7 @@ class TestRecorders:
         blk = _block("s", fn="Scope", exec_params={})
         rec = rh.RECORDERS["Scope"]
         rec(run, blk, {0: np.array([1.0, 2.0])}, 0, 0.0)
-        with caplog.at_level("WARNING", logger="lib.engine.replay_handlers"):
+        with caplog.at_level("WARNING", logger="diablos.core.engine.replay_handlers"):
             rec(run, blk, {0: np.array([9.0])}, 1, 0.1)
             rec(run, blk, {0: np.array([1.0, 2.0, 3.0])}, 2, 0.2)
         vec = blk.exec_params["vector"]

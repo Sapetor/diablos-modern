@@ -1,11 +1,11 @@
-"""Unit tests for lib/engine/compiled_loops.py (algebraic loops in the compiled RHS)."""
+"""Unit tests for src/diablos/core/engine/compiled_loops.py (algebraic loops in the compiled RHS)."""
 
 from types import SimpleNamespace
 
 import numpy as np
 import pytest
 
-from lib.engine.compiled_loops import (
+from diablos.core.engine.compiled_loops import (
     CompiledLoopError,
     _flush_tiny,
     make_loop_executor,

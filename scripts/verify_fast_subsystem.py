@@ -28,16 +28,16 @@ if not QApplication.instance():
 
 from PyQt6.QtCore import QRect
 
-from blocks.gain import GainBlock
-from blocks.inport import Inport
-from blocks.outport import Outport
-from blocks.scope import ScopeBlock
-from blocks.step import StepBlock
-from blocks.subsystem import Subsystem
-from lib.engine.simulation_engine import SimulationEngine
-from lib.models.simulation_model import SimulationModel
-from lib.simulation.block import DBlock
-from lib.simulation.connection import DLine
+from diablos.blocks.gain import GainBlock
+from diablos.blocks.inport import Inport
+from diablos.blocks.outport import Outport
+from diablos.blocks.scope import ScopeBlock
+from diablos.blocks.step import StepBlock
+from diablos.blocks.subsystem import Subsystem
+from diablos.core.engine.simulation_engine import SimulationEngine
+from diablos.core.models.simulation_model import SimulationModel
+from diablos.core.simulation.block import DBlock
+from diablos.core.simulation.connection import DLine
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 

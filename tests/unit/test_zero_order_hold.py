@@ -9,7 +9,7 @@ terminates when ``sampling_time`` is 0 or negative, and the GUI calls
 import numpy as np
 import pytest
 
-from blocks.zero_order_hold import ZeroOrderHoldBlock
+from diablos.blocks.zero_order_hold import ZeroOrderHoldBlock
 
 
 @pytest.mark.unit

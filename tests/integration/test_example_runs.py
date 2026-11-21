@@ -30,8 +30,8 @@ def test_example_loads_and_inits(example_file, qapp):
             "unrelated to the safe_expr regression."
         )
 
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     # Reset WorkspaceManager singleton so tests don't share state.
     prev_instance = WorkspaceManager._instance

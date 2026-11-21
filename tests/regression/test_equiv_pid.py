@@ -41,7 +41,7 @@ reference and the interpreter is the inaccurate one):
     difference is what keeps the trajectory xfail at this test's fixed dt=0.01.
     (A second cause -- the derivative branch filtering a finite difference
     seeded from the first error sample, which deleted the step response of the
-    D term entirely -- has been fixed: blocks/pid.py now carries the same
+    D term entirely -- has been fixed: src/diablos/blocks/pid.py now carries the same
     filtered-error state the compiled kernel does, x_d' = N(e - x_d) from zero.
     That alone took the divergence from ~0.26 to ~0.10 and restored first-order
     convergence of the interpreted loop; see tests/validation/test_closed_loop.py.)
@@ -61,12 +61,12 @@ def _defaults(block):
 def _build_pid_loop(dsim, kp, ki, kd):
     """Populate ``dsim`` with Step -> PID -> TranFn(1/(s+1)) -> Scope + feedback."""
     from PyQt6.QtCore import QRect, QPoint
-    from blocks.step import StepBlock
-    from blocks.pid import PIDBlock
-    from blocks.transfer_function import TransferFunctionBlock
-    from blocks.scope import ScopeBlock
-    from lib.simulation.block import DBlock
-    from lib.simulation.connection import DLine
+    from diablos.blocks.step import StepBlock
+    from diablos.blocks.pid import PIDBlock
+    from diablos.blocks.transfer_function import TransferFunctionBlock
+    from diablos.blocks.scope import ScopeBlock
+    from diablos.core.simulation.block import DBlock
+    from diablos.core.simulation.connection import DLine
 
     step_b = StepBlock()
     step = DBlock(
@@ -189,8 +189,8 @@ def _scope_trace(dsim):
 
 def _run(kp, ki, kd, fast, dt, t_end):
     """Build and run the PID loop; return (timeline, scope_trace)."""
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     WorkspaceManager._instance = None
     dsim = DSim()
@@ -271,13 +271,13 @@ def _build_error_input_pid_loop(dsim, kp, ki, kd):
     (the Sum) sits between the sources and the controller.
     """
     from PyQt6.QtCore import QRect, QPoint
-    from blocks.step import StepBlock
-    from blocks.sum import SumBlock
-    from blocks.pid import PIDBlock
-    from blocks.transfer_function import TransferFunctionBlock
-    from blocks.scope import ScopeBlock
-    from lib.simulation.block import DBlock
-    from lib.simulation.connection import DLine
+    from diablos.blocks.step import StepBlock
+    from diablos.blocks.sum import SumBlock
+    from diablos.blocks.pid import PIDBlock
+    from diablos.blocks.transfer_function import TransferFunctionBlock
+    from diablos.blocks.scope import ScopeBlock
+    from diablos.core.simulation.block import DBlock
+    from diablos.core.simulation.connection import DLine
 
     def _mk(fn, block_obj, cls, n_in, n_out, x, **overrides):
         blk = DBlock(
@@ -336,8 +336,8 @@ def _build_error_input_pid_loop(dsim, kp, ki, kd):
 
 
 def _run_error_input(kp, ki, kd, fast, dt, t_end):
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     WorkspaceManager._instance = None
     dsim = DSim()
@@ -361,9 +361,9 @@ class TestErrorInputPIDOrdering:
       The compiled middle group inherited that order verbatim, so ``exec_pid``
       read ``signals['Sum']`` before the Sum had written it -- 0.0 on every RHS
       evaluation, a permanently zero error, and a dead loop. Fixed by
-      ``_dataflow_order`` in ``lib/engine/system_compiler.py``, which re-sorts
+      ``_dataflow_order`` in ``src/diablos/core/engine/system_compiler.py``, which re-sorts
       the middle group by true dataflow.
-    * **Interpreted path.** ``blocks/pid.py`` returned ``_last_output_`` whenever
+    * **Interpreted path.** ``src/diablos/blocks/pid.py`` returned ``_last_output_`` whenever
       port 1 was unconnected, so the error-input wiring never computed at all.
       An unconnected measurement port now reads as 0.0, matching the compiled
       kernel (``build_pid`` leaves ``meas_src`` None).
@@ -371,7 +371,7 @@ class TestErrorInputPIDOrdering:
 
     def test_middle_group_runs_the_sum_before_the_pid(self, qapp):
         """The compiled middle group is in dataflow order, not hierarchy order."""
-        from lib.engine.system_compiler import _dataflow_order
+        from diablos.core.engine.system_compiler import _dataflow_order
 
         class _B:
             def __init__(self, name):

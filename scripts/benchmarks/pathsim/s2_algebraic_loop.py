@@ -43,7 +43,7 @@ def reference(f):
 
 
 def build_diablos(expr, with_delay, path):
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     b = DiagramBuilder(sim_time=T_END, sim_dt=DT)
     u = b.add_block("Constant", 50, 100, name="u", params={"value": U})

@@ -1,4 +1,4 @@
-"""Unit tests for the subsystem mask model (``lib/masks.py``).
+"""Unit tests for the subsystem mask model (``src/diablos/core/masks.py``).
 
 Covers the definition (normalize/validate), the block accessors that store a
 mask in ``params``, and -- the part the engine depends on -- resolving mask
@@ -7,7 +7,7 @@ parameter values into a scope and rewriting inner block parameters against it.
 
 import pytest
 
-from lib.masks import (
+from diablos.core.masks import (
     MASK_KEY,
     MaskError,
     child_scope_for,

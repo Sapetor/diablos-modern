@@ -6,11 +6,11 @@ import pytest
 from PyQt6.QtGui import QFontMetrics
 from PyQt6.QtWidgets import QApplication
 
-from modern_ui.renderers.block_renderer import (
+from diablos.gui.renderers.block_renderer import (
     BlockRenderer,
     block_label_layout,
 )
-from modern_ui.themes.theme_manager import theme_manager, ThemeType
+from diablos.gui.themes.theme_manager import theme_manager, ThemeType
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 EXAMPLE = os.path.join(ROOT, "examples", "pid_second_order.diablos")
@@ -18,7 +18,7 @@ EXAMPLE = os.path.join(ROOT, "examples", "pid_second_order.diablos")
 
 @pytest.fixture(scope="module")
 def window(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     w.show()

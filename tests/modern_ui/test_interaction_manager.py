@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 from PyQt6.QtCore import Qt, QPoint, QPointF
-from modern_ui.interactions.interaction_manager import InteractionManager, State
+from diablos.gui.interactions.interaction_manager import InteractionManager, State
 
 
 class TestInteractionManager(unittest.TestCase):
@@ -65,7 +65,7 @@ class TestInteractionManager(unittest.TestCase):
         self.assertTrue(self.mock_canvas.zoom_pan_manager.state.is_panning)
         self.assertEqual(self.mock_canvas.zoom_pan_manager.state.last_pan_pos, QPoint(50, 50))
 
-    @patch("modern_ui.interactions.interaction_manager.logger")
+    @patch("diablos.gui.interactions.interaction_manager.logger")
     def test_mouse_move_dragging_block(self, mock_logger):
         # Setup state
         self.mock_canvas.state = State.DRAGGING

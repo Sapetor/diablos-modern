@@ -11,9 +11,9 @@ from types import SimpleNamespace
 import pytest
 from PyQt6.QtCore import QPoint, QRect
 
-from lib.simulation.block import DBlock
-from modern_ui.managers import clipboard_manager as cm
-from modern_ui.managers.clipboard_manager import ClipboardManager
+from diablos.core.simulation.block import DBlock
+from diablos.gui.managers import clipboard_manager as cm
+from diablos.gui.managers.clipboard_manager import ClipboardManager
 
 
 @pytest.fixture(autouse=True)
@@ -208,7 +208,7 @@ class TestInstantiateBlock:
         assert isinstance(block.block_instance, GainImpl)
 
     def test_subsystem_restores_params_contents_and_init_params_list(self):
-        from blocks.subsystem import Subsystem
+        from diablos.blocks.subsystem import Subsystem
 
         inner = _real_block("Inport", 0, in_ports=0)
         data = _block_data(

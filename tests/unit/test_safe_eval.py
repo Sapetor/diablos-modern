@@ -1,12 +1,12 @@
 """
-Unit tests for lib/safe_eval.py — hardened expression evaluator.
+Unit tests for src/diablos/core/safe_eval.py — hardened expression evaluator.
 """
 
 import math
 import pytest
 import numpy as np
 
-from lib.safe_eval import SafeEvalError, safe_literal, safe_expr, compile_expr, CompiledExpr
+from diablos.core.safe_eval import SafeEvalError, safe_literal, safe_expr, compile_expr, CompiledExpr
 
 
 # ===========================================================================

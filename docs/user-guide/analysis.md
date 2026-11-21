@@ -206,7 +206,7 @@ You need one completed run first — the panel says
 
 ## How the experiment runners work
 
-All of this is in `lib/analysis/`:
+All of this is in `src/diablos/core/analysis/`:
 
 | Module | Role |
 |---|---|

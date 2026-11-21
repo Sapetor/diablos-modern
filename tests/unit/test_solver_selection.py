@@ -10,7 +10,7 @@ Covers:
 import numpy as np
 import pytest
 
-from lib.engine.simulation_engine import (
+from diablos.core.engine.simulation_engine import (
     SimulationEngine,
     integrate_fixed_step,
     SCIPY_SOLVER_METHODS,
@@ -93,7 +93,7 @@ class TestSimulationDialogSolverFields:
     """The dialog is the only place a user sets these, so its round-trip counts."""
 
     def test_reflects_and_returns_the_solver_settings(self, qapp):
-        from lib.dialogs import SimulationDialog
+        from diablos.core.dialogs import SimulationDialog
 
         dialog = SimulationDialog(
             sim_time=4.0,
@@ -118,7 +118,7 @@ class TestSimulationDialogSolverFields:
             dialog.deleteLater()
 
     def test_every_scipy_method_is_offered(self, qapp):
-        from lib.dialogs import SimulationDialog
+        from diablos.core.dialogs import SimulationDialog
 
         offered = set(SimulationDialog.SOLVER_METHODS)
         assert set(SCIPY_SOLVER_METHODS) <= offered
@@ -178,12 +178,12 @@ class _MockModel:
 def _constant_integrator_scope(method="RK45", value=2.0):
     """Build a valid Constant -> Integrator -> Scope compiled test diagram."""
     from PyQt6.QtCore import QRect, QPoint
-    from blocks.constant import ConstantBlock
-    from blocks.integrator import IntegratorBlock
-    from blocks.scope import ScopeBlock
-    from lib.engine.simulation_engine import SimulationEngine
-    from lib.simulation.block import DBlock
-    from lib.simulation.connection import DLine
+    from diablos.blocks.constant import ConstantBlock
+    from diablos.blocks.integrator import IntegratorBlock
+    from diablos.blocks.scope import ScopeBlock
+    from diablos.core.engine.simulation_engine import SimulationEngine
+    from diablos.core.simulation.block import DBlock
+    from diablos.core.simulation.connection import DLine
 
     def _defaults(block):
         return {
@@ -277,9 +277,9 @@ class TestCompiledSolverEndToEnd:
 
     def _run(self, qapp, method, t_end=5.0, dt=0.01):
         from PyQt6.QtCore import QRect, QPoint
-        from lib.engine.simulation_engine import SimulationEngine
-        from lib.simulation.block import DBlock
-        from lib.simulation.connection import DLine
+        from diablos.core.engine.simulation_engine import SimulationEngine
+        from diablos.core.simulation.block import DBlock
+        from diablos.core.simulation.connection import DLine
 
         model = _MockModel()
         const = DBlock("Constant", "C1", coords=QRect(0, 0, 50, 50), color="blue")

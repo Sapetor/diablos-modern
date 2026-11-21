@@ -16,7 +16,7 @@ Four families of blocks used to carry copy-pasted bodies:
 
 These tests pin what the shared code must keep doing, plus the property that
 makes the sharing safe: a base class must stay *abstract*, because
-``lib.block_loader`` registers every concrete ``BaseBlock`` subclass it can see
+``diablos.core.block_loader`` registers every concrete ``BaseBlock`` subclass it can see
 in a block module and would otherwise put the base in the palette.
 """
 
@@ -25,14 +25,14 @@ import inspect
 import numpy as np
 import pytest
 
-from blocks.analysis_marker_base import AnalysisMarkerBlock
-from blocks.delay_base import DelayBufferBlock
-from blocks.discrete_statespace import DiscreteStateSpaceBlock
-from blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
-from blocks.statespace import StateSpaceBlock
-from blocks.statespace_base import StateSpaceBaseBlock
-from blocks.tag_base import TagRoutingBlock
-from blocks.transfer_function import TransferFunctionBlock
+from diablos.blocks.analysis_marker_base import AnalysisMarkerBlock
+from diablos.blocks.delay_base import DelayBufferBlock
+from diablos.blocks.discrete_statespace import DiscreteStateSpaceBlock
+from diablos.blocks.discrete_transfer_function import DiscreteTransferFunctionBlock
+from diablos.blocks.statespace import StateSpaceBlock
+from diablos.blocks.statespace_base import StateSpaceBaseBlock
+from diablos.blocks.tag_base import TagRoutingBlock
+from diablos.blocks.transfer_function import TransferFunctionBlock
 
 SHARED_BASES = [
     StateSpaceBaseBlock,
@@ -56,7 +56,7 @@ def test_shared_bases_stay_abstract(base):
 
 @pytest.mark.unit
 def test_shared_bases_are_not_registered_as_blocks():
-    from lib.block_loader import load_blocks
+    from diablos.core.block_loader import load_blocks
 
     registered = {cls.__name__ for cls in load_blocks()}
     for base in SHARED_BASES:
@@ -121,7 +121,7 @@ class TestStateSpaceSharedStep:
 @pytest.mark.unit
 class TestDiscreteSampleGating:
     """The discrete pair share one sample-instant epsilon with every other
-    rate-gated block (``blocks.input_helpers.SAMPLE_TIME_EPS``)."""
+    rate-gated block (``diablos.blocks.input_helpers.SAMPLE_TIME_EPS``)."""
 
     @pytest.mark.parametrize(
         "block_cls", [DiscreteTransferFunctionBlock, DiscreteStateSpaceBlock], ids=["dtf", "dss"]
@@ -146,7 +146,7 @@ class TestDelayBufferTieBreak:
     timestamp is equal (the interpreter's four RK4 sub-steps at a fixed t)."""
 
     def test_fixed_delay_reports_the_initial_value_on_a_tie(self):
-        from blocks.transport_delay import TransportDelayBlock
+        from diablos.blocks.transport_delay import TransportDelayBlock
 
         block = TransportDelayBlock()
         assert block._HOLD_LAST_ON_TIE is False
@@ -157,7 +157,7 @@ class TestDelayBufferTieBreak:
         assert out == pytest.approx([-1.0])
 
     def test_variable_delay_holds_the_newest_sample_on_a_tie(self):
-        from blocks.variable_transport_delay import VariableTransportDelayBlock
+        from diablos.blocks.variable_transport_delay import VariableTransportDelayBlock
 
         block = VariableTransportDelayBlock()
         assert block._HOLD_LAST_ON_TIE is True
@@ -168,8 +168,8 @@ class TestDelayBufferTieBreak:
         assert out == pytest.approx([9.0])
 
     def test_both_interpolate_linearly_between_bracketing_samples(self):
-        from blocks.transport_delay import TransportDelayBlock
-        from blocks.variable_transport_delay import VariableTransportDelayBlock
+        from diablos.blocks.transport_delay import TransportDelayBlock
+        from diablos.blocks.variable_transport_delay import VariableTransportDelayBlock
 
         buf_t, buf_v = [0.0, 1.0], [np.array([0.0]), np.array([10.0])]
         for block in (TransportDelayBlock(), VariableTransportDelayBlock()):
@@ -182,22 +182,22 @@ class TestTagRoutingBase:
     """Goto and From are one connection: same tag params, opposite ports."""
 
     def test_the_pair_declare_identical_tag_parameters(self):
-        from blocks.from_block import FromBlock
-        from blocks.goto import GotoBlock
+        from diablos.blocks.from_block import FromBlock
+        from diablos.blocks.goto import GotoBlock
 
         assert GotoBlock().params == FromBlock().params
         assert set(GotoBlock().params) == {"tag", "signal_name"}
 
     def test_ports_are_mirrored(self):
-        from blocks.from_block import FromBlock
-        from blocks.goto import GotoBlock
+        from diablos.blocks.from_block import FromBlock
+        from diablos.blocks.goto import GotoBlock
 
         assert len(GotoBlock().inputs) == 1 and GotoBlock().outputs == []
         assert FromBlock().inputs == [] and len(FromBlock().outputs) == 1
 
     def test_both_forward_the_routed_signal_untouched(self):
-        from blocks.from_block import FromBlock
-        from blocks.goto import GotoBlock
+        from diablos.blocks.from_block import FromBlock
+        from diablos.blocks.goto import GotoBlock
 
         signal = np.array([1.0, 2.0, 3.0])
         for block in (GotoBlock(), FromBlock()):
@@ -205,7 +205,7 @@ class TestTagRoutingBase:
             assert out[0] is signal, "routing must not copy or normalize"
 
     def test_an_unrouted_tag_yields_the_bare_zero_default(self):
-        from blocks.from_block import FromBlock
+        from diablos.blocks.from_block import FromBlock
 
         assert FromBlock().execute(0.0, {}, {"tag": "A"}) == {0: 0}
 

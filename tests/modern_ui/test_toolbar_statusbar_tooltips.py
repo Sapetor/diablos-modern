@@ -27,7 +27,7 @@ def _qt(qapp):
 
 @pytest.fixture
 def toolbar():
-    from modern_ui.widgets.modern_toolbar import ModernToolBar
+    from diablos.gui.widgets.modern_toolbar import ModernToolBar
 
     tb = ModernToolBar()
     yield tb
@@ -107,7 +107,7 @@ class TestActionStatusTips:
 
 @pytest.fixture(scope="module")
 def window(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     yield w

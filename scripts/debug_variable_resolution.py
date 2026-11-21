@@ -10,7 +10,7 @@ import sys
 # absolute path to one developer's checkout).
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from lib.workspace import WorkspaceManager
+from diablos.core.workspace import WorkspaceManager
 
 # Test 1: Store and retrieve variable
 print("Test 1: Store and retrieve variable")

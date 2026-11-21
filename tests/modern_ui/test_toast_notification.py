@@ -17,7 +17,7 @@ def _qt(qapp):
 
 @pytest.fixture
 def toast():
-    from modern_ui.widgets.toast_notification import ToastNotification
+    from diablos.gui.widgets.toast_notification import ToastNotification
 
     t = ToastNotification()
     yield t
@@ -35,21 +35,21 @@ class TestToastIsError:
         assert toast._is_error is False
 
     def test_error_uses_error_border_color(self, toast):
-        from modern_ui.themes.theme_manager import theme_manager
+        from diablos.gui.themes.theme_manager import theme_manager
 
         toast.show_message("boom", duration=10, is_error=True)
         error_hex = theme_manager.get_color("error").name().lower()
         assert error_hex in toast.styleSheet().lower()
 
     def test_non_error_uses_accent_border_color(self, toast):
-        from modern_ui.themes.theme_manager import theme_manager
+        from diablos.gui.themes.theme_manager import theme_manager
 
         toast.show_message("hi", duration=10)
         accent_hex = theme_manager.get_color("accent_primary").name().lower()
         assert accent_hex in toast.styleSheet().lower()
 
     def test_toggle_back_to_non_error_restyles(self, toast):
-        from modern_ui.themes.theme_manager import theme_manager
+        from diablos.gui.themes.theme_manager import theme_manager
 
         toast.show_message("boom", duration=10, is_error=True)
         toast.show_message("recovered", duration=10, is_error=False)

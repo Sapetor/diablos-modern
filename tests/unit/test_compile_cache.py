@@ -1,7 +1,7 @@
 """Unit tests for the extracted compiled-system cache fingerprinting helpers.
 
 These functions were private methods on SimulationEngine; extracting them into
-``lib/engine/compile_cache.py`` lets us pin the (subtle) normalization and
+``src/diablos/core/engine/compile_cache.py`` lets us pin the (subtle) normalization and
 key-stability behavior directly. The key invariant the cache relies on: equal
 inputs produce equal keys, structurally different inputs produce different keys,
 and volatile runtime/history params never enter the key.
@@ -12,7 +12,7 @@ import types
 import numpy as np
 import pytest
 
-from lib.engine.compile_cache import (
+from diablos.core.engine.compile_cache import (
     _COMPILE_CACHE_IGNORED_PARAM_KEYS,
     compile_param_items,
     compiled_system_fingerprint,

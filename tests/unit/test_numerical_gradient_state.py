@@ -16,7 +16,7 @@ class TestNumericalGradientState:
 
     def test_no_instance_cache_attribute(self):
         """After the fix, the block should not carry `_cached_dimension` on self."""
-        from blocks.optimization_primitives.numerical_gradient import (
+        from diablos.blocks.optimization_primitives.numerical_gradient import (
             NumericalGradientBlock,
         )
 
@@ -27,7 +27,7 @@ class TestNumericalGradientState:
 
     def test_forward_difference_basic(self):
         """Forward-difference gradient matches (f_plus - f_center)/epsilon per dim."""
-        from blocks.optimization_primitives.numerical_gradient import (
+        from diablos.blocks.optimization_primitives.numerical_gradient import (
             NumericalGradientBlock,
         )
 
@@ -46,7 +46,7 @@ class TestNumericalGradientState:
 
     def test_central_difference_basic(self):
         """Central-difference gradient matches (f_plus - f_minus)/(2*epsilon)."""
-        from blocks.optimization_primitives.numerical_gradient import (
+        from diablos.blocks.optimization_primitives.numerical_gradient import (
             NumericalGradientBlock,
         )
 
@@ -67,7 +67,7 @@ class TestNumericalGradientState:
     def test_dimension_change_across_calls(self):
         """Block must correctly handle a dimension change between calls
         (the removed cache would have held a stale value across calls)."""
-        from blocks.optimization_primitives.numerical_gradient import (
+        from diablos.blocks.optimization_primitives.numerical_gradient import (
             NumericalGradientBlock,
         )
 
@@ -99,7 +99,7 @@ class TestNumericalGradientState:
 
     def test_execute_returns_error_dict_on_failure(self):
         """Malformed inputs still produce a proper error dict, not a crash."""
-        from blocks.optimization_primitives.numerical_gradient import (
+        from diablos.blocks.optimization_primitives.numerical_gradient import (
             NumericalGradientBlock,
         )
 

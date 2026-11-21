@@ -1,5 +1,5 @@
 """Tests for the parameter-sweep run dialog
-(modern_ui/widgets/parameter_sweep_dialog.py).
+(src/diablos/gui/widgets/parameter_sweep_dialog.py).
 
 Builds a tiny diagram, constructs the dialog, and checks get_selection() returns
 the documented contract for 1-D and 2-D, with values expanded via linspace.
@@ -8,8 +8,8 @@ the documented contract for 1-D and 2-D, with values expanded via linspace.
 import numpy as np
 import pytest
 
-from lib.diagram_builder import DiagramBuilder
-from modern_ui.widgets.parameter_sweep_dialog import (
+from diablos.core.diagram_builder import DiagramBuilder
+from diablos.gui.widgets.parameter_sweep_dialog import (
     ParameterSweepDialog,
     numeric_scalar_params,
     sweepable_blocks,
@@ -22,7 +22,7 @@ _BLOCK_INSTANCES = None
 def _params(block_type, **overrides):
     global _BLOCK_INSTANCES
     if _BLOCK_INSTANCES is None:
-        from lib.block_loader import load_blocks
+        from diablos.core.block_loader import load_blocks
 
         _BLOCK_INSTANCES = {}
         for cls in load_blocks():
@@ -41,8 +41,8 @@ def _params(block_type, **overrides):
 
 
 def _load(builder, tmp_path, name):
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     path = tmp_path / name
     builder.save(str(path))

@@ -13,11 +13,11 @@ import types
 import numpy as np
 import pytest
 
-from blocks import _hardware_io as hw
-from blocks.serial_read import SerialReadBlock
-from blocks.serial_write import SerialWriteBlock
-from blocks.udp_receive import UDPReceiveBlock
-from blocks.udp_send import UDPSendBlock
+from diablos.blocks import _hardware_io as hw
+from diablos.blocks.serial_read import SerialReadBlock
+from diablos.blocks.serial_write import SerialWriteBlock
+from diablos.blocks.udp_receive import UDPReceiveBlock
+from diablos.blocks.udp_send import UDPSendBlock
 
 
 def _p(**params):
@@ -196,8 +196,8 @@ class TestSerial:
 
 @pytest.mark.integration
 def test_headless_run_sends_at_the_sampling_rate(tmp_path):
-    from lib.cli import run_diagram
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.cli import run_diagram
+    from diablos.core.diagram_builder import DiagramBuilder
 
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as listener:
         listener.bind(("127.0.0.1", 0))

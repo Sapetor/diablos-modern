@@ -11,13 +11,13 @@ import pytest
 from PyQt6.QtCore import QRect, QPoint
 from PyQt6.QtGui import QColor
 
-from lib.simulation.block import DBlock
-from lib.simulation.connection import DLine
-from lib.engine.simulation_engine import SimulationEngine
-from lib.engine.system_compiler import SystemCompiler
-from lib.engine.block_names import canonical_fn
-from blocks.sine import SineBlock
-from blocks.scope import ScopeBlock
+from diablos.core.simulation.block import DBlock
+from diablos.core.simulation.connection import DLine
+from diablos.core.engine.simulation_engine import SimulationEngine
+from diablos.core.engine.system_compiler import SystemCompiler
+from diablos.core.engine.block_names import canonical_fn
+from diablos.blocks.sine import SineBlock
+from diablos.blocks.scope import ScopeBlock
 
 
 class _MockModel:

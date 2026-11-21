@@ -6,7 +6,7 @@ The core library provides the main simulation management functionality.
 
 The main simulation interface class.
 
-::: lib.lib.DSim
+::: diablos.core.lib.DSim
     options:
       show_root_heading: true
       members:
@@ -22,7 +22,7 @@ The main simulation interface class.
 
 Data model for the simulation diagram.
 
-::: lib.models.simulation_model.SimulationModel
+::: diablos.core.models.simulation_model.SimulationModel
     options:
       show_root_heading: true
 
@@ -30,7 +30,7 @@ Data model for the simulation diagram.
 
 File I/O operations for diagrams.
 
-::: lib.services.file_service.FileService
+::: diablos.core.services.file_service.FileService
     options:
       show_root_heading: true
       members:
@@ -42,6 +42,6 @@ File I/O operations for diagrams.
 
 Common type aliases used throughout the codebase.
 
-::: lib.types
+::: diablos.core.types
     options:
       show_root_heading: true

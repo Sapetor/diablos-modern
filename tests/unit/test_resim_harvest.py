@@ -14,7 +14,7 @@ the layout-independent rule with stub blocks; the end-to-end check lives in
 import numpy as np
 import pytest
 
-from lib.analysis.resim import harvest_scope_signals
+from diablos.core.analysis.resim import harvest_scope_signals
 
 
 class _Scope:
@@ -130,7 +130,7 @@ class TestLabelCollisions:
         assert [float(v[0]) for v in sig.values()] == [1.0, 2.0, 3.0]
 
     def test_unique_label(self):
-        from lib.analysis.resim import unique_label
+        from diablos.core.analysis.resim import unique_label
 
         assert unique_label("x", set()) == "x"
         assert unique_label("x", {"x"}) == "x#1"

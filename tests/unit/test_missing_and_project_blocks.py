@@ -21,11 +21,11 @@ import sys
 import numpy as np
 import pytest
 
-import lib.user_blocks as ub
+import diablos.core.user_blocks as ub
 
 TRIPLER = """\
 import numpy as np
-from blocks.base_block import BaseBlock
+from diablos.blocks.base_block import BaseBlock
 
 
 class ReviewTriplerBlock(BaseBlock):
@@ -56,7 +56,7 @@ class ReviewTriplerBlock(BaseBlock):
 
 def write_project(root, trusted):
     """Diagram Constant(2) -> ReviewTripler -> Scope with a blocks/ folder."""
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     blocks = root / "blocks"
     blocks.mkdir(parents=True)
@@ -77,13 +77,13 @@ def write_project(root, trusted):
 @pytest.fixture
 def userdata(tmp_path, monkeypatch):
     """Private trust store / user data dir; no stray user modules."""
-    import lib.app_paths
+    import diablos.core.app_paths
 
     monkeypatch.delenv(ub.BLOCKS_ENV_VAR, raising=False)
     home = tmp_path / "userdata"
     home.mkdir()
     monkeypatch.setattr(ub, "get_user_data_dir", lambda: str(home))
-    monkeypatch.setattr(lib.app_paths, "get_user_data_dir", lambda: str(home))
+    monkeypatch.setattr(diablos.core.app_paths, "get_user_data_dir", lambda: str(home))
     monkeypatch.setattr(ub, "_SESSION_TRUSTED", set(), raising=False)
     ub.purge_user_modules()
     yield home
@@ -102,7 +102,7 @@ def untrusted_project(tmp_path, userdata):
 
 def gui_ordered_dsim(path):
     """What a correct GUI open does: register the project's blocks, then load."""
-    from lib.cli import new_headless_dsim
+    from diablos.core.cli import new_headless_dsim
 
     dsim = new_headless_dsim()
     dsim.model.reload_blocks(path)
@@ -116,7 +116,7 @@ def block_fns(dsim):
 
 
 def placeholders(dsim):
-    from lib.simulation.missing_block import find_missing_blocks
+    from diablos.core.simulation.missing_block import find_missing_blocks
 
     return find_missing_blocks(dsim.blocks_list)
 
@@ -163,7 +163,7 @@ class TestUnknownTypesArePreserved:
         assert "ReviewTripler" in err and "not available" in err
 
     def test_copying_a_placeholder_gives_a_placeholder(self, untrusted_project):
-        from lib.simulation.missing_block import copy_missing_block
+        from diablos.core.simulation.missing_block import copy_missing_block
 
         dsim = gui_ordered_dsim(untrusted_project)
         (original,) = placeholders(dsim)
@@ -185,7 +185,7 @@ class TestUnknownTypesArePreserved:
 
 # ---------------------------------------------------------------- clones/workers
 def run_mc(dsim, workers):
-    from lib.analysis.monte_carlo import MonteCarloRunner
+    from diablos.core.analysis.monte_carlo import MonteCarloRunner
 
     return MonteCarloRunner(dsim).run(2, sim_time=0.2, sim_dt=0.01, workers=workers)
 
@@ -201,7 +201,7 @@ class TestTrustedProjectAnalysis:
         assert len(clone.line_list) == 2
 
     def test_workers_get_the_trusted_project_folder(self, trusted_project):
-        from lib.analysis.parallel import block_context_snapshot
+        from diablos.core.analysis.parallel import block_context_snapshot
 
         context = block_context_snapshot(gui_ordered_dsim(trusted_project).clone_for_analysis())
         assert context == {
@@ -220,7 +220,7 @@ class TestTrustedProjectAnalysis:
             np.testing.assert_allclose(stats["mean"], 6.0)
 
     def test_headless_load_registers_trusted_project_blocks(self, trusted_project):
-        from lib.cli import load_diagram
+        from diablos.core.cli import load_diagram
 
         dsim, _ = load_diagram(trusted_project)
         assert placeholders(dsim) == []
@@ -230,7 +230,7 @@ class TestTrustedProjectAnalysis:
 @pytest.mark.unit
 class TestUntrustedProjectAnalysis:
     def test_untrusted_folder_is_never_handed_to_workers(self, untrusted_project):
-        from lib.analysis.parallel import block_context_snapshot
+        from diablos.core.analysis.parallel import block_context_snapshot
 
         dsim = gui_ordered_dsim(untrusted_project)
         assert block_context_snapshot(dsim) is None
@@ -248,7 +248,7 @@ class TestUntrustedProjectAnalysis:
         assert ub.USER_MODULE_PREFIX + ".tripler" not in sys.modules
 
     def test_missing_type_message_names_the_type(self, untrusted_project):
-        from lib.simulation.missing_block import missing_block_types
+        from diablos.core.simulation.missing_block import missing_block_types
 
         dsim = gui_ordered_dsim(untrusted_project)
         names = missing_block_types(dsim.blocks_list)
@@ -260,8 +260,8 @@ class TestUntrustedProjectAnalysis:
 def test_analysis_refuses_a_diagram_with_a_missing_block(qapp, tmp_path):
     """Linearize/trim go straight to the engine, not through DSim's run check;
     they must still fail explicitly instead of analysing a reduced diagram."""
-    from lib import api
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core import api
+    from diablos.core.diagram_builder import DiagramBuilder
 
     b = DiagramBuilder(sim_time=1.0, sim_dt=0.01)
     u = b.add_block("Step", 0, 0, name="u", params={"value": 1.0, "delay": 0.0})

@@ -2,7 +2,7 @@
 
 import pytest
 import numpy as np
-from blocks.product import ProductBlock
+from diablos.blocks.product import ProductBlock
 
 
 class TestProductBlock:

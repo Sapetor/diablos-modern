@@ -1,0 +1,115 @@
+import logging
+import numpy as np
+from diablos.blocks.base_block import BaseBlock
+
+logger = logging.getLogger(__name__)
+
+
+class DemuxBlock(BaseBlock):
+    """
+    A block that splits an input vector into multiple outputs.
+    """
+
+    @property
+    def block_name(self):
+        return "Demux"
+
+    @property
+    def category(self):
+        return "Routing"
+
+    @property
+    def color(self):
+        return "orange"
+
+    @property
+    def doc(self):
+        return (
+            "Demultiplexer (Demux)."
+            "\n\nSplits a vector input signal into individual scalar/vector components."
+            "\n\nParameters:"
+            "\n- Outputs: Number of output ports."
+            "\n\nUsage:"
+            "\nUse to extract signals from a bus or Mux."
+        )
+
+    @property
+    def io_editable(self):
+        return "output"
+
+    @property
+    def params(self):
+        return {
+            "output_shape": {"type": "int", "default": 1, "doc": "The size of each output vector."}
+        }
+
+    @property
+    def inputs(self):
+        return [{"name": "in", "type": "any"}]
+
+    @property
+    def outputs(self):
+        return [{"name": "out1", "type": "any"}, {"name": "out2", "type": "any"}]
+
+    def draw_icon(self, block_rect):
+        """Draw demultiplexer icon in normalized 0-1 coordinates."""
+        from diablos.core.icon_path import IconPath
+
+        path = IconPath()
+        # Input
+        path.moveTo(0.2, 0.5)
+        path.lineTo(0.4, 0.5)
+        # Main body (rectangle)
+        path.moveTo(0.4, 0.2)
+        path.lineTo(0.4, 0.8)
+        path.lineTo(0.8, 0.8)
+        path.lineTo(0.8, 0.2)
+        path.lineTo(0.4, 0.2)
+        # Output lines
+        path.moveTo(0.8, 0.3)
+        path.lineTo(1.0, 0.3)
+        path.moveTo(0.8, 0.7)
+        path.lineTo(1.0, 0.7)
+        return path
+
+    def execute(self, time, inputs, params, **kwargs):
+        if inputs.get(0) is None:
+            return {
+                "E": True,
+                "error": f"Demux {params.get('_name_', '')}: input 0 missing or None",
+            }
+        try:
+            input_array = np.atleast_1d(np.array(inputs[0], dtype=float)).flatten()
+            output_shape = int(params["output_shape"])
+            n_elements = len(input_array)
+            n_outputs = int(params.get("_outputs_", len(self.outputs)))
+        except (ValueError, TypeError):
+            return {"E": True, "error": "Invalid input type in demux block. Expected numeric."}
+
+        if output_shape < 1:
+            return {
+                "E": True,
+                "error": f"Output shape must be >= 1 in {params.get('_name_', 'Demux')}",
+            }
+
+        # Check input dimensions
+        if n_elements / output_shape < n_outputs:
+            return {
+                "E": True,
+                "error": f"Not enough inputs or wrong output shape in {params.get('_name_', 'Demux')}",
+            }
+
+        elif n_elements / output_shape > n_outputs:
+            logger.warning(
+                f"More elements in vector than expected outputs. Truncating. Block: {params.get('_name_', 'Demux')}"
+            )
+
+        try:
+            outputs = {}
+            for i in range(n_outputs):
+                start = i * output_shape
+                end = start + output_shape
+                outputs[i] = input_array[start:end]
+            return outputs
+        except (ValueError, TypeError):
+            return {"E": True, "error": "Invalid input type in demux block. Expected numeric."}

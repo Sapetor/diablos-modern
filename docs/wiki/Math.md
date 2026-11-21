@@ -188,7 +188,7 @@ forms (`np.tanh(u[0])`, `math.atan2(u[1], u[0])`) and the constants `pi` and `e`
 are available.
 
 The number of input ports is editable from the property panel. Expressions go
-through `lib/safe_eval.py`, an allowlist AST interpreter, so imports, attribute
+through `src/diablos/core/safe_eval.py`, an allowlist AST interpreter, so imports, attribute
 escapes and statements are rejected rather than executed.
 
 #### Parameters

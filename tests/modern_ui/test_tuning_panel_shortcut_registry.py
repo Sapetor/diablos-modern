@@ -5,7 +5,7 @@ The keyboard-shortcuts dialog and the command palette both surface the
 ``shortcut`` field from the registry tables in
 ``command_palette_manager._VIEW_COMMANDS`` as *display-only* metadata -- the
 real key binding is the menu ``QAction`` shortcut built in
-``modern_ui/builders/menu_builder.py``. When the two disagree the dialog shows
+``src/diablos/gui/builders/menu_builder.py``. When the two disagree the dialog shows
 a blank (or wrong) key for a shortcut that is actually live.
 
 This module pins the registry value against the live action on a real window,
@@ -19,7 +19,7 @@ Run with:
 
 import pytest
 
-from modern_ui.managers.command_palette_manager import palette_command_groups
+from diablos.gui.managers.command_palette_manager import palette_command_groups
 
 
 @pytest.fixture(autouse=True)
@@ -30,7 +30,7 @@ def _qt(qapp):
 
 class TestRegistryMatchesMenuBinding:
     def test_toggle_tuning_panel_registry_equals_menu_binding(self, qapp):
-        from modern_ui.main_window import ModernDiaBloSWindow
+        from diablos.gui.main_window import ModernDiaBloSWindow
 
         window = ModernDiaBloSWindow()
         try:
@@ -54,8 +54,8 @@ class TestPaletteStillBuilds:
     """
 
     def test_modern_block_palette_constructs(self):
-        from lib.lib import DSim
-        from modern_ui.widgets.modern_palette import ModernBlockPalette
+        from diablos.core.lib import DSim
+        from diablos.gui.widgets.modern_palette import ModernBlockPalette
 
         d = DSim()
         getattr(d, "menu_blocks_init", lambda: None)()

@@ -53,7 +53,7 @@ SKIP_DIRS = {"__pycache__", ".git", "build", "dist", "archive", ".venv", ".venv-
 
 #: Call names whose first argument is a translatable string. ``tr_noop`` marks
 #: a literal declared away from its display site (a table of menu labels, a
-#: helper's argument) -- see ``lib.i18n.tr_noop``.
+#: helper's argument) -- see ``diablos.core.i18n.tr_noop``.
 TR_FUNCTIONS = ("tr", "tr_noop")
 
 
@@ -208,7 +208,7 @@ def extract_block_display_names(path: str) -> Set[str]:
         return set()
     if REPO_ROOT not in sys.path:
         sys.path.insert(0, REPO_ROOT)
-    from blocks.base_block import prettify_block_name
+    from diablos.blocks.base_block import prettify_block_name
 
     names: Set[str] = set()
     for node in ast.walk(tree):

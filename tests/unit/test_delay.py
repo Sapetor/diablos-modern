@@ -9,7 +9,7 @@ the rewrite has to preserve.
 import numpy as np
 import pytest
 
-from blocks.delay import DelayBlock
+from diablos.blocks.delay import DelayBlock
 
 
 def _params(**ov):

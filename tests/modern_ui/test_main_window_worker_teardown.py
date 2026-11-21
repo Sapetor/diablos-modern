@@ -10,7 +10,7 @@ wiring into closeEvent.
 import pytest
 from PyQt6.QtGui import QCloseEvent
 
-from modern_ui.controllers.experiment_controller import _ORPHANED_WORKERS, _WORKER_JOIN_MS
+from diablos.gui.controllers.experiment_controller import _ORPHANED_WORKERS, _WORKER_JOIN_MS
 
 
 class _StubWorker:
@@ -44,7 +44,7 @@ class _StubWorker:
 
 @pytest.fixture(scope="module")
 def window(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     yield w

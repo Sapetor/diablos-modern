@@ -16,7 +16,7 @@ controller:
     ``_update_menubar_colors``    (restyle window widgets)
 
 Preferences persist to ``user_data_path('user_preferences.json')`` which
-resolves through ``lib.app_paths.get_user_data_dir()``; every test redirects
+resolves through ``diablos.core.app_paths.get_user_data_dir()``; every test redirects
 that to a fresh ``tmp_path`` so the user's real prefs are never touched.
 
 Because ``theme_manager`` is a process-global singleton, an autouse fixture
@@ -33,13 +33,13 @@ import os
 
 import pytest
 
-import lib.app_paths
-from modern_ui.themes.theme_manager import theme_manager, ThemeType
+import diablos.core.app_paths
+from diablos.gui.themes.theme_manager import theme_manager, ThemeType
 
 
 @pytest.fixture(scope="module")
 def window(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     yield w
@@ -49,7 +49,7 @@ def window(qapp):
 @pytest.fixture
 def cfg_dir(tmp_path, monkeypatch):
     """Redirect the user-data dir so preference writes hit tmp, not real config."""
-    monkeypatch.setattr(lib.app_paths, "get_user_data_dir", lambda: str(tmp_path))
+    monkeypatch.setattr(diablos.core.app_paths, "get_user_data_dir", lambda: str(tmp_path))
     return tmp_path
 
 

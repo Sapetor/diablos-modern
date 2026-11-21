@@ -22,7 +22,7 @@ from PyQt6.QtCore import QPoint
 
 
 def _run(method, use_fast):
-    from lib.lib import DSim
+    from diablos.core.lib import DSim
 
     dsim = DSim()
     menu = {b.fn_name: b for b in dsim.menu_blocks}
@@ -45,7 +45,7 @@ def _run(method, use_fast):
 @pytest.mark.regression
 class TestCompiledSolverAnnouncesTheOverride:
     def test_warns_for_a_non_default_method(self, qapp, caplog):
-        with caplog.at_level(logging.WARNING, logger="lib.engine.simulation_engine"):
+        with caplog.at_level(logging.WARNING, logger="diablos.core.engine.simulation_engine"):
             dsim, _ = _run("FWD_EULER", use_fast=True)
         assert dsim.last_solver_type == "Fast (Compiled)"
         hits = [
@@ -58,7 +58,7 @@ class TestCompiledSolverAnnouncesTheOverride:
 
     def test_silent_for_the_default_method(self, qapp, caplog):
         """SOLVE_IVP is the default; warning on it would be noise on every run."""
-        with caplog.at_level(logging.WARNING, logger="lib.engine.simulation_engine"):
+        with caplog.at_level(logging.WARNING, logger="diablos.core.engine.simulation_engine"):
             _run("SOLVE_IVP", use_fast=True)
         assert not [
             r for r in caplog.records if "Per-block Integrator method ignored" in r.getMessage()
@@ -66,7 +66,7 @@ class TestCompiledSolverAnnouncesTheOverride:
 
     def test_silent_on_the_interpreted_path(self, qapp, caplog):
         """There the setting is honoured, so there is nothing to announce."""
-        with caplog.at_level(logging.WARNING, logger="lib.engine.simulation_engine"):
+        with caplog.at_level(logging.WARNING, logger="diablos.core.engine.simulation_engine"):
             dsim, _ = _run("FWD_EULER", use_fast=False)
         assert dsim.last_solver_type == "Standard (Interpreter)"
         assert not [
@@ -88,7 +88,7 @@ class TestCompiledSolverAnnouncesTheOverride:
 @pytest.mark.regression
 def test_method_param_documents_its_scope(qapp):
     """The tooltip must not promise something the default path ignores."""
-    from blocks.integrator import IntegratorBlock
+    from diablos.blocks.integrator import IntegratorBlock
 
     doc = IntegratorBlock().params["method"]["doc"]
     assert "interpreted solver only" in doc

@@ -22,7 +22,7 @@ U0 = np.sin(0.6)  # the Sine's value at t = 0
 
 def _chain(fn, params, via_gain, sim_time=0.3, sim_dt=0.01, ports=1):
     """Sine (u(0) = sin 0.6) [-> Gain] -> block -> Scope."""
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     b = DiagramBuilder(sim_time=sim_time, sim_dt=sim_dt)
     s = b.add_block(
@@ -67,7 +67,7 @@ class TestInterpreterT0:
         """Kp*e(0) at t = 0, and exactly one state advance per step after it:
         executing at t = 0 in both Loop 2 and Loop 3 would add Ki*e(0)*dt to
         every later sample."""
-        from blocks.pid import PIDBlock
+        from diablos.blocks.pid import PIDBlock
 
         _, slow = _run(_chain(*PID, via_gain), tmp_path, 0.3, 0.01, fast=False)
         y = _y(slow)
@@ -100,7 +100,7 @@ class TestInterpreterT0:
         """Step -> Sum -> PID -> Gain -> back to the Sum has no dynamic block
         to break it at t = 0: the PID falls back to its output_only value
         there, as before, and the run proceeds."""
-        from lib.diagram_builder import DiagramBuilder
+        from diablos.core.diagram_builder import DiagramBuilder
 
         b = DiagramBuilder(sim_time=0.1, sim_dt=0.01)
         r = b.add_block("Step", 0, 0, name="r", params={"value": 1.0, "delay": 0.0})
@@ -121,7 +121,7 @@ class TestInterpreterT0:
 
 def _sampled_latch(order, upper=0.2, lower=-0.2, init_angle=0.6, omega=2.0):
     """Sine -> ZOH(0.1) -> Hysteresis -> Scope, or Sine -> Hysteresis -> ZOH."""
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     b = DiagramBuilder(sim_time=1.0, sim_dt=0.01)
     s = b.add_block(
@@ -192,7 +192,7 @@ class TestCompiledRateLimiterT0:
         np.testing.assert_allclose(a, c, atol=2e-3)
 
     def test_behind_a_zoh_it_seeds_from_the_first_sample(self, qapp, tmp_path):
-        from lib.diagram_builder import DiagramBuilder
+        from diablos.core.diagram_builder import DiagramBuilder
 
         b = DiagramBuilder(sim_time=1.0, sim_dt=0.01)
         s = b.add_block(
@@ -228,7 +228,7 @@ class TestCompiledRateLimiterT0:
 
 @pytest.mark.unit
 def test_seed_initial_states_costs_nothing_without_seeders():
-    from lib.engine.compiled_runner import seed_initial_states
+    from diablos.core.engine.compiled_runner import seed_initial_states
 
     class NoEval:
         def evaluate(self, t, y):  # pragma: no cover - must not be called
@@ -240,7 +240,7 @@ def test_seed_initial_states_costs_nothing_without_seeders():
 
 @pytest.mark.unit
 def test_seed_initial_states_seeds_a_copy():
-    from lib.engine.compiled_runner import seed_initial_states
+    from diablos.core.engine.compiled_runner import seed_initial_states
 
     class Model:
         def evaluate(self, t, y):
@@ -261,7 +261,7 @@ def test_seeding_leaves_the_sampled_holders_clean(qapp, tmp_path):
     """The seeding pass takes a t0 sample; the holders must be reset after it,
     or a DiscreteTranFn advances twice at t0 and its staircase runs a period
     ahead of the interpreter's."""
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     b = DiagramBuilder(sim_time=1.0, sim_dt=0.05)
     r = b.add_block("Ramp", 0, 0, name="r", params={"slope": 1.0, "delay": 0.0})

@@ -7,7 +7,7 @@ import pytest
 
 @pytest.fixture
 def window(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     w.resize(1200, 800)
@@ -31,7 +31,7 @@ def _results(window):
 
 @pytest.mark.qt
 def test_step_to_scope_lists_one_tf_per_scope_input(window):
-    from modern_ui.widgets.transfer_function_window import TransferFunctionWindow
+    from diablos.gui.widgets.transfer_function_window import TransferFunctionWindow
 
     _select(window, "scope5", "step0")  # order of selection does not matter
     window.transfer_function_between_blocks()

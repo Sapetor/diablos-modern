@@ -1,11 +1,11 @@
 # DiaBloS Block API
 
-**`BLOCK_API_VERSION = 1`** (`blocks/base_block.py`)
+**`BLOCK_API_VERSION = 1`** (`src/diablos/blocks/base_block.py`)
 
 This is the reference for writing a block — either a built-in one inside the
 repository, or a *user block* you drop into a folder without touching DiaBloS
 itself. Everything here is checked mechanically by
-`blocks.base_block.validate_block_class`, so if your block loads without a
+`diablos.blocks.base_block.validate_block_class`, so if your block loads without a
 warning it satisfies this document.
 
 Start from the copy-paste templates:
@@ -21,7 +21,7 @@ Start from the copy-paste templates:
 
 ```python
 import numpy as np
-from blocks.base_block import BaseBlock
+from diablos.blocks.base_block import BaseBlock
 
 
 class ScaleBlock(BaseBlock):          # class convention: <BlockName>Block
@@ -103,7 +103,7 @@ Recognised keys:
 | `no_slider` | Suppress the slider for a float parameter. |
 
 **The property editor picks its widget from the Python type of the current
-*value*, not from `type`** (`modern_ui/widgets/property_editor.py`): `bool` →
+*value*, not from `type`** (`src/diablos/gui/widgets/property_editor.py`): `bool` →
 check box, a spec with `choices` → combo box, `int` → spin box, `float` →
 slider/spin box, everything else → line edit. So the practical rule is: make
 `default` the exact Python type you want edited (`1.0`, not `1`, for a float
@@ -179,14 +179,14 @@ obligation is symmetric: **promote on the way in as well.** A block that mixes
 its input with stored state must run the input through `np.atleast_1d` before
 reading `.shape` or writing in place — a 0-d value that reaches an in-place
 `state += dt * u` against 1-D state raises `ValueError: non-broadcastable
-output operand`, which is exactly how this went wrong in `blocks/integrator.py`.
+output operand`, which is exactly how this went wrong in `src/diablos/blocks/integrator.py`.
 
 ### State lives in `params`
 
 > **Critical rule.** Every value that must persist across time steps goes into
 > `params` (`params["_t_old_"] = time`), never onto `self`.
 
-The engine's `reset_memblocks()` (`lib/engine/simulation_engine.py`)
+The engine's `reset_memblocks()` (`src/diablos/core/engine/simulation_engine.py`)
 re-initialises blocks between runs by setting `_init_start_ = True` in
 `params`/`exec_params` and clearing stale accumulators. It never touches
 instance attributes, so state hidden on `self` survives a reset invisibly and
@@ -210,7 +210,7 @@ def execute(self, time, inputs, params, **kwargs):
 ```
 
 Declare `_init_start_` in your `params` spec (or reuse
-`blocks/param_templates.py: init_flag_param()`).
+`src/diablos/blocks/param_templates.py: init_flag_param()`).
 
 ---
 
@@ -229,7 +229,7 @@ All of these have working defaults in `BaseBlock`; override only what you need.
 | `shape` | `"rect"` | Outline: `rect`, `triangle` (amplifier), `circle` (Sum/Product), `tag` (Goto/From). Unknown tokens are rejected by the validator. |
 | `use_port_grid_snap` | `True` | Set `False` when exact port geometry matters (triangles). |
 | `io_editable` | `None` | `"input"`, `"output"` or `"both"` to let the user change the port count. |
-| `draw_icon(block_rect)` | `None` | Return an `IconPath` (`lib.icon_path`; records `QPainterPath`-style calls, so no Qt import) in 0..1 normalized coordinates for the block glyph. A `QPainterPath` is still accepted. Return type: `IconPath | QPainterPath | None`. See [`SYMBOL_DRAWING_GUIDE.md`](SYMBOL_DRAWING_GUIDE.md). |
+| `draw_icon(block_rect)` | `None` | Return an `IconPath` (`diablos.core.icon_path`; records `QPainterPath`-style calls, so no Qt import) in 0..1 normalized coordinates for the block glyph. A `QPainterPath` is still accepted. Return type: `IconPath | QPainterPath | None`. See [`SYMBOL_DRAWING_GUIDE.md`](SYMBOL_DRAWING_GUIDE.md). |
 | `symbolic_execute(inputs, params)` | `None` | Return `{port: sympy_expr}` so the block participates in equation extraction / transfer-function export. Without it the block is opaque to the symbolic engine (numeric linearization still works). |
 | `get_symbolic_params(params)` | `{}` | Which parameters become symbols during extraction. |
 | `output_is_post_update` | `False` | `True` when `execute()` returns the *already advanced* state (like Integrator), so a sample-time gate holds the pre-update value instead. |
@@ -249,10 +249,10 @@ DiaBloS has two execution paths (see [`FAST_SOLVER.md`](FAST_SOLVER.md)):
    block to provide a *kernel*.
 
 A kernel is registered next to its block family in
-`lib/engine/compiler_kernels/`:
+`src/diablos/core/engine/compiler_kernels/`:
 
 ```python
-from lib.engine.compiler_kernels import kernel
+from diablos.core.engine.compiler_kernels import kernel
 
 @kernel("Softclip")                      # the canonical fn-name
 def build_soft_clip(ctx):
@@ -269,7 +269,7 @@ def build_soft_clip(ctx):
 The builder runs **once per compile** and bakes parameters into a closure that
 runs thousands of times per solve — do all lookups and conversions in the
 builder. The registration name is the *canonical* form of `block_name`:
-`lib.engine.block_names.canonical_fn(block_name)`, essentially `str.title()`
+`diablos.core.engine.block_names.canonical_fn(block_name)`, essentially `str.title()`
 plus a few historical overrides.
 
 A discontinuous block declares its switching surfaces with `@events(...)`
@@ -277,7 +277,7 @@ returning `EventSpec`s, so the solver lands exactly on each corner instead of
 stepping across it:
 
 ```python
-from lib.engine.compiler_kernels import EventSpec, events, signal_scalar
+from diablos.core.engine.compiler_kernels import EventSpec, events, signal_scalar
 
 @events("Softclip")
 def events_soft_clip(ctx):
@@ -298,7 +298,7 @@ a diagram containing a block without a kernel runs on the interpreted path,
 which is slower but produces the same answer.
 
 For built-in blocks the gate is the allowlist `COMPILABLE_BLOCKS` in
-`lib/engine/system_compiler.py`. Some built-ins have a kernel but stay off
+`src/diablos/core/engine/system_compiler.py`. Some built-ins have a kernel but stay off
 that list on purpose (Impulse, Noise), because the adaptive solver cannot run
 them correctly.
 
@@ -331,7 +331,7 @@ built-in kernel whose canonical name it happens to share, and
 
 ## 8. Localization
 
-The UI is translated through `lib/i18n.py`; blocks participate in two narrow
+The UI is translated through `src/diablos/core/i18n.py`; blocks participate in two narrow
 ways:
 
 - a block's `category` name, its `display_name` and every param `doc` string are translated **at
@@ -429,7 +429,7 @@ same registrations; an untrusted folder is never loaded by them either.
 ## 10. Validating your block
 
 ```python
-from blocks.base_block import validate_block_class, block_contract_errors
+from diablos.blocks.base_block import validate_block_class, block_contract_errors
 from my_module import MyBlock
 
 validate_block_class(MyBlock)          # raises BlockContractError with details
@@ -462,7 +462,7 @@ skip the block).
 
 ## 11. Versioning policy
 
-`BLOCK_API_VERSION` lives in `blocks/base_block.py` and is currently **1**.
+`BLOCK_API_VERSION` lives in `src/diablos/blocks/base_block.py` and is currently **1**.
 
 - It is bumped **only** for a change that breaks an existing third-party block:
   a new required member, a changed `execute()` signature or return shape, a

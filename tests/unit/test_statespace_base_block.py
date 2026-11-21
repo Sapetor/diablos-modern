@@ -11,7 +11,7 @@ output formatting.
 import numpy as np
 import pytest
 
-from blocks.statespace_base import StateSpaceBaseBlock
+from diablos.blocks.statespace_base import StateSpaceBaseBlock
 
 
 class _ConcreteStateSpace(StateSpaceBaseBlock):

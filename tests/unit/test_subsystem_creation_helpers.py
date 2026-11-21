@@ -10,7 +10,7 @@ from types import SimpleNamespace
 import pytest
 from PyQt6.QtCore import QPoint, QRect
 
-from lib.managers import subsystem_manager as sm
+from diablos.core.managers import subsystem_manager as sm
 
 
 def _blk(name, left, top, w=50, h=40, in_ports=1, out_ports=1, sid=0):
@@ -68,7 +68,7 @@ class TestPureHelpers:
 @pytest.mark.unit
 class TestRerouteInternalLines:
     def test_points_shift_and_snap_to_moved_ports(self, qapp):
-        from lib.simulation.connection import DLine
+        from diablos.core.simulation.connection import DLine
 
         a = _blk("a", 100, 100)
         b = _blk("b", 300, 100)

@@ -16,8 +16,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from PyQt6.QtCore import Qt, QPoint
 
-from modern_ui.widgets.canvas_state import ConnectionState
-from modern_ui.widgets.modern_canvas import ModernCanvas
+from diablos.gui.widgets.canvas_state import ConnectionState
+from diablos.gui.widgets.modern_canvas import ModernCanvas
 
 
 def _make_block(name, in_ports=1, out_ports=1):
@@ -60,10 +60,10 @@ def test_ctrl_click_connect_does_not_raise(canvas_stub):
 
     with (
         patch(
-            "modern_ui.widgets.modern_canvas.QApplication.keyboardModifiers",
+            "diablos.gui.widgets.modern_canvas.QApplication.keyboardModifiers",
             return_value=Qt.KeyboardModifier.ControlModifier,
         ),
-        patch("modern_ui.widgets.modern_canvas.logger") as mock_logger,
+        patch("diablos.gui.widgets.modern_canvas.logger") as mock_logger,
     ):
         ModernCanvas._handle_block_click(canvas_stub, target, QPoint(10, 10))
 
@@ -83,10 +83,10 @@ def test_ctrl_click_connect_rearms_state_for_next_connection(canvas_stub):
 
     with (
         patch(
-            "modern_ui.widgets.modern_canvas.QApplication.keyboardModifiers",
+            "diablos.gui.widgets.modern_canvas.QApplication.keyboardModifiers",
             return_value=Qt.KeyboardModifier.ControlModifier,
         ),
-        patch("modern_ui.widgets.modern_canvas.logger"),
+        patch("diablos.gui.widgets.modern_canvas.logger"),
     ):
         ModernCanvas._handle_block_click(canvas_stub, target, QPoint(10, 10))
 
@@ -108,10 +108,10 @@ def test_ctrl_click_picks_first_free_target_input_port(canvas_stub):
 
     with (
         patch(
-            "modern_ui.widgets.modern_canvas.QApplication.keyboardModifiers",
+            "diablos.gui.widgets.modern_canvas.QApplication.keyboardModifiers",
             return_value=Qt.KeyboardModifier.ControlModifier,
         ),
-        patch("modern_ui.widgets.modern_canvas.logger"),
+        patch("diablos.gui.widgets.modern_canvas.logger"),
     ):
         ModernCanvas._handle_block_click(canvas_stub, target, QPoint(10, 10))
 

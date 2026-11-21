@@ -1,5 +1,5 @@
 """
-Tests for AnalysisController (modern_ui/controllers/analysis_controller.py).
+Tests for AnalysisController (src/diablos/gui/controllers/analysis_controller.py).
 
 The controller is HEADLESS (no Qt). It wraps Linearizer and produces the shared
 result-dict contract consumed by the results window. Diagrams are built with
@@ -12,8 +12,8 @@ import math
 import numpy as np
 import pytest
 
-from lib.diagram_builder import DiagramBuilder
-from modern_ui.controllers.analysis_controller import AnalysisController
+from diablos.core.diagram_builder import DiagramBuilder
+from diablos.gui.controllers.analysis_controller import AnalysisController
 
 
 _BLOCK_INSTANCES = None
@@ -23,7 +23,7 @@ def _params(block_type, **overrides):
     """Full flat params for a block (class defaults + overrides)."""
     global _BLOCK_INSTANCES
     if _BLOCK_INSTANCES is None:
-        from lib.block_loader import load_blocks
+        from diablos.core.block_loader import load_blocks
 
         _BLOCK_INSTANCES = {}
         for cls in load_blocks():
@@ -43,8 +43,8 @@ def _params(block_type, **overrides):
 
 def _load(builder, tmp_path, name):
     """Save a built diagram and load it into a fresh DSim."""
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     path = tmp_path / name
     builder.save(str(path))

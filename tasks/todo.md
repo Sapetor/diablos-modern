@@ -13,11 +13,11 @@ checkable (2026-10-02 pass noted per item).
 ### Parked feature ideas (idea review, September 2026)
 - [ ] **Interactive source blocks** — Slider/Knob source and Manual Switch
   adjustable on the canvas during a run. (confirmed absent 2026-10-02; only a
-  static `blocks/switch.py` exists)
+  static `src/diablos/blocks/switch.py` exists)
 - [x] **PathSim benchmark** (2026-10-10) — `docs/BENCHMARK_PATHSIM.md`,
   harness in `scripts/benchmarks/pathsim/` (separate venv, pathsim 0.27.0).
 - [x] **Algebraic loops are solved, not rejected** (2026-10-10, `95f83ff`):
-  SCC-based Newton solve per step, `lib/engine/algebraic_loop.py`; tests in
+  SCC-based Newton solve per step, `src/diablos/core/engine/algebraic_loop.py`; tests in
   `tests/regression/test_algebraic_loop_solver.py`. Follow-ups: loops through
   discrete-rate blocks are still rejected, and a diagram with a loop cannot
   compile, linearize or export (it needs the hybrid compiled path).
@@ -33,7 +33,7 @@ checkable (2026-10-02 pass noted per item).
   compile as sampled holders, and Euler/RK4 run sampled diagrams on a grid
   with every instant (`fixed_step+hybrid`); FirstOrderHold and RateTransition
   stay on the interpreter. Phase 3 done (2026-10-10): algebraic loops are
-  solved inside the compiled RHS (`lib/engine/compiled_loops.py`), so
+  solved inside the compiled RHS (`src/diablos/core/engine/compiled_loops.py`), so
   diagrams with loops compile and linearize; Python export still refuses. The `Function`
   kernel landed (`19497e1`), so S1b runs compiled: 2.2e-13 in 1.4 s.
   Python export of sampled blocks done (2026-10-12): the script stops at every
@@ -42,7 +42,7 @@ checkable (2026-10-02 pass noted per item).
   blocks through feedthrough blocks, a sampled RK4 Integrator.
 - [x] **Compiled TransportDelay** (2026-10-12, `afaeb63`): method of steps,
   every `k*tau` a breakpoint, delayed inputs recorded as a cubic spline from
-  the accepted steps (`lib/engine/compiled_delays.py`). PathSim S3 at N=50:
+  the accepted steps (`src/diablos/core/engine/compiled_delays.py`). PathSim S3 at N=50:
   2.4e-9 in 7.4 s (was 1.8e-2 in 16 s on the interpreter). Tests:
   `tests/regression/test_compiled_transport_delay.py`. Still open:
   `VariableTransportDelay` (delay is a signal), the fixed-step Euler/RK4
@@ -87,7 +87,7 @@ None/empty-input hardening and param docs. Still open:
 - [x] **UI scale only resized the app font (found 2026-10-10, fixed
   2026-11-20).** UI scale is now Qt's global `QT_SCALE_FACTOR`, set from the
   QSettings key `ui/scale` before the QApplication is built
-  (`lib/ui_scale.py`), so every font, icon, pixel metric and the canvas scale
+  (`src/diablos/core/ui_scale.py`), so every font, icon, pixel metric and the canvas scale
   alike; the app font stays 10pt. The old `display.scaling_factor` config key
   is gone (in a checkout it was the bundled file, which is how 125% leaked into
   the shipped default); a packaged build migrates a previous choice from its
@@ -102,7 +102,7 @@ branches (see git log). Still open, both architectural:
 - [ ] **Qt-free core / installable package.** Per-diagram workspaces are done
   (2026-10-29: `Workspace` per `DSim`, `WorkspaceManager()` kept only as the
   GUI's default). Stage 1 done (2026-11-21): the engine runs without PyQt6.
-  `lib/qt_types.py` re-exports the Qt value types or pure-Python stand-ins
+  `src/diablos/core/qt_types.py` re-exports the Qt value types or pure-Python stand-ins
   (checked against Qt in `tests/unit/test_qt_types.py`); QFont/QPixmap and the
   dialogs are created lazily; all 56 examples give identical traces with PyQt6
   blocked (`tests/regression/test_engine_without_pyqt6.py`). With PyQt6
@@ -114,7 +114,7 @@ branches (see git log). Still open, both architectural:
   `services/diagram_service.py`) moved out or behind an optional `gui` extra.
 - [ ] **Experiments: disk-backed traces and resumable runs.** Streaming
   statistics, `keep_traces` and process-pool `workers` are done (2026-10-29,
-  `lib/analysis/streaming.py`, `parallel.py`). Still open: write kept traces to
+  `src/diablos/core/analysis/streaming.py`, `parallel.py`). Still open: write kept traces to
   memmap/`.npz` (exact chunked percentiles), and checkpoint the accumulator +
   next run index keyed by a hash of diagram/seed/settings. (The process pool
   inside a PyInstaller bundle is now checked: `DiaBloS self-test` runs a
@@ -131,7 +131,7 @@ palette sideways shift, test isolation from the real QSettings store,
 ### Open gaps left by the September 2026 campaigns
 - [ ] **Stateful user-block kernels** — a user block with a registered
   `@kernel` now compiles, but only algebraically: the compiler allocates ODE
-  states per built-in fn (`_allocate_states` in `lib/engine/system_compiler.py`),
+  states per built-in fn (`_allocate_states` in `src/diablos/core/engine/system_compiler.py`),
   so a user block cannot declare states. A `state_size`/initial-state hook on
   `BaseBlock` would let integrating user blocks compile too.
 - [ ] **Event-triggered state reset** — zero-crossing detection locates
@@ -147,7 +147,7 @@ palette sideways shift, test isolation from the real QSettings store,
   collection. The test fixture no longer needs its deleteLater/processEvents
   dodge. Not reproduced on this Windows venv before the fix; three full-suite
   runs green after it. The ensemble, sweep and operating-point windows got
-  the same lifetime fix (shared helper `modern_ui/widgets/plot_teardown.py`;
+  the same lifetime fix (shared helper `src/diablos/gui/widgets/plot_teardown.py`;
   `tests/unit/test_result_window_teardown.py`). The DSim `gc.collect()` guards
   in other modules are left in place (they guard DSim-owned plotting state, a
   separate path; see `tasks/lessons.md`).
@@ -160,7 +160,7 @@ palette sideways shift, test isolation from the real QSettings store,
 
 ### Future / Roadmap — PDE Phase 2: Mesh Abstraction
 - [ ] Create `MeshBase` abstract class
-- [ ] Create `blocks/pde/mesh/` directory structure
+- [ ] Create `src/diablos/blocks/pde/mesh/` directory structure
 - [ ] Refactor 2D PDE blocks to use mesh interface
 - [ ] Add curvilinear mesh support
 
@@ -186,7 +186,7 @@ palette sideways shift, test isolation from the real QSettings store,
 - Bode / Nyquist / root locus resolve workspace variables
   (`BaseAnalyzer._resolved_params`; `tests/unit/test_analyzer_workspace_params.py`).
 - Validator rate warnings resolve variable sample periods through
-  `lib/engine/sample_times.declared_sample_time` (`tests/unit/test_multirate.py`).
+  `src/diablos/core/engine/sample_times.declared_sample_time` (`tests/unit/test_multirate.py`).
 - Saving inside a subsystem resyncs every open subsystem's external ports first
   (`SubsystemManager.sync_open_subsystem_ports`;
   `tests/regression/test_save_from_subsystem.py`).
@@ -240,9 +240,9 @@ guidance, examples gallery test, block API / user blocks, docs site.
 
 ### September 2026 — 1.0.0 release campaign
 - [x] **Release infrastructure** - `pyproject.toml` gained a `[project]` table
-  that is the single source of truth for the version; `modern_ui/__init__.py`
+  that is the single source of truth for the version; `src/diablos/gui/__init__.py`
   reads it back via `importlib.metadata` and the main-window title shows it
-  (`modern_ui/managers/window_setup_manager.py:WINDOW_TITLE`); `diablos.spec`
+  (`src/diablos/gui/managers/window_setup_manager.py:WINDOW_TITLE`); `diablos.spec`
   and `tools/build.sh` parse the same value so the macOS bundle version and the
   DMG filename match the tag (`dist/DiaBloS-<version>-arm64.dmg`).
   `.github/workflows/release.yml` builds a macOS arm64 DMG and a Windows x64 zip
@@ -254,17 +254,17 @@ guidance, examples gallery test, block API / user blocks, docs site.
   `tests/unit/test_block_icons.py`.
 - [x] **PDE Phase 1: Quick Wins** (from `PDE_ROADMAP.md`):
   - **Periodic BCs** added to HeatEquation1D/2D and WaveEquation1D/2D, shared
-    via `lib/engine/pde_ops.py` (`is_periodic`) so the interpreter blocks and
-    `lib/engine/compiler_kernels/pde.py` are equivalent by construction.
+    via `src/diablos/core/engine/pde_ops.py` (`is_periodic`) so the interpreter blocks and
+    `src/diablos/core/engine/compiler_kernels/pde.py` are equivalent by construction.
   - **Dynamic BC coefficients** - time-varying Robin `h` via input ports
     (`heat_equation_1d.py` ports 3/4, `heat_equation_2d.py` ports 5-8);
     unconnected ports fall back to the matching param.
   - **More initial conditions** - 1D `linear`/`step`/`random`; 2D adds
-    `checkerboard`/`radial`; single-sourced in `lib/engine/pde_helpers.py`.
+    `checkerboard`/`radial`; single-sourced in `src/diablos/core/engine/pde_helpers.py`.
   - **Robin BC for 2D** - HeatEquation2D supports Robin on any edge.
   - Tests: `tests/unit/test_pde_phase1.py`, `tests/regression/test_equiv_pde_phase1.py`.
     Details: `docs/PDE_ROADMAP.md` (Phase 1), `docs/wiki/PDE.md`.
-- [x] **Python code generation** - `lib/export/python_codegen.py`, the
+- [x] **Python code generation** - `src/diablos/core/export/python_codegen.py`, the
   File > Export > Export as Python Script... menu entry, and the
   `export-python` CLI subcommand (see Feature campaign > Code generation).
 - [x] **Docs reconciliation** - `docs/USER_MANUAL.md` extended to cover solver
@@ -275,7 +275,7 @@ guidance, examples gallery test, block API / user blocks, docs site.
   README test count and release/CLI/codegen mentions refreshed; CHANGELOG
   cut over to `[1.0.0]`.
 - [x] **Hygiene** - `QFont.setFamilies` guarded behind `hasattr` in
-  `lib/theming/theme_manager.py` (it needs Qt >= 5.13; the `QFont(family)`
+  `src/diablos/core/theming/theme_manager.py` (it needs Qt >= 5.13; the `QFont(family)`
   constructor is the fallback); the dead one-shot codemod
   `tools/integrate_variable_editor.py` deleted.
 
@@ -283,26 +283,26 @@ guidance, examples gallery test, block API / user blocks, docs site.
 
 **Teaching & Interaction**
 - [x] **Live parameter tuning** — Manipulate-style interactive tuning: pin block parameters to a tuning panel, drag sliders and watch scope plots update in real-time via headless re-simulation. Supports float params and individual list elements (e.g., transfer function coefficients). Scope window stays on top during tuning. Right-click slider rows to set custom range.
-- [x] **Custom Python Function block** — `blocks/function.py` ("Function"). Users type an expression of the inputs and time (e.g. `sin(u[0]**2) + u[1]`). Inputs exposed as 0-indexed `u[i]` and 1-indexed `u1`/`u2`; `t` is sim time. Variable input-port count via `io_editable='input'`. Evaluated through the hardened `safe_expr` AST walker (numpy math allowed; imports/attribute escapes rejected). List expressions yield vector outputs. Diagrams containing it use the interpreted engine (not in `COMPILABLE_BLOCKS`). Tests: `tests/unit/test_function_block.py` (19), integration chains in `test_simulation_execution.py`.
+- [x] **Custom Python Function block** — `src/diablos/blocks/function.py` ("Function"). Users type an expression of the inputs and time (e.g. `sin(u[0]**2) + u[1]`). Inputs exposed as 0-indexed `u[i]` and 1-indexed `u1`/`u2`; `t` is sim time. Variable input-port count via `io_editable='input'`. Evaluated through the hardened `safe_expr` AST walker (numpy math allowed; imports/attribute escapes rejected). List expressions yield vector outputs. Diagrams containing it use the interpreted engine (not in `COMPILABLE_BLOCKS`). Tests: `tests/unit/test_function_block.py` (19), integration chains in `test_simulation_execution.py`.
 - [x] **Diagram-to-LaTeX/TikZ export** — Export block diagrams as TikZ figures for papers and lecture notes. Saves hours of redrawing diagrams for ACC/IFAC publications. File > Export > Export as TikZ... with live preview, clipboard copy, and configurable options.
 
 **Research & Data**
-- [x] **Data Import block** — `blocks/from_file.py` (`FromFile`, category Sources) replays a recorded CSV/NPZ/MAT/TXT time-series as a driving signal, interpolated (`linear`/`zoh`/`nearest`) onto the sim grid with `hold`/`loop` end behavior; parsed data cached in `params`. Shared reader: `lib/services/timeseries_loader.py` (`load_timeseries`, `allow_pickle=False`), also used by `blocks/optimization/data_fit.py`. Companions: `blocks/lookup_table.py` (1-D/2-D static maps). Tests: `tests/unit/test_from_file.py` (13), `test_timeseries_loader.py` (10), `test_lookup_table.py` (16).
-- [x] **Linearization tool** — `lib/analysis/linearizer.py` computes A/B/C/D by finite differences over the compiled ODE RHS; `modern_ui/controllers/analysis_controller.py` assembles the result dict (poles/zeros, Bode, margins, step/impulse, controllability/observability). UI: Analysis > **Linearize & Analyze...** (`modern_ui/widgets/linearize_dialog.py` → `linearization_result_window.py`, 5 tabs + Python/MATLAB/.mat/.npz export via `lib/analysis/linearization_export.py`) and Analysis > **Find Operating Point (Trim)...** (`operating_point_window.py`). The BodeMag/BodePhase/Nyquist/RootLocus/LQR blocks remain the per-block path (`lib/analysis/analyzers/`).
-- [x] **Code generation** — File > Export > **Export as Python Script...** (`MainWindow.export_python_script`) and the `export-python` CLI subcommand emit a self-contained numpy+scipy `.py` via `lib/export/python_codegen.py`. The script mirrors the compiled solver (one `rhs(t, x)` under `solve_ivp`, same three-group order) and its `--out` CSV/NPZ matches `python -m lib.cli run` column-for-column. Supported set: `SUPPORTED_BLOCK_NAMES` (19 blocks); unsupported blocks, discrete sample times and algebraic loops raise `CodegenUnsupportedError`/`CodegenError` instead of emitting broken code. Tests: `tests/unit/test_python_codegen.py`, `tests/modern_ui/test_export_python_menu.py`.
+- [x] **Data Import block** — `src/diablos/blocks/from_file.py` (`FromFile`, category Sources) replays a recorded CSV/NPZ/MAT/TXT time-series as a driving signal, interpolated (`linear`/`zoh`/`nearest`) onto the sim grid with `hold`/`loop` end behavior; parsed data cached in `params`. Shared reader: `src/diablos/core/services/timeseries_loader.py` (`load_timeseries`, `allow_pickle=False`), also used by `src/diablos/blocks/optimization/data_fit.py`. Companions: `src/diablos/blocks/lookup_table.py` (1-D/2-D static maps). Tests: `tests/unit/test_from_file.py` (13), `test_timeseries_loader.py` (10), `test_lookup_table.py` (16).
+- [x] **Linearization tool** — `src/diablos/core/analysis/linearizer.py` computes A/B/C/D by finite differences over the compiled ODE RHS; `src/diablos/gui/controllers/analysis_controller.py` assembles the result dict (poles/zeros, Bode, margins, step/impulse, controllability/observability). UI: Analysis > **Linearize & Analyze...** (`src/diablos/gui/widgets/linearize_dialog.py` → `linearization_result_window.py`, 5 tabs + Python/MATLAB/.mat/.npz export via `src/diablos/core/analysis/linearization_export.py`) and Analysis > **Find Operating Point (Trim)...** (`operating_point_window.py`). The BodeMag/BodePhase/Nyquist/RootLocus/LQR blocks remain the per-block path (`src/diablos/core/analysis/analyzers/`).
+- [x] **Code generation** — File > Export > **Export as Python Script...** (`MainWindow.export_python_script`) and the `export-python` CLI subcommand emit a self-contained numpy+scipy `.py` via `src/diablos/core/export/python_codegen.py`. The script mirrors the compiled solver (one `rhs(t, x)` under `solve_ivp`, same three-group order) and its `--out` CSV/NPZ matches `python -m lib.cli run` column-for-column. Supported set: `SUPPORTED_BLOCK_NAMES` (19 blocks); unsupported blocks, discrete sample times and algebraic loops raise `CodegenUnsupportedError`/`CodegenError` instead of emitting broken code. Tests: `tests/unit/test_python_codegen.py`, `tests/modern_ui/test_export_python_menu.py`.
 
 **UI Polish**
 - [x] **Dark mode fixes** — Fixed invalid theme key lookups (`accent`, `block_fill`, `connection_line` → proper keys). Property editor "Documentation" title, command palette, minimap all now use correct theme colors. Error panel severity backgrounds are theme-aware. Canvas selection rect, connection preview, and error indicators use theme colors. Block renderer icons use `block_icon_color` theme key.
 - [x] **Compact toolbar** — Switched to `ToolButtonIconOnly` with `setIconSize(20,20)`, 14px emoji font, 70px zoom slider. Removed redundant status label (main status bar already exists). Theme button always visible at default window size on macOS. Theme also accessible via View > Toggle Theme (Ctrl+T).
-- [x] **Minimap** — `modern_ui/widgets/minimap_widget.py`: dockable overview panel (left/right) with a viewport rectangle; click to pan, drag for continuous panning. View > Minimap or `Ctrl+Shift+M` (`MainWindow.toggle_minimap`). Coverage: `tests/modern_ui/test_main_window_view_actions.py`.
+- [x] **Minimap** — `src/diablos/gui/widgets/minimap_widget.py`: dockable overview panel (left/right) with a viewport rectangle; click to pan, drag for continuous panning. View > Minimap or `Ctrl+Shift+M` (`MainWindow.toggle_minimap`). Coverage: `tests/modern_ui/test_main_window_view_actions.py`.
 
 **From the idea review (parked list), picked for this campaign**
 - [x] **Stiff solver choice in the UI** — already shipped: the Simulation
-  Settings dialog (`lib/dialogs.py`, `SOLVER_METHODS`) offers
+  Settings dialog (`src/diablos/core/dialogs.py`, `SOLVER_METHODS`) offers
   RK45/RK23/DOP853/Radau/BDF/LSODA/RK4/Euler/auto with rtol/atol; `auto`
   resolves to LSODA. The headless `run` command reads the file's solver
   settings and accepts `--method/--rtol/--atol`.
-- [x] **User blocks directory for frozen builds** — `lib/user_blocks.py`
+- [x] **User blocks directory for frozen builds** — `src/diablos/core/user_blocks.py`
   (`user_blocks_dir`) is scanned at startup, user blocks appear in the palette
   with a reload action and a missing-block warning.
 - [x] **PyQt6 migration** — done 2026-09-10: the GUI, the test suite, the
@@ -332,17 +332,17 @@ guidance, examples gallery test, block API / user blocks, docs site.
 
 ### October 2026 — remaining UI strings translated (2026-10-02)
 - [x] **Outcome-metric labels and validator messages translated** — new
-  `OUTCOME_METRIC_LABELS` (`lib/analysis/resim.py`, marked with `tr_noop`) is
+  `OUTCOME_METRIC_LABELS` (`src/diablos/core/analysis/resim.py`, marked with `tr_noop`) is
   translated at display time in the sweep/ensemble windows, whose metric combos
-  now carry the English key as item data; `lib/diagram_validator.py` messages
+  now carry the English key as item data; `src/diablos/core/diagram_validator.py` messages
   and suggestions go through `tr()`. 43 new `es.json` keys.
 
 ### September 2026 — newly verified completed items (2026-10-02 pass)
 Found already fully implemented while tidying this file; no code changes made,
 just evidence that these can come off the "parked ideas" backlog:
-- [x] **Autosave and crash recovery** — `modern_ui/managers/project_manager.py`
+- [x] **Autosave and crash recovery** — `src/diablos/gui/managers/project_manager.py`
   (`check_autosave_recovery`, `recover_autosave`, `cleanup_autosave`) plus a
-  2-minute `QTimer` in `modern_ui/main_window.py` (`_auto_save`,
+  2-minute `QTimer` in `src/diablos/gui/main_window.py` (`_auto_save`,
   `autosave_timer`); recovery is offered on startup
   (`QTimer.singleShot(500, self._check_autosave_recovery)`), the autosave file
   is removed on clean exit, and an in-flight autosave never clears the
@@ -353,8 +353,8 @@ just evidence that these can come off the "parked ideas" backlog:
   FirstOrderHold). Wire tinting followed on 2026-10-10.
 - [x] **Wall-clock real-time pacing** (half of the "Real-time pacing and
   hardware I/O" idea) — `DSim.real_time` / `SimulationEngine.real_time`, a
-  "Run in real-time" checkbox in `lib/dialogs.py`, consumed by
-  `modern_ui/controllers/simulation_controller.py`. Hardware I/O (UDP/serial
+  "Run in real-time" checkbox in `src/diablos/core/dialogs.py`, consumed by
+  `src/diablos/gui/controllers/simulation_controller.py`. Hardware I/O (UDP/serial
   blocks) is the only part of that idea still open.
 
 ### September 2026 — Compiled-path PID dataflow ordering fix (2026-09-19)
@@ -365,8 +365,8 @@ zero on both engines, for two independent reasons.
   engine's memory-block-aware hierarchy order verbatim, so `exec_pid` read the
   Sum's output *before* it was written on every RHS evaluation — permanently
   zero error. Fixed with a new `_dataflow_order` (stable Kahn sort over
-  middle-group edges) in `lib/engine/system_compiler.py`.
-- **Interpreted path (a second bug found on the way)**: `blocks/pid.py`
+  middle-group edges) in `src/diablos/core/engine/system_compiler.py`.
+- **Interpreted path (a second bug found on the way)**: `src/diablos/blocks/pid.py`
   returned the stale `_last_output_` whenever the measurement port was
   unconnected, so the error-input wiring never computed at all; an
   unconnected port now reads 0.0, matching the compiled kernel.
@@ -377,7 +377,7 @@ compiled). Tests: `TestErrorInputPIDOrdering` in
 
 ### Follow-ups (flagged September 2026, since resolved)
 - [x] **PDE BC params should be dropdowns.** Done: the specs in
-  `lib/engine/pde_helpers.py` carry `options` (Dirichlet/Neumann/Robin/Periodic),
+  `src/diablos/core/engine/pde_helpers.py` carry `options` (Dirichlet/Neumann/Robin/Periodic),
   the property editor renders any param with `choices`/`options` as a QComboBox,
   and `tests/regression/test_choice_param_dispatch.py` covers HeatEquation1D/2D.
 
@@ -408,7 +408,7 @@ in git history / `tasks/lessons.md` — this is the condensed index:
   `draw_icon()`. Renderer 1514→1255 lines. Tests:
   `tests/modern_ui/test_block_renderer_icon_text.py`.
 - [x] **`replay_compiled_signals`** (616 lines, C901=100, worst in the repo →
-  ~70-line orchestrator + `lib/engine/replay_handlers.py`). Tests:
+  ~70-line orchestrator + `src/diablos/core/engine/replay_handlers.py`). Tests:
   `tests/unit/test_replay_handlers.py` (40).
 - [x] **`SystemCompiler.compile_system`** (434 lines, C901=41 → ~40-line phase
   sequence: `_build_input_map`, `STATE_ALLOCATORS`, `SOURCE_FNS`/`STATE_FNS`,
@@ -422,19 +422,19 @@ in git history / `tasks/lessons.md` — this is the condensed index:
   `van_der_pol_stiff` on the interpreted path). Tests:
   `tests/unit/test_interpreter_step_phases.py` (39),
   `tests/unit/test_execute_block_errors.py` (6).
-- [x] **`DSim` facade** (`lib/lib.py`, 1825→1736 lines) — deleted 13 uncalled
+- [x] **`DSim` facade** (`src/diablos/core/lib.py`, 1825→1736 lines) — deleted 13 uncalled
   one-line delegations; removed the pygame-era `lib/ui/` package entirely
   (`Button`/`buttons_list`/the vestigial `.active` flag in `execution_init`
   had no reader). Kept the property bridges and MVC-seam entry points
   deliberately (GUI/test/doc callers).
 - [x] **`lib/improvements.py`** (448 lines) — deleted. Live pieces relocated
-  (`PerformanceHelper` → `modern_ui/perf_helper.py`; validation/safety checks →
-  plain functions in `lib/diagram_validator.py`); dead config/demo code
+  (`PerformanceHelper` → `src/diablos/gui/perf_helper.py`; validation/safety checks →
+  plain functions in `src/diablos/core/diagram_validator.py`); dead config/demo code
   removed. Deliberate behavior change: the connection validator no longer
   silently tolerates a missing validator. Tests:
   `tests/unit/test_diagram_preflight.py` (19).
 - [x] **`SimulationController._print_terminal_verification`** (225 lines,
-  C901=40 → report logic moved to `lib/engine/verification_report.py`
+  C901=40 → report logic moved to `src/diablos/core/engine/verification_report.py`
   collectors + `build_verification_report`; new `run --verify` CLI flag).
   Folded-in fix: Display blocks' collector now reads through `runtime_params`
   instead of the wrong dict (fixed a `---` placeholder bug). Tests:
@@ -447,7 +447,7 @@ in git history / `tasks/lessons.md` — this is the condensed index:
   orchestrator). Four real bugs fixed along the way: (a) pasting a Subsystem
   dropped its connections (ports never restored); (b) masking/renaming a
   subsystem created from a selection didn't stick
-  (`lib/masks.py::_has_default_username`); (c) a failure mid-paste left
+  (`src/diablos/core/masks.py::_has_default_username`); (c) a failure mid-paste left
   orphaned blocks + a dangling undo entry (added rollback); (d) **wider bug**:
   `FileService._construct_block` had the same flipped-port defect, so *every
   saved diagram with a flipped block reopened with swapped ports* — fixed by
@@ -455,7 +455,7 @@ in git history / `tasks/lessons.md` — this is the condensed index:
   `test_clipboard_paste_phases.py` (26), `test_clipboard_paste_subsystem.py`
   (6), `test_clipboard_paste_rollback.py` (6), `test_mask_default_label.py`
   (13), `test_flipped_block_ports.py` (5).
-- [x] **`solve_with_events`** (`lib/engine/zero_crossing.py`, 232 lines,
+- [x] **`solve_with_events`** (`src/diablos/core/engine/zero_crossing.py`, 232 lines,
   C901=25 → ~80-line loop, C901=9, over a `_SegmentLoop` dataclass). Fixed
   2026-09-22: `_restart_point`'s `nextafter` now steps toward `np.inf` instead
   of `tf+1.0` (was a no-op at extreme |t|). Tests:
@@ -464,7 +464,7 @@ in git history / `tasks/lessons.md` — this is the condensed index:
   9-line lookup, C901=3, into `_GLYPHS`). Two bugs fixed along the way: a
   shadowed-prefix table bug (MatrixGain/Export/Demux showed the wrong glyph);
   and (2026-09-22) canvas fill / palette chip / category dot unified into one
-  table, `lib/theming/categories.py::category_theme_key`. Declined: reusing
+  table, `src/diablos/core/theming/categories.py::category_theme_key`. Declined: reusing
   blocks' `draw_icon()` paths in the palette (spiked, rated not worth it at
   the current 22px tile size). Tests:
   `tests/modern_ui/test_palette_glyph_registry.py` (55).
@@ -490,8 +490,8 @@ in git history / `tasks/lessons.md` — this is the condensed index:
   collisions).
 - [x] Break the `lib/` ↔ `modern_ui/` import layering via dependency
   inversion — done 2026-07-18: theming moved to
-  `lib/theming/theme_manager.py` (stdlib + PyQt only);
-  `modern_ui/themes/theme_manager.py` kept as a backward-compat shim.
+  `src/diablos/core/theming/theme_manager.py` (stdlib + PyQt only);
+  `src/diablos/gui/themes/theme_manager.py` kept as a backward-compat shim.
   `grep modern_ui lib/` is clean except one genuine UI import left
   function-local (`field_scope_mixin.py`).
 - [x] Add compiled-vs-interpreted equivalence tests for each compiled stateful
@@ -509,12 +509,12 @@ in every case, so each fix corrected the interpreter to match.
   As a memory block it runs `execute()` twice per step (output_only + state
   pass) and advanced `params['_prev']` on both. Fixed by returning the held
   output without advancing on the output_only pass
-  (`blocks/rate_limiter.py`). `test_equiv_ratelimiter.py` now passes.
+  (`src/diablos/blocks/rate_limiter.py`). `test_equiv_ratelimiter.py` now passes.
 - [x] **Interpreter state blocks integrated at dt=0.01 regardless of sim_dt.**
   `run_tuning_simulation` never synced `engine.sim_dt`, so
   `initialize_execution` re-stamped every block's `exec_params['dtime']` with
   the engine's default 0.01. Fixed by calling `engine.update_sim_params`
-  before `initialize_execution` in `run_tuning_simulation` (`lib/lib.py`);
+  before `initialize_execution` in `run_tuning_simulation` (`src/diablos/core/lib.py`);
   the interactive path already did this. TF/PID/Integrator now discretize at
   the real sim_dt. (The PID trajectory `test_equiv_pid.py` xfail remains —
   its residual divergence is the memory-block feedback delay + derivative
@@ -523,8 +523,8 @@ in every case, so each fix corrected the interpreter to match.
   `WorkspaceManager.resolve_params` safe_expr-evaluated `"1,2"` to a tuple:
   the interpreter crashed in `_parse_indices` and the compiled kernel
   silently fell back to index 0. Fixed with `normalize_indices_str`
-  (`blocks/selector.py`), used by both the block and the compiled kernel
-  (`lib/engine/compiler_kernels/nonlinear.py`). Locked in by
+  (`src/diablos/blocks/selector.py`), used by both the block and the compiled kernel
+  (`src/diablos/core/engine/compiler_kernels/nonlinear.py`). Locked in by
   `tests/unit/test_selector_comma_indices.py`.
 - [x] **2D PDE blocks never integrated in the interpreter.** Their
   `execute()` only reshaped the compiled-replay `state` kwarg and returned
@@ -541,7 +541,7 @@ in every case, so each fix corrected the interpreter to match.
   E701/E702 ignores retired from `pyproject.toml` (formatter guarantees them).
 
 **Foundation hardening from the external review (2026-07-05)**
-- [x] **Headless CLI** (`lib/cli.py`): `python diablos_modern.py run
+- [x] **Headless CLI** (`src/diablos/core/cli.py`): `python diablos_modern.py run
   diagram.diablos -o out.csv [--time --dt --solver interpreter]` runs a diagram
   without the GUI and exports Scope traces to CSV/NPZ. Defaults to the compiled
   path. Tests: `tests/integration/test_cli.py`.
@@ -553,7 +553,7 @@ in every case, so each fix corrected the interpreter to match.
   `docs/ARCHITECTURE.md` (§3c): compiled = accurate source of truth, interpreter
   = fixed-step/full-coverage; the by-design differences (transient vs steady
   state, feedback delay, memory-block two-pass rule, PDE self-integration).
-- [x] **safe_eval audit**: `lib/safe_eval.py` is an allowlist AST interpreter
+- [x] **safe_eval audit**: `src/diablos/core/safe_eval.py` is an allowlist AST interpreter
   (no eval/exec/`__import__`, allocation guard, bounded array ctors); verified it
   blocks dunder traversal, lambdas, comprehensions, and arbitrary builtins.
   Combined with the `external.py` stub, the review's "remove eval()" concern is
@@ -570,7 +570,7 @@ in every case, so each fix corrected the interpreter to match.
 - [x] **Performance profiling** — `tests/profiling/profile_simulation.py`:
   block-level sim 1000 steps/0.03s, PDE sim 100 steps x 100 nodes/6ms; main
   bottleneck was scipy import overhead, not execution.
-- [x] **External block stub** — `blocks/external.py` returns a proper error
+- [x] **External block stub** — `src/diablos/blocks/external.py` returns a proper error
   dict with a message instead of `None` when the target file is missing
   (still a stub for actual execution — see CLAUDE.md Known Issues).
 - [x] **Legacy test files** marked skipped with documentation:
@@ -585,17 +585,17 @@ in every case, so each fix corrected the interpreter to match.
     `sigproduct.py`, `pid.py`; all blocks now return `{0: value, 'E': False}`
     or `{'E': True, 'error': msg}`)
   - Phase 3: SubsystemManager extraction from lib.py
-    (`lib/managers/subsystem_manager.py`, delegated from `lib/lib.py`)
+    (`src/diablos/core/managers/subsystem_manager.py`, delegated from `src/diablos/core/lib.py`)
   - Phase 4: modern_canvas.py split (ClipboardManager, ZoomPanManager, under
-    `modern_ui/managers/`)
-  - Phase 5: Config-driven logging (`lib/logging_config.py`, `config/logging.json`)
-  - Phase 6: Type hints (`lib/types.py`, base_block.py)
+    `src/diablos/gui/managers/`)
+  - Phase 5: Config-driven logging (`src/diablos/core/logging_config.py`, `config/logging.json`)
+  - Phase 6: Type hints (`src/diablos/core/types.py`, base_block.py)
   - Phase 7: API documentation (`mkdocs.yml`, `docs/api/*.md`, mkdocs +
     mkdocstrings with Google-style docstrings)
 - [x] **Advection equation fix** - Second-order upwind scheme reduces error from 30% to <1%
-  - Files: `blocks/pde/advection_equation_1d.py`, `lib/engine/system_compiler.py`
+  - Files: `src/diablos/blocks/pde/advection_equation_1d.py`, `src/diablos/core/engine/system_compiler.py`
 - [x] **Animation export for FieldScope** - GIF/MP4 export with dialog
-  - Files: `lib/plotting/animation_exporter.py`, `modern_ui/widgets/animation_export_dialog.py`
+  - Files: `src/diablos/core/plotting/animation_exporter.py`, `src/diablos/gui/widgets/animation_export_dialog.py`
 - [x] **Unit tests for 14 untested blocks** - 160 new tests added
   - TransportDelay, DiscreteTranFn, External, Assert, FFT, Subsystem, Inport, Outport, Abs, Terminator
 - [x] **Test coverage improvement** - 44% → 57% of blocks tested
@@ -618,41 +618,41 @@ in every case, so each fix corrected the interpreter to match.
 
 | Date | Change |
 |------|--------|
-| 2026-10-12 | **Python export of sampled-data blocks**: `lib/export/python_codegen.py` exports ZeroOrderHold, DiscreteTranFn, DiscreteStateSpace and rated TranFn/StateSpace/PID/Integrator/Deriv the way the compiled hybrid path runs them: rates propagated as `propagate_sample_times` does; each sampled block is a `_HELD` read in `evaluate`, with an update function transcribed from its `execute()` (rated TranFn/SS discretized at export with `cont2discrete`); `simulate` integrates between the merged instants (`sample_schedule`, grid snapping) with `solve_ivp` per segment or the fixed-step split, runs `sample_hook` at t=0 and each instant (feeders first, fresh evaluation per block), and `scope_traces` replays `HELD_HISTORY`. Refused with a named reason: sampled blocks without a rate, a rate on a block that cannot be sampled, a sampled RK4 Integrator, a cycle of sampled blocks through feedthrough blocks. Exact (0.0 max diff) against the compiled run on S1a, the staircase, the sampled loop (RK45/RK4/Euler) and a rated-block diagram. Tests: `tests/unit/test_python_codegen.py` (`TestSampledExport`, rejections), `test_algebraic_loop_solver.py` (loop broken by a ZOH). Docs: USER_MANUAL, running-simulations. |
-| 2026-10-12 | **Importable headless Python API** (PathSim review item): new `lib/api.py`: `load(path)` / `from_builder(DiagramBuilder)` return a `Diagram` (`blocks`, `params`, `get_param`/`set_param` by qualified `Sub/block` name, `run(t, dt, params=, solver=, method=, rtol=, atol=, zero_crossing=)`, `save`, `monte_carlo`, `sweep`, `find_operating_point`, `linearize`); `run` returns a `SimResult` (`time`, `signals`, `engine`, `diagnostics`, `fallback_reason`, `save` to CSV/NPZ). Offscreen QApplication created lazily via the CLI loader; `from_builder` fills builder blocks' missing params from block defaults and keeps the builder names. `lib/cli.py` gained `new_headless_dsim` and `apply_solver_settings` (shared with `run_diagram`); `DiagramBuilder.to_dict`. Two fixes found on the way: `run_tuning_simulation` now drops the previous compiled run's diagnostics (an interpreter run reported them), and `Linearizer` always re-flattens (after a run it linearized a masked Subsystem at the run's old parameters, also in the GUI). Docs: `docs/user-guide/python-api.md` (mkdocs nav), README, `docs/index.md` limitation line. Tests: `tests/integration/test_api.py` (incl. a cold-start subprocess), `test_cli.py`, `test_linearizer.py`. |
-| 2026-10-10 | **Stiffness diagnostic covers large systems**: above `STIFFNESS_MAX_STATES = 64` the heuristic no longer skips the eigen-analysis; `_fastest_decay_matrix_free` (`lib/engine/solver_diagnostics.py`) runs ARPACK (`eigs`, largest magnitude) on finite-difference Jacobian-vector products, about `STIFFNESS_SPARSE_MAX_EVALS = 400` RHS evaluations at most per sample point, stopping at the first point that flags. A 500-state heat equation reads within 0.1% of the exact fastest eigenvalue in ~260 evaluations (~7 ms); fast oscillations read 0. Limits: no `eig_ratio` on that path, and stiffness hidden behind faster oscillations is underestimated. docs/SOLVER_SEMANTICS.md updated. Tests: `tests/unit/test_solver_semantics.py` (large heat equation flagged, large oscillator not). |
-| 2026-10-10 | **SymPy symbolic path tested and repaired**: SymPy is now in `requirements-dev.txt` and the `dev` extra (still optional at runtime), so CI runs `lib/engine/symbolic_engine.py` and the blocks' `symbolic_execute()` hooks. Fixes: feedback loops are solved (every wire gets an unknown, chains are substituted forward, loops solved as one system) instead of left as dangling `*_fb` symbols; `get_all_equations` returned a `{port: expr}` dict for blocks first reached as dependencies, now always the port-0 expression (a sink shows its input signal); `extract_transfer_function` zeroes the other sources (superposition, like block algebra) and reads a sink's input port; a raising hook falls back instead of aborting; `Deriv` fallback name; SymPy is imported lazily (`import lib.engine` ~0.2 s faster). Unsolvable (nonlinear) loops keep their unknowns with a warning. Known limits: initial conditions are taken as zero and Saturation as linear. Cross-checked against `lib/analysis/block_algebra.py` (PID example, nested loops) and scipy `ss2tf`. Tests: `tests/unit/test_symbolic_engine.py`. |
+| 2026-10-12 | **Python export of sampled-data blocks**: `src/diablos/core/export/python_codegen.py` exports ZeroOrderHold, DiscreteTranFn, DiscreteStateSpace and rated TranFn/StateSpace/PID/Integrator/Deriv the way the compiled hybrid path runs them: rates propagated as `propagate_sample_times` does; each sampled block is a `_HELD` read in `evaluate`, with an update function transcribed from its `execute()` (rated TranFn/SS discretized at export with `cont2discrete`); `simulate` integrates between the merged instants (`sample_schedule`, grid snapping) with `solve_ivp` per segment or the fixed-step split, runs `sample_hook` at t=0 and each instant (feeders first, fresh evaluation per block), and `scope_traces` replays `HELD_HISTORY`. Refused with a named reason: sampled blocks without a rate, a rate on a block that cannot be sampled, a sampled RK4 Integrator, a cycle of sampled blocks through feedthrough blocks. Exact (0.0 max diff) against the compiled run on S1a, the staircase, the sampled loop (RK45/RK4/Euler) and a rated-block diagram. Tests: `tests/unit/test_python_codegen.py` (`TestSampledExport`, rejections), `test_algebraic_loop_solver.py` (loop broken by a ZOH). Docs: USER_MANUAL, running-simulations. |
+| 2026-10-12 | **Importable headless Python API** (PathSim review item): new `src/diablos/core/api.py`: `load(path)` / `from_builder(DiagramBuilder)` return a `Diagram` (`blocks`, `params`, `get_param`/`set_param` by qualified `Sub/block` name, `run(t, dt, params=, solver=, method=, rtol=, atol=, zero_crossing=)`, `save`, `monte_carlo`, `sweep`, `find_operating_point`, `linearize`); `run` returns a `SimResult` (`time`, `signals`, `engine`, `diagnostics`, `fallback_reason`, `save` to CSV/NPZ). Offscreen QApplication created lazily via the CLI loader; `from_builder` fills builder blocks' missing params from block defaults and keeps the builder names. `src/diablos/core/cli.py` gained `new_headless_dsim` and `apply_solver_settings` (shared with `run_diagram`); `DiagramBuilder.to_dict`. Two fixes found on the way: `run_tuning_simulation` now drops the previous compiled run's diagnostics (an interpreter run reported them), and `Linearizer` always re-flattens (after a run it linearized a masked Subsystem at the run's old parameters, also in the GUI). Docs: `docs/user-guide/python-api.md` (mkdocs nav), README, `docs/index.md` limitation line. Tests: `tests/integration/test_api.py` (incl. a cold-start subprocess), `test_cli.py`, `test_linearizer.py`. |
+| 2026-10-10 | **Stiffness diagnostic covers large systems**: above `STIFFNESS_MAX_STATES = 64` the heuristic no longer skips the eigen-analysis; `_fastest_decay_matrix_free` (`src/diablos/core/engine/solver_diagnostics.py`) runs ARPACK (`eigs`, largest magnitude) on finite-difference Jacobian-vector products, about `STIFFNESS_SPARSE_MAX_EVALS = 400` RHS evaluations at most per sample point, stopping at the first point that flags. A 500-state heat equation reads within 0.1% of the exact fastest eigenvalue in ~260 evaluations (~7 ms); fast oscillations read 0. Limits: no `eig_ratio` on that path, and stiffness hidden behind faster oscillations is underestimated. docs/SOLVER_SEMANTICS.md updated. Tests: `tests/unit/test_solver_semantics.py` (large heat equation flagged, large oscillator not). |
+| 2026-10-10 | **SymPy symbolic path tested and repaired**: SymPy is now in `requirements-dev.txt` and the `dev` extra (still optional at runtime), so CI runs `src/diablos/core/engine/symbolic_engine.py` and the blocks' `symbolic_execute()` hooks. Fixes: feedback loops are solved (every wire gets an unknown, chains are substituted forward, loops solved as one system) instead of left as dangling `*_fb` symbols; `get_all_equations` returned a `{port: expr}` dict for blocks first reached as dependencies, now always the port-0 expression (a sink shows its input signal); `extract_transfer_function` zeroes the other sources (superposition, like block algebra) and reads a sink's input port; a raising hook falls back instead of aborting; `Deriv` fallback name; SymPy is imported lazily (`import lib.engine` ~0.2 s faster). Unsolvable (nonlinear) loops keep their unknowns with a warning. Known limits: initial conditions are taken as zero and Saturation as linear. Cross-checked against `src/diablos/core/analysis/block_algebra.py` (PID example, nested loops) and scipy `ss2tf`. Tests: `tests/unit/test_symbolic_engine.py`. |
 | 2026-10-10 | **Port labels no longer forced on by selection**: `BlockRenderer.draw_port_labels` drew every port label on a selected block even when they did not fit, stacking "setpoint"/"measurement" over the PID's own text and sp/pv marks. Labels now show only when they fit, selected or not; hovering a port names it (tooltips from 89b00c4). Test: `test_canvas_labels_and_status_bar.py::test_pid_port_labels_never_cover_the_face`. |
 | 2026-10-10 | **Zoom -/+ glyphs no longer dots**: `QToolBar#ModernToolBar QToolButton { padding: 4px 6px }` outranked the `QToolButton#ZoomRockerBtn` / `#Transport*` rules, so the 22px zoom buttons left ~8px for a 14px icon (drawn as 2-3px dots) and Play was clipped. Added equally specific overrides (padding 0, sizes restated since QSS min sizes replace setFixedSize); zoom buttons 24px with 16px icons and full-width glyphs. Test: `tests/modern_ui/test_toolbar_icon_size.py`. |
 | 2026-10-10 | **Align Top shortcut**: Edit > Align > Align Top is now Ctrl+Shift+U ("up"; Ctrl+Shift+T stays with the tuning panel). USER_MANUAL.md listed Ctrl+Shift+T for it; corrected. Tests: `test_menu_shortcuts_and_preferences.py::test_ctrl_shift_u_aligns_tops` and a Ctrl+Shift+U case in `test_each_key_fires_its_action_exactly_once`. |
 | 2026-10-10 | **Shared block search**: new `block_match_rank` (modern_palette.py; 0 exact / 1 prefix / 2 other / None) drives both the palette's Enter and the command palette's block scoring (canvas double-click quick-insert, Ctrl+K). Fixes: a recent Discrete Transfer Function outranked an exact "transfer function"; "statespace" tied the two State Space blocks. Tiers are 25 apart so the recents bonus never crosses them. Side effect: exact "step"/"export"/"parameter" now list the block above the action. Tests: `test_main_window_command_palette.py::TestBlockSearchMatchesPalette`, `test_palette_display_names.py::test_block_match_rank_tiers`. |
 | 2026-10-10 | **Welcome overlay at UI scale 125%/150%**: checked with native renders. The overlay used fixed TYPE points, so it never scaled (its comments said it did). `_apply_styling` now scales its fonts, card height and max width by app font / 10pt (clamped at 1, so 100% is unchanged); the card min width is capped by what fits the canvas and re-applied on resize, since a scaled min overlapped cards and buttons on a 1000px window at 150%. Found that UI scale is font-only app-wide (open item). Tests: `test_welcome_overlay_and_tooltips.py::test_overlay_follows_the_ui_scale`, `::test_scaled_cards_fit_a_narrow_canvas`. |
-| 2026-10-10 | **Sample-time coloring for wires**: discrete wires are tinted with the block dot's red (1 ms) to blue (1 s) log scale and dashed, before any run too. New `modern_ui/renderers/sample_time_colors.py` (`rate_color`, shared with the block dot; `block_sample_times` / `wire_sample_times` repeat the engine's rule: declared `resolve_sample_time()`, inherited = fastest discrete input, wire = source rate; a RateTransition's output wire uses `output_sample_time`). Selected wires keep the accent color. Test: `tests/modern_ui/test_wire_sample_time_colors.py`. |
-| 2026-10-10 | **One-click auto-layout**: Edit > Auto Layout (Ctrl+Shift+A, also in the command palette). New pure `modern_ui/tools/auto_layout.py` (`layered_layout`: DFS back edges dropped for layering, longest-path layers via Kahn, barycenter sweeps with dst-port tie-break, columns centered, components stacked, grid snap; deterministic, input-order ties). `ModernCanvas.auto_layout` keeps the top-left corner, relocates blocks, re-routes every wire via `route_line_for_mode`, one undo step. es catalog + USER_MANUAL updated. Tests: `tests/modern_ui/test_auto_layout.py` (pure + examples with undo), Ctrl+Shift+A case in `test_each_key_fires_its_action_exactly_once`. |
-| 2026-10-10 | **Run comparison overlay (Scope reference run)**: the Scope window has "Keep as reference"; the kept run stays (unlike the rotating "Previous run") until replaced or the diagram is, is drawn dotted behind later runs ("Reference" checkbox, on by default), and a line names the parameters changed since it ("digital PI.numerator: [1.2, -1.0] -> [2.0, -1.5]"). New `lib/plotting/run_compare.py` (`snapshot_params` keyed by canvas label, `param_changes`); each stashed run carries a param snapshot; `ScopePlotter.keep_reference`/`clear_reference`, cleared by `reset_held_runs`. Sweeps already show a response family in `sweep_result_window`. Tests: `tests/unit/test_run_compare.py`, `test_scope_plotter_prev_run.py::TestScopePlotterReferenceRun`. |
-| 2026-10-10 | **Semantic diff for `.diablos`**: `diablos diff old new [--layout] [--json]` (also via `python diablos_modern.py diff`). New pure `lib/diagram_diff.py`: sim settings, blocks by internal name (loader rule: saved `name` or block_fn+sid; subsystem paths `ctrl/gain2`), type change = remove+add, label/param/port/flip changes, wires by `src:port -> dst:port` resolving label-referenced endpoints of older files; layout ignored unless `--layout`. Exit 0 same / 1 differ / 2 error. A format-migration resave of multirate_demo (600-line text diff) reports no semantic differences. USER_MANUAL + README. Tests: `tests/unit/test_diagram_diff.py`. |
-| 2026-10-10 | **System Identification block**: new `blocks/system_identification.py` (Sources; params data_file, time/input/output columns, num_order, den_order; outputs `model` = fitted G(s) driven by the recorded input, `measured`). Fits once per run and logs `G(s)` + fit %, kept in `_fit_num_`/`_fit_den_`/`_fit_percent_`. Pure `lib/analysis/sysid.py` `identify_tf`: uniform resample (<= 5000 pts), ARX (nb = den_order, ZOH zeros) at several decimations -> ZOH-inverse d2c (logm) -> best simulated start -> output-error `least_squares` refinement kept if stable and better; operating-point vs at-rest records both fitted, better kept. Registry synced, es catalog, USER_MANUAL. Tests: `tests/unit/test_sysid.py`, `tests/unit/test_system_identification_block.py` (incl. headless run). |
-| 2026-10-10 | **Block-diagram algebra**: Analysis > Transfer Function Between Blocks... (Ctrl+Alt+G, also in the command palette) shows the closed-loop G(s) between two selected blocks (direction auto; a sink gets one result per input, titled by Scope labels), poles/zeros/DC gain/stability and Mason's steps (P_k, L_i, Delta, Delta_k). New pure `lib/analysis/block_algebra.py`: numeric rational functions (numpy polys, minreal), signal-flow graph from Gain/Sum/TranFn/StateSpace/Integrator/Deriv/PID gains, other sources zeroed, unsupported/sampled blocks on a path or loop named in the error. No SymPy (installed nowhere; see open item). Verified against the engine: G(s) of the PID example simulated with scipy matches the Scope trace to ~7e-11. Window `modern_ui/widgets/transfer_function_window.py`. es catalog, USER_MANUAL. Tests: `tests/unit/test_block_algebra.py`, `tests/modern_ui/test_transfer_function_window.py`, Ctrl+Alt+G shortcut case. |
-| 2026-10-10 | **Hardware I/O blocks**: `UDPReceive`/`SerialRead` (Sources: latest message as `data`, held between messages, plus a `fresh` flag) and `UDPSend`/`SerialWrite` (Sinks, optional `sampling_time`). Text (comma/space numbers, one per datagram or newline line) or float64 (UDP). Non-blocking; sockets/ports live in a handle registry (`blocks/_hardware_io.py`, auto-skipped by the registry sync) so params stay serializable; reopened each run, closed at exit. Stdlib socket only; pyserial optional (clear `pip install pyserial` error), not added to requirements. Interpreter path via the compiler allow-list, no engine change. es catalog, USER_MANUAL. Tests: `tests/unit/test_hardware_io_blocks.py` (localhost UDP, fake serial module, headless run sends at the sampling rate). |
+| 2026-10-10 | **Sample-time coloring for wires**: discrete wires are tinted with the block dot's red (1 ms) to blue (1 s) log scale and dashed, before any run too. New `src/diablos/gui/renderers/sample_time_colors.py` (`rate_color`, shared with the block dot; `block_sample_times` / `wire_sample_times` repeat the engine's rule: declared `resolve_sample_time()`, inherited = fastest discrete input, wire = source rate; a RateTransition's output wire uses `output_sample_time`). Selected wires keep the accent color. Test: `tests/modern_ui/test_wire_sample_time_colors.py`. |
+| 2026-10-10 | **One-click auto-layout**: Edit > Auto Layout (Ctrl+Shift+A, also in the command palette). New pure `src/diablos/gui/tools/auto_layout.py` (`layered_layout`: DFS back edges dropped for layering, longest-path layers via Kahn, barycenter sweeps with dst-port tie-break, columns centered, components stacked, grid snap; deterministic, input-order ties). `ModernCanvas.auto_layout` keeps the top-left corner, relocates blocks, re-routes every wire via `route_line_for_mode`, one undo step. es catalog + USER_MANUAL updated. Tests: `tests/modern_ui/test_auto_layout.py` (pure + examples with undo), Ctrl+Shift+A case in `test_each_key_fires_its_action_exactly_once`. |
+| 2026-10-10 | **Run comparison overlay (Scope reference run)**: the Scope window has "Keep as reference"; the kept run stays (unlike the rotating "Previous run") until replaced or the diagram is, is drawn dotted behind later runs ("Reference" checkbox, on by default), and a line names the parameters changed since it ("digital PI.numerator: [1.2, -1.0] -> [2.0, -1.5]"). New `src/diablos/core/plotting/run_compare.py` (`snapshot_params` keyed by canvas label, `param_changes`); each stashed run carries a param snapshot; `ScopePlotter.keep_reference`/`clear_reference`, cleared by `reset_held_runs`. Sweeps already show a response family in `sweep_result_window`. Tests: `tests/unit/test_run_compare.py`, `test_scope_plotter_prev_run.py::TestScopePlotterReferenceRun`. |
+| 2026-10-10 | **Semantic diff for `.diablos`**: `diablos diff old new [--layout] [--json]` (also via `python diablos_modern.py diff`). New pure `src/diablos/core/diagram_diff.py`: sim settings, blocks by internal name (loader rule: saved `name` or block_fn+sid; subsystem paths `ctrl/gain2`), type change = remove+add, label/param/port/flip changes, wires by `src:port -> dst:port` resolving label-referenced endpoints of older files; layout ignored unless `--layout`. Exit 0 same / 1 differ / 2 error. A format-migration resave of multirate_demo (600-line text diff) reports no semantic differences. USER_MANUAL + README. Tests: `tests/unit/test_diagram_diff.py`. |
+| 2026-10-10 | **System Identification block**: new `src/diablos/blocks/system_identification.py` (Sources; params data_file, time/input/output columns, num_order, den_order; outputs `model` = fitted G(s) driven by the recorded input, `measured`). Fits once per run and logs `G(s)` + fit %, kept in `_fit_num_`/`_fit_den_`/`_fit_percent_`. Pure `src/diablos/core/analysis/sysid.py` `identify_tf`: uniform resample (<= 5000 pts), ARX (nb = den_order, ZOH zeros) at several decimations -> ZOH-inverse d2c (logm) -> best simulated start -> output-error `least_squares` refinement kept if stable and better; operating-point vs at-rest records both fitted, better kept. Registry synced, es catalog, USER_MANUAL. Tests: `tests/unit/test_sysid.py`, `tests/unit/test_system_identification_block.py` (incl. headless run). |
+| 2026-10-10 | **Block-diagram algebra**: Analysis > Transfer Function Between Blocks... (Ctrl+Alt+G, also in the command palette) shows the closed-loop G(s) between two selected blocks (direction auto; a sink gets one result per input, titled by Scope labels), poles/zeros/DC gain/stability and Mason's steps (P_k, L_i, Delta, Delta_k). New pure `src/diablos/core/analysis/block_algebra.py`: numeric rational functions (numpy polys, minreal), signal-flow graph from Gain/Sum/TranFn/StateSpace/Integrator/Deriv/PID gains, other sources zeroed, unsupported/sampled blocks on a path or loop named in the error. No SymPy (installed nowhere; see open item). Verified against the engine: G(s) of the PID example simulated with scipy matches the Scope trace to ~7e-11. Window `src/diablos/gui/widgets/transfer_function_window.py`. es catalog, USER_MANUAL. Tests: `tests/unit/test_block_algebra.py`, `tests/modern_ui/test_transfer_function_window.py`, Ctrl+Alt+G shortcut case. |
+| 2026-10-10 | **Hardware I/O blocks**: `UDPReceive`/`SerialRead` (Sources: latest message as `data`, held between messages, plus a `fresh` flag) and `UDPSend`/`SerialWrite` (Sinks, optional `sampling_time`). Text (comma/space numbers, one per datagram or newline line) or float64 (UDP). Non-blocking; sockets/ports live in a handle registry (`src/diablos/blocks/_hardware_io.py`, auto-skipped by the registry sync) so params stay serializable; reopened each run, closed at exit. Stdlib socket only; pyserial optional (clear `pip install pyserial` error), not added to requirements. Interpreter path via the compiler allow-list, no engine change. es catalog, USER_MANUAL. Tests: `tests/unit/test_hardware_io_blocks.py` (localhost UDP, fake serial module, headless run sends at the sampling rate). |
 | 2026-10-09 | **Windows follow-ups (2)**: palette drop lag -- `record_recent` rebuilt the whole palette (~400 widgets) on every drop, now swaps only the Recent section (~90 -> ~20 ms per drop, and the active filter survives); Enter in the palette filter ranks exact > prefix > substring instead of taking filesystem order; long (Spanish) names elide instead of widening the palette, whose hidden horizontal scroll shifted the list sideways on focus; `ui_settings()` honours `DIABLOS_SETTINGS_INI` and `tests/conftest.py` uses a throwaway INI, so the suite no longer reads or overwrites the developer's registry prefs; `SimulationModel.remove_block` filters `line_list` in place, so a block deleted inside a subsystem no longer leaves its wires in `sub_lines`; CI gained a `windows-latest` job (TikZ tests pass a bare file name to pdflatex; the POSIX read-only guard is skipped on Windows). |
 | 2026-10-09 | **Windows follow-up**: reviewed the prior five fixes; repaired toolbar width, made status/glyph tests independent of installed fonts, implemented saved-document identity for undo/redo with explicit-save and load/new lifecycle handling, and polished Properties reset controls and row-label sizing. Moved resolved items to Completed; retained the four missing-pdflatex failures and the POSIX-permissions failure as environment gaps. |
 | 2026-10-09 | **Windows fixes**: resized blocks can shrink back vertically (`DBlock.calculate_min_size` is port-only; regression test in `tests/modern_ui/test_drag_resize.py`); Fusion style forced on Windows too so the Properties spinboxes are readable (`qss_styles._maybe_use_fusion_style`); stdout/stderr use `errors="backslashreplace"` and the log file is UTF-8, so emoji log records no longer raise on a cp1252 console. Remaining Windows-only test failures logged under Open Items. |
-| 2026-09-12 | **Play no longer pops the Simulation-settings modal**: `DSim.execution_init` called `execution_init_time()` -- which constructs and `exec()`s a `SimulationDialog` -- on *every* run, and every test that reached it stubbed that method out, so nothing caught it. `execution_init(ask=None)` now resolves the new `ask_before_run` preference (QSettings `simulation/ask_before_run`, default off, `lib/sim_prefs.py`) and otherwise runs straight away with the stored `sim_time`. The dialog moved to its own entry point: **Simulation > Simulation Settings...** (Ctrl+E) and a gear in the toolbar transport, wired through `SimulationActionsManager.open_settings`, pre-filled by `DSim.open_simulation_dialog` and applied by `DSim.apply_sim_settings` (which dirties the diagram only when a setting the `.diablos` file stores actually changed). The dialog grew an **Ask before every run** checkbox for anyone who wants the old flow. Tests: `tests/regression/test_play_does_not_ask.py` (27). |
-| 2026-09-08 | **Scope signal names consistent across solver paths**: `harvest_scope_signals` (`lib/analysis/resim.py`) keyed a single-channel Scope by its *label* only for the compiled replay's 2-D buffer and by the *block name* for the interpreter's flat buffer, so ensemble/sweep results renamed signals (and dropped the user's `labels` entry) depending on which solver ran. Both layouts are now normalised to `(n, vec_dim)` and every channel is keyed by `vec_labels[j]`, block name only as a fallback. Tests: `tests/unit/test_resim_harvest.py` (layout stubs), `tests/regression/test_harvest_scope_signals.py` (one diagram, both paths, identical keys). |
-| 2026-09-03 | **1.0.0 release campaign**: release infra (`[project]` table in `pyproject.toml` as the single version source, read back by `modern_ui/__init__.py` and parsed by `diablos.spec`/`tools/build.sh`; `.github/workflows/release.yml` builds a versioned macOS arm64 DMG + Windows x64 zip on `v*` tags); `draw_icon()` for 25 icon-less blocks (`tests/unit/test_block_icons.py`); PDE Phase 1 (periodic BCs, dynamic Robin `h` ports, 2D Robin, new IC presets); standalone Python script export (`lib/export/python_codegen.py`, File > Export > Export as Python Script..., `export-python` CLI subcommand); docs reconciliation (USER_MANUAL, mkdocs nav, README, CHANGELOG 1.0.0); hygiene (`QFont.setFamilies` hasattr guard for Qt < 5.13, dead `tools/integrate_variable_editor.py` removed). |
-| 2026-07-12 | Added **Scope "Previous run" overlay + publication figure export** (implemented via multi-agent workflow, then hand-verified). Overlay: `ScopePlotter` stashes each run's timeline+vectors (`_stash_run`, rotation keyed on timeline object identity; held runs dropped by `reset_held_runs()` from both `DSim.clear_all()` and `deserialize()`); `SignalPlot` gains a "Previous run" checkbox (disabled until a second run exists) drawing dimmed/dashed alpha-66 curves behind the live ones. Figure export: "Export Figure..." button renders a matplotlib (Agg, no pyplot) publication figure via new `lib/plotting/publication_figure.py` (serif fonts, Time (s) axis, legend, grid, `step(where='post')` for step traces) to PDF/PNG(300dpi)/SVG; CSV+figure export share `_collect_figure_traces`. Hand-verification caught a workflow bug: success feedback used PyQt5-unavailable `QTimer.singleShot(msec, obj, callback)` overload → every successful export raised and popped a false "Export Failed" dialog (masked in tests by conftest's QMessageBox neutralization); fixed with a button-parented QTimer. Tests: `test_signal_plot.py` (23), `test_scope_plotter_prev_run.py`, `test_publication_figure.py` (10), `tests/integration/test_prev_run_overlay.py` (interpreter+compiled). |
-| 2026-07-11 | Added **Linearized-model export** to LinearizationResultWindow: "Copy as Python" (numpy + python-control snippet), "Copy as MATLAB", and "Save Data..." (.mat via scipy.io / .npz) buttons below the tabs (ok-results only). Formatting/serialization lives Qt-free in `lib/analysis/linearization_export.py` (full repr-precision round-trip, `ss()` only when A/B/C non-empty with zero-D synthesis, `tf()` only when num/den non-empty, `import control` omitted when unused). Tests: `tests/unit/test_linearization_export.py` (17) + export-bar tests in `test_linearization_result_window.py` (5). |
-| 2026-07-11 | Added **Export diagram as image**: File > Export > Export as Image... (PNG at 3x, SVG via QSvgGenerator) and Edit > Copy Diagram as Image (clipboard), plus command-palette entries. New `modern_ui/tools/diagram_image_exporter.py` renders the chrome-free content trio (blocks/lines/ports) against the theme background, framed by the true content bounding rect (Bezier wire bows covered via `line.path.boundingRect()`), independent of zoom/pan; selection/hover state suppressed during render and restored in a `finally`. Tests: `tests/modern_ui/test_diagram_image_export.py` (15). |
+| 2026-09-12 | **Play no longer pops the Simulation-settings modal**: `DSim.execution_init` called `execution_init_time()` -- which constructs and `exec()`s a `SimulationDialog` -- on *every* run, and every test that reached it stubbed that method out, so nothing caught it. `execution_init(ask=None)` now resolves the new `ask_before_run` preference (QSettings `simulation/ask_before_run`, default off, `src/diablos/core/sim_prefs.py`) and otherwise runs straight away with the stored `sim_time`. The dialog moved to its own entry point: **Simulation > Simulation Settings...** (Ctrl+E) and a gear in the toolbar transport, wired through `SimulationActionsManager.open_settings`, pre-filled by `DSim.open_simulation_dialog` and applied by `DSim.apply_sim_settings` (which dirties the diagram only when a setting the `.diablos` file stores actually changed). The dialog grew an **Ask before every run** checkbox for anyone who wants the old flow. Tests: `tests/regression/test_play_does_not_ask.py` (27). |
+| 2026-09-08 | **Scope signal names consistent across solver paths**: `harvest_scope_signals` (`src/diablos/core/analysis/resim.py`) keyed a single-channel Scope by its *label* only for the compiled replay's 2-D buffer and by the *block name* for the interpreter's flat buffer, so ensemble/sweep results renamed signals (and dropped the user's `labels` entry) depending on which solver ran. Both layouts are now normalised to `(n, vec_dim)` and every channel is keyed by `vec_labels[j]`, block name only as a fallback. Tests: `tests/unit/test_resim_harvest.py` (layout stubs), `tests/regression/test_harvest_scope_signals.py` (one diagram, both paths, identical keys). |
+| 2026-09-03 | **1.0.0 release campaign**: release infra (`[project]` table in `pyproject.toml` as the single version source, read back by `src/diablos/gui/__init__.py` and parsed by `diablos.spec`/`tools/build.sh`; `.github/workflows/release.yml` builds a versioned macOS arm64 DMG + Windows x64 zip on `v*` tags); `draw_icon()` for 25 icon-less blocks (`tests/unit/test_block_icons.py`); PDE Phase 1 (periodic BCs, dynamic Robin `h` ports, 2D Robin, new IC presets); standalone Python script export (`src/diablos/core/export/python_codegen.py`, File > Export > Export as Python Script..., `export-python` CLI subcommand); docs reconciliation (USER_MANUAL, mkdocs nav, README, CHANGELOG 1.0.0); hygiene (`QFont.setFamilies` hasattr guard for Qt < 5.13, dead `tools/integrate_variable_editor.py` removed). |
+| 2026-07-12 | Added **Scope "Previous run" overlay + publication figure export** (implemented via multi-agent workflow, then hand-verified). Overlay: `ScopePlotter` stashes each run's timeline+vectors (`_stash_run`, rotation keyed on timeline object identity; held runs dropped by `reset_held_runs()` from both `DSim.clear_all()` and `deserialize()`); `SignalPlot` gains a "Previous run" checkbox (disabled until a second run exists) drawing dimmed/dashed alpha-66 curves behind the live ones. Figure export: "Export Figure..." button renders a matplotlib (Agg, no pyplot) publication figure via new `src/diablos/core/plotting/publication_figure.py` (serif fonts, Time (s) axis, legend, grid, `step(where='post')` for step traces) to PDF/PNG(300dpi)/SVG; CSV+figure export share `_collect_figure_traces`. Hand-verification caught a workflow bug: success feedback used PyQt5-unavailable `QTimer.singleShot(msec, obj, callback)` overload → every successful export raised and popped a false "Export Failed" dialog (masked in tests by conftest's QMessageBox neutralization); fixed with a button-parented QTimer. Tests: `test_signal_plot.py` (23), `test_scope_plotter_prev_run.py`, `test_publication_figure.py` (10), `tests/integration/test_prev_run_overlay.py` (interpreter+compiled). |
+| 2026-07-11 | Added **Linearized-model export** to LinearizationResultWindow: "Copy as Python" (numpy + python-control snippet), "Copy as MATLAB", and "Save Data..." (.mat via scipy.io / .npz) buttons below the tabs (ok-results only). Formatting/serialization lives Qt-free in `src/diablos/core/analysis/linearization_export.py` (full repr-precision round-trip, `ss()` only when A/B/C non-empty with zero-D synthesis, `tf()` only when num/den non-empty, `import control` omitted when unused). Tests: `tests/unit/test_linearization_export.py` (17) + export-bar tests in `test_linearization_result_window.py` (5). |
+| 2026-07-11 | Added **Export diagram as image**: File > Export > Export as Image... (PNG at 3x, SVG via QSvgGenerator) and Edit > Copy Diagram as Image (clipboard), plus command-palette entries. New `src/diablos/gui/tools/diagram_image_exporter.py` renders the chrome-free content trio (blocks/lines/ports) against the theme background, framed by the true content bounding rect (Bezier wire bows covered via `line.path.boundingRect()`), independent of zoom/pan; selection/hover state suppressed during render and restored in a `finally`. Tests: `tests/modern_ui/test_diagram_image_export.py` (15). |
 | 2026-07-06 | Canvas manager-layer consolidation (first pass): DragResizeManager merged into InteractionManager; duplicate canvas `_paste_blocks` removed (context-menu paste now preserves connections via `ClipboardManager.paste_blocks(pos)`); connection validation moved into ConnectionManager; rect-selection block pass single-sourced in SelectionManager. |
 | 2026-07-05 | Interpreter hot-path cleanup: deduplicated `execution_loop`/`execution_loop_headless` into `DSim._interpreter_step(interactive)`; `SimulationEngine.update_global_list` now O(1) via identity-tracked name index; `max_hier`/`rk45_len`/`rk_counter` became engine property bridges (re-copy blocks in `execution_init`/`run_tuning_simulation` deleted). Repo-wide `ruff format` sweep (414 files) + `ruff format --check` in CI (ruff pinned 0.15.18); E701/E702 ignores retired. |
-| 2026-06-13 | Added **1-D/2-D Lookup Table** + **FromFile** blocks: `blocks/lookup_table.py` (`LookupTable1D` via `interp1d`, `LookupTable2D` via `RegularGridInterpolator`; linear/nearest interp, clip/linear extrapolation; tables parsed with `safe_literal`); `blocks/from_file.py` (`FromFile` source replays CSV/NPZ/MAT/TXT time-series with linear/zoh/nearest interp and hold/loop end-behavior; data cached in `params`, reloaded on `_init_start_`/path change). New shared loader `lib/services/timeseries_loader.py` (`load_timeseries`, `allow_pickle=False`); `data_fit._load_data` refactored to delegate to it (DRY). Both blocks run on the interpreter path. Tests: `test_lookup_table.py` (16), `test_from_file.py` (13), `test_timeseries_loader.py` (10). |
-| 2026-06-13 | Added **Find Operating Point (Trim)** (Analysis menu): `AnalysisController.find_trim()` solves `f(0,y)=0` on the compiled ODE RHS via `Linearizer.find_operating_point`; `modern_ui/widgets/operating_point_window.py` shows the equilibrium state table with copy-to-clipboard (handles no-states / uncompilable cleanly). Synchronous on the UI thread (mirrors Linearize & Analyze). Tests: `test_operating_point_window.py` (5), `test_analysis_controller.py::TestFindTrim` (3). |
+| 2026-06-13 | Added **1-D/2-D Lookup Table** + **FromFile** blocks: `src/diablos/blocks/lookup_table.py` (`LookupTable1D` via `interp1d`, `LookupTable2D` via `RegularGridInterpolator`; linear/nearest interp, clip/linear extrapolation; tables parsed with `safe_literal`); `src/diablos/blocks/from_file.py` (`FromFile` source replays CSV/NPZ/MAT/TXT time-series with linear/zoh/nearest interp and hold/loop end-behavior; data cached in `params`, reloaded on `_init_start_`/path change). New shared loader `src/diablos/core/services/timeseries_loader.py` (`load_timeseries`, `allow_pickle=False`); `data_fit._load_data` refactored to delegate to it (DRY). Both blocks run on the interpreter path. Tests: `test_lookup_table.py` (16), `test_from_file.py` (13), `test_timeseries_loader.py` (10). |
+| 2026-06-13 | Added **Find Operating Point (Trim)** (Analysis menu): `AnalysisController.find_trim()` solves `f(0,y)=0` on the compiled ODE RHS via `Linearizer.find_operating_point`; `src/diablos/gui/widgets/operating_point_window.py` shows the equilibrium state table with copy-to-clipboard (handles no-states / uncompilable cleanly). Synchronous on the UI thread (mirrors Linearize & Analyze). Tests: `test_operating_point_window.py` (5), `test_analysis_controller.py::TestFindTrim` (3). |
 | 2026-06-13 | Added **Step / Impulse response** to Linearize & Analyze: `AnalysisController._assemble` now computes `step_response`/`impulse_response` (scipy.signal) whenever a SISO transfer function is available; `LinearizationResultWindow` gained **Step** and **Impulse** tabs (show a hint when no I/O is designated). Contract extended in both docstrings + `_empty_result`. Tests: `test_analysis_controller.py::TestStepImpulseResponse` (2), `test_linearization_result_window.py` updated (3→5 tabs). |
-| 2026-06-13 | Added **Parameter Sweep (1-D/2-D)** (Analysis > Parameter Sweep...): sweep one or two block parameters across a grid on the headless re-sim path. New `lib/analysis/resim.py` (shared `OUTCOME_METRICS` + `harvest_scope_signals`, extracted from MonteCarlo); `lib/analysis/parameter_sweep.py` (`ParameterSweepRunner`, restores params, cancellable, partial-on-cancel); `modern_ui/widgets/parameter_sweep_worker.py` (QThread), `parameter_sweep_dialog.py` (axis/range pickers), `sweep_result_window.py` (1-D response-family overlay + metric-vs-parameter; 2-D outcome-metric heatmap). 1-D yields per-value traces+metrics; 2-D yields a per-run metric grid. Tests: `test_parameter_sweep.py`, `_worker`, `_dialog`, `test_sweep_result_window.py` (21). MonteCarlo refactored onto `resim` (re-exports `OUTCOME_METRICS`; tests still green). |
-| 2026-06-02 | Added solver selection: `SimulationDialog` (lib/dialogs.py) now offers a solver dropdown (RK45/RK23/DOP853/Radau/BDF/LSODA adaptive + fixed-step RK4/Euler) and rtol/atol fields. Compiled solver (`simulation_engine.py run_compiled_simulation`) dispatches on `solver_method`; new module fn `integrate_fixed_step` does in-house Euler/RK4; stochastic systems still force Euler; unknown method → RK45. Settings persist in `.diablos` (`solver_method`/`rtol`/`atol` via file_service + lib.py save/serialize/deserialize) and surface read-only in the property editor. Tests: `tests/unit/test_solver_selection.py` (19, incl. end-to-end runs across all solvers). |
+| 2026-06-13 | Added **Parameter Sweep (1-D/2-D)** (Analysis > Parameter Sweep...): sweep one or two block parameters across a grid on the headless re-sim path. New `src/diablos/core/analysis/resim.py` (shared `OUTCOME_METRICS` + `harvest_scope_signals`, extracted from MonteCarlo); `src/diablos/core/analysis/parameter_sweep.py` (`ParameterSweepRunner`, restores params, cancellable, partial-on-cancel); `src/diablos/gui/widgets/parameter_sweep_worker.py` (QThread), `parameter_sweep_dialog.py` (axis/range pickers), `sweep_result_window.py` (1-D response-family overlay + metric-vs-parameter; 2-D outcome-metric heatmap). 1-D yields per-value traces+metrics; 2-D yields a per-run metric grid. Tests: `test_parameter_sweep.py`, `_worker`, `_dialog`, `test_sweep_result_window.py` (21). MonteCarlo refactored onto `resim` (re-exports `OUTCOME_METRICS`; tests still green). |
+| 2026-06-02 | Added solver selection: `SimulationDialog` (src/diablos/core/dialogs.py) now offers a solver dropdown (RK45/RK23/DOP853/Radau/BDF/LSODA adaptive + fixed-step RK4/Euler) and rtol/atol fields. Compiled solver (`simulation_engine.py run_compiled_simulation`) dispatches on `solver_method`; new module fn `integrate_fixed_step` does in-house Euler/RK4; stochastic systems still force Euler; unknown method → RK45. Settings persist in `.diablos` (`solver_method`/`rtol`/`atol` via file_service + lib.py save/serialize/deserialize) and surface read-only in the property editor. Tests: `tests/unit/test_solver_selection.py` (19, incl. end-to-end runs across all solvers). |
 | 2026-06-02 | Added Logic blocks: `RelationalOperator` (in1 OP in2), `CompareToConstant` (in OP constant), `LogicalOperator` (AND/OR/NAND/NOR/XOR/NOT, variable inputs). Category "Logic"; output 1.0/0.0 element-wise. Tests: `tests/unit/test_logic_blocks.py` (27). |
-| 2026-06-02 | Added Custom Python Function block (`blocks/function.py`, "Function"): expression of inputs `u[i]`/`u1..` and time `t`, variable input ports (`io_editable='input'`), `safe_expr` sandbox, vector output via list expressions. Tests: `tests/unit/test_function_block.py`, integration chains in `test_simulation_execution.py`. |
-| 2026-02-12 | Added TikZ export feature: File > Export > Export as TikZ... with live preview, standalone/snippet modes, configurable options. New files: `lib/export/tikz_exporter.py`, `modern_ui/widgets/tikz_export_dialog.py`. |
+| 2026-06-02 | Added Custom Python Function block (`src/diablos/blocks/function.py`, "Function"): expression of inputs `u[i]`/`u1..` and time `t`, variable input ports (`io_editable='input'`), `safe_expr` sandbox, vector output via list expressions. Tests: `tests/unit/test_function_block.py`, integration chains in `test_simulation_execution.py`. |
+| 2026-02-12 | Added TikZ export feature: File > Export > Export as TikZ... with live preview, standalone/snippet modes, configurable options. New files: `src/diablos/core/export/tikz_exporter.py`, `src/diablos/gui/widgets/tikz_export_dialog.py`. |
 | 2026-02-11 | Fixed compiled solver execution order bug: state blocks (TranFn, Integrator) now run after algebraic blocks. Fixed cursor visibility in property editor. |
 | 2026-02-06 | Dark mode fixes: invalid theme keys, block icon colors, error panel, canvas renderer. Compact toolbar (icon-only, 20px icons) |
 | 2026-02-05 | Added Feature Ideas section (live tuning, Python function block, TikZ export, data import, linearization, code gen, dark mode, minimap) |

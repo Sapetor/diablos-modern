@@ -19,7 +19,7 @@ def _qt(qapp):
 
 @pytest.fixture
 def editor():
-    from modern_ui.widgets.property_editor import PropertyEditor
+    from diablos.gui.widgets.property_editor import PropertyEditor
 
     return PropertyEditor()
 
@@ -60,11 +60,11 @@ class TestChoicesAndOptions:
 # ---------------------------------------------------------------------------
 
 _ENUM_BLOCKS = [
-    ("blocks.chirp", "ChirpBlock"),
-    ("blocks.wave_generator", "WaveGeneratorBlock"),
-    ("blocks.logical_operator", "LogicalOperatorBlock"),
-    ("blocks.relational_operator", "RelationalOperatorBlock"),
-    ("blocks.compare_to_constant", "CompareToConstantBlock"),
+    ("diablos.blocks.chirp", "ChirpBlock"),
+    ("diablos.blocks.wave_generator", "WaveGeneratorBlock"),
+    ("diablos.blocks.logical_operator", "LogicalOperatorBlock"),
+    ("diablos.blocks.relational_operator", "RelationalOperatorBlock"),
+    ("diablos.blocks.compare_to_constant", "CompareToConstantBlock"),
 ]
 
 

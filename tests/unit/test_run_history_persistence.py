@@ -10,7 +10,7 @@ import json
 import numpy as np
 import pytest
 
-from lib.services.run_history_service import RunHistoryService
+from diablos.core.services.run_history_service import RunHistoryService
 
 
 def _service(path, limit=2):

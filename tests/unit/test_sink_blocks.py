@@ -12,7 +12,7 @@ class TestScopeBlock:
 
     def test_scope_initialization(self):
         """Test scope initializes correctly."""
-        from blocks.scope import ScopeBlock
+        from diablos.blocks.scope import ScopeBlock
 
         block = ScopeBlock()
         params = {"labels": "signal1", "_init_start_": True}
@@ -26,7 +26,7 @@ class TestScopeBlock:
 
     def test_scope_collects_data(self):
         """Test scope collects input data over time."""
-        from blocks.scope import ScopeBlock
+        from diablos.blocks.scope import ScopeBlock
 
         block = ScopeBlock()
         params = {"labels": "test", "_init_start_": True}
@@ -41,7 +41,7 @@ class TestScopeBlock:
 
     def test_scope_vector_input(self):
         """Test scope handles vector inputs."""
-        from blocks.scope import ScopeBlock
+        from diablos.blocks.scope import ScopeBlock
 
         block = ScopeBlock()
         params = {"labels": "default", "_init_start_": True, "_name_": "TestScope"}
@@ -54,7 +54,7 @@ class TestScopeBlock:
 
     def test_scope_default_labels(self):
         """Test scope creates default labels when not specified."""
-        from blocks.scope import ScopeBlock
+        from diablos.blocks.scope import ScopeBlock
 
         block = ScopeBlock()
         params = {"labels": "default", "_init_start_": True, "_name_": "MyScope"}
@@ -65,7 +65,7 @@ class TestScopeBlock:
 
     def test_scope_custom_labels(self):
         """Test scope uses custom comma-separated labels."""
-        from blocks.scope import ScopeBlock
+        from diablos.blocks.scope import ScopeBlock
 
         block = ScopeBlock()
         params = {"labels": "x,y,z", "_init_start_": True}
@@ -77,7 +77,7 @@ class TestScopeBlock:
 
     def test_scope_skip_flag(self):
         """Test scope respects _skip_ flag for intermediate RK45 steps."""
-        from blocks.scope import ScopeBlock
+        from diablos.blocks.scope import ScopeBlock
 
         block = ScopeBlock()
         params = {"labels": "test", "_init_start_": True, "_skip_": True}
@@ -89,7 +89,7 @@ class TestScopeBlock:
 
     def test_scope_has_verify_mode_param(self):
         """Test scope has verify_mode parameter for explicit verification control."""
-        from blocks.scope import ScopeBlock
+        from diablos.blocks.scope import ScopeBlock
 
         block = ScopeBlock()
 
@@ -103,7 +103,7 @@ class TestScopeBlock:
 
     def test_scope_verify_mode_passed_through(self):
         """Test verify_mode is preserved in params during execution."""
-        from blocks.scope import ScopeBlock
+        from diablos.blocks.scope import ScopeBlock
 
         block = ScopeBlock()
         params = {"labels": "error", "verify_mode": "comparison", "_init_start_": True}
@@ -119,7 +119,7 @@ class TestXYGraphBlock:
 
     def test_xygraph_initialization(self):
         """Test XYGraph initializes data storage."""
-        from blocks.xygraph import XYGraphBlock
+        from diablos.blocks.xygraph import XYGraphBlock
 
         block = XYGraphBlock()
         params = {"x_label": "X", "y_label": "Y", "_init_start_": True}
@@ -134,7 +134,7 @@ class TestXYGraphBlock:
 
     def test_xygraph_collects_points(self):
         """Test XYGraph collects X,Y pairs."""
-        from blocks.xygraph import XYGraphBlock
+        from diablos.blocks.xygraph import XYGraphBlock
 
         block = XYGraphBlock()
         params = {"_init_start_": True}
@@ -151,7 +151,7 @@ class TestXYGraphBlock:
 
     def test_xygraph_handles_arrays(self):
         """Test XYGraph extracts first element from array inputs."""
-        from blocks.xygraph import XYGraphBlock
+        from diablos.blocks.xygraph import XYGraphBlock
 
         block = XYGraphBlock()
         params = {"_init_start_": True}
@@ -166,7 +166,7 @@ class TestXYGraphBlock:
 
     def test_xygraph_parametric_curve(self):
         """Test XYGraph for parametric curve (circle)."""
-        from blocks.xygraph import XYGraphBlock
+        from diablos.blocks.xygraph import XYGraphBlock
 
         block = XYGraphBlock()
         params = {"_init_start_": True}
@@ -191,7 +191,7 @@ class TestDisplayBlock:
 
     def test_display_formats_value(self):
         """Test Display formats input value."""
-        from blocks.display import DisplayBlock
+        from diablos.blocks.display import DisplayBlock
 
         block = DisplayBlock()
         params = {"format": "%.2f", "label": "", "_display_value_": "---"}
@@ -202,7 +202,7 @@ class TestDisplayBlock:
 
     def test_display_with_label(self):
         """Test Display adds label prefix."""
-        from blocks.display import DisplayBlock
+        from diablos.blocks.display import DisplayBlock
 
         block = DisplayBlock()
         params = {"format": "%.1f", "label": "Value", "_display_value_": "---"}
@@ -213,7 +213,7 @@ class TestDisplayBlock:
 
     def test_display_array_input(self):
         """Test Display handles array input."""
-        from blocks.display import DisplayBlock
+        from diablos.blocks.display import DisplayBlock
 
         block = DisplayBlock()
         params = {"format": "%.1f", "label": "", "_display_value_": "---"}
@@ -227,7 +227,7 @@ class TestDisplayBlock:
 
     def test_display_long_array(self):
         """Test Display truncates long arrays."""
-        from blocks.display import DisplayBlock
+        from diablos.blocks.display import DisplayBlock
 
         block = DisplayBlock()
         params = {"format": "%.0f", "label": "", "_display_value_": "---"}
@@ -241,7 +241,7 @@ class TestDisplayBlock:
 
     def test_display_negative_value(self):
         """Test Display handles negative values."""
-        from blocks.display import DisplayBlock
+        from diablos.blocks.display import DisplayBlock
 
         block = DisplayBlock()
         params = {"format": "%.2f", "label": "", "_display_value_": "---"}
@@ -252,7 +252,7 @@ class TestDisplayBlock:
 
     def test_display_scientific_notation(self):
         """Test Display with scientific notation format."""
-        from blocks.display import DisplayBlock
+        from diablos.blocks.display import DisplayBlock
 
         block = DisplayBlock()
         params = {"format": "%.2e", "label": "", "_display_value_": "---"}
@@ -264,7 +264,7 @@ class TestDisplayBlock:
 
     def test_display_integer_format(self):
         """Test Display with integer format."""
-        from blocks.display import DisplayBlock
+        from diablos.blocks.display import DisplayBlock
 
         block = DisplayBlock()
         params = {"format": "%d", "label": "", "_display_value_": "---"}
@@ -275,7 +275,7 @@ class TestDisplayBlock:
 
     def test_display_updates_over_time(self):
         """Test Display updates value across multiple executions."""
-        from blocks.display import DisplayBlock
+        from diablos.blocks.display import DisplayBlock
 
         block = DisplayBlock()
         params = {"format": "%.1f", "label": "t", "_display_value_": "---"}

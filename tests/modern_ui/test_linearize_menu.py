@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import QMenu
 
 @pytest.mark.unit
 def test_analysis_menu_and_method_wired(qapp, monkeypatch):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     try:

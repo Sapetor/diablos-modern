@@ -6,7 +6,7 @@ All simulation blocks inherit from the `BaseBlock` abstract class.
 
 Abstract base class for all simulation blocks.
 
-::: blocks.base_block.BaseBlock
+::: diablos.blocks.base_block.BaseBlock
     options:
       show_root_heading: true
       members:
@@ -76,7 +76,7 @@ Output and visualization blocks:
 To create a custom block:
 
 ```python
-from blocks.base_block import BaseBlock
+from diablos.blocks.base_block import BaseBlock
 import numpy as np
 
 class MyCustomBlock(BaseBlock):

@@ -14,9 +14,9 @@ Two behaviours are pinned here:
 import pytest
 from PyQt6.QtCore import QPoint, QRect
 
-from lib.lib import DSim
-from lib.simulation.block import DBlock
-from lib.simulation.connection import DLine
+from diablos.core.lib import DSim
+from diablos.core.simulation.block import DBlock
+from diablos.core.simulation.connection import DLine
 
 pytestmark = pytest.mark.qt
 
@@ -42,7 +42,7 @@ def _make_block(sid, x, y, name):
 
 @pytest.fixture
 def canvas(qapp):
-    from modern_ui.widgets.modern_canvas import ModernCanvas
+    from diablos.gui.widgets.modern_canvas import ModernCanvas
 
     dsim = DSim()
     widget = ModernCanvas(dsim)
@@ -137,7 +137,7 @@ class TestValidatorCrashRejectsConnection:
         a, b, _c, _d, _ab, _cd = _populate(canvas)
         canvas.dsim.line_list.clear()
 
-        import modern_ui.managers.connection_manager as cm
+        import diablos.gui.managers.connection_manager as cm
 
         def boom(blocks, lines):
             raise RuntimeError("validator is broken")

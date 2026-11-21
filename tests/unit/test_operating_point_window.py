@@ -1,4 +1,4 @@
-"""Tests for the OperatingPointWindow (modern_ui/widgets/operating_point_window.py).
+"""Tests for the OperatingPointWindow (src/diablos/gui/widgets/operating_point_window.py).
 
 The window CONSUMES the headless trim result-dict from
 AnalysisController.find_trim and only renders it. These tests build sample
@@ -10,7 +10,7 @@ import pytest
 
 from PyQt6.QtWidgets import QWidget, QTableWidget, QApplication
 
-from modern_ui.widgets.operating_point_window import OperatingPointWindow
+from diablos.gui.widgets.operating_point_window import OperatingPointWindow
 
 
 def _ok_result():

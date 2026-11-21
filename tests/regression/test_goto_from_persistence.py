@@ -34,8 +34,8 @@ import pytest
 @pytest.fixture
 def file_service_with_lines(qapp, tmp_path):
     """Create a FileService backed by a model with Goto/From + virtual line."""
-    from lib.services.file_service import FileService
-    from lib.simulation.connection import DLine
+    from diablos.core.services.file_service import FileService
+    from diablos.core.simulation.connection import DLine
 
     # Minimal model with the relevant attributes.
     blocks = [
@@ -168,8 +168,8 @@ class TestVirtualLineNotPersisted:
 
     def test_subsystem_sub_lines_also_filtered(self, qapp):
         """_serialize_block must filter hidden lines in sub_lines too."""
-        from lib.services.file_service import FileService
-        from lib.simulation.connection import DLine
+        from diablos.core.services.file_service import FileService
+        from diablos.core.simulation.connection import DLine
         from PyQt6.QtCore import QPoint
 
         hidden_sub = DLine(0, "a", 0, "from_inside", 0, [QPoint(0, 0), QPoint(10, 10)], hidden=True)
@@ -230,8 +230,8 @@ class TestLegacyGhostLineMigration:
         dst is a From block.  After load, that line must be hidden=True.
         """
         import json
-        from lib.lib import DSim
-        from lib.workspace import WorkspaceManager
+        from diablos.core.lib import DSim
+        from diablos.core.workspace import WorkspaceManager
 
         # Pre-fix-shaped JSON: virtual line stored as ordinary line.
         legacy = {
@@ -373,8 +373,8 @@ class TestLegacyGhostLineMigration:
         re-load — the ghost line must be gone.
         """
         import json
-        from lib.lib import DSim
-        from lib.workspace import WorkspaceManager
+        from diablos.core.lib import DSim
+        from diablos.core.workspace import WorkspaceManager
 
         legacy = {
             "sim_data": {

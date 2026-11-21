@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from blocks.random_source import RandomSourceBlock
+from diablos.blocks.random_source import RandomSourceBlock
 
 
 def _fresh_params(**overrides):

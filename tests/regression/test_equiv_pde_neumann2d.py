@@ -3,7 +3,7 @@
 This pins the flagged corner case from ``tasks/todo.md``: a 2D heat-equation
 plate with Neumann (insulated) boundaries on all four edges, which is the one
 configuration where the compiled kernel applies its special corner-derivative
-fill (``lib/engine/compiler_kernels/pde.py:_fill_neumann_corners``). A sinusoidal
+fill (``src/diablos/core/engine/compiler_kernels/pde.py:_fill_neumann_corners``). A sinusoidal
 initial field diffuses under all-Neumann BCs, so both the average and the peak
 temperature evolve over time -- a meaningful trajectory to compare.
 
@@ -181,8 +181,8 @@ def _scope_traces(dsim):
 
 def _run(filepath, fast):
     """Load ``filepath`` and run it once; return {scope_name: trace}."""
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     WorkspaceManager._instance = None
     dsim = DSim()
@@ -224,7 +224,7 @@ def test_compiled_matches_interpreted(both_paths):
 
     Loose tolerances (rtol=1e-2, atol=1e-3) absorb the RK45-vs-fixed-step scheme
     difference. Both paths use the single-sourced spatial operator
-    (lib.engine.pde_ops.heat_rhs_2d); they differ only in the time integrator,
+    (diablos.core.engine.pde_ops.heat_rhs_2d); they differ only in the time integrator,
     and the interpreter's first sample is the unstepped initial condition so the
     two are sample-aligned.
     """
@@ -247,7 +247,7 @@ def test_divergence_characterization(both_paths):
     # Interpreter now evolves: the peak temperature decays like the compiled one.
     assert i[-1, 1] < i[0, 1] - 0.1, (
         "interpreter 2D field is not decaying -- the interpreter integration "
-        "path (blocks/pde/heat_equation_2d.py _interp_step) may have regressed"
+        "path (src/diablos/blocks/pde/heat_equation_2d.py _interp_step) may have regressed"
     )
 
     # Compiled: same qualitative decay.

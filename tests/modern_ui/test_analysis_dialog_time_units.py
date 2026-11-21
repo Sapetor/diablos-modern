@@ -27,7 +27,7 @@ class _StubDSim:
 @pytest.mark.unit
 class TestAnalysisDialogTimeUnits:
     def test_monte_carlo_time_fields_have_seconds_suffix(self):
-        from modern_ui.widgets.monte_carlo_dialog import MonteCarloDialog
+        from diablos.gui.widgets.monte_carlo_dialog import MonteCarloDialog
 
         dialog = MonteCarloDialog(_StubDSim())
 
@@ -42,7 +42,7 @@ class TestAnalysisDialogTimeUnits:
         assert dialog.master_seed_spin.suffix() == ""
 
     def test_parameter_sweep_time_fields_have_seconds_suffix(self):
-        from modern_ui.widgets.parameter_sweep_dialog import ParameterSweepDialog
+        from diablos.gui.widgets.parameter_sweep_dialog import ParameterSweepDialog
 
         dialog = ParameterSweepDialog(_StubDSim())
 

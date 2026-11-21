@@ -1,0 +1,336 @@
+"""
+Rendering Manager for DiaBloS Modern Canvas.
+Orchestrates rendering of blocks, connections, and visual indicators.
+"""
+
+import logging
+from contextlib import contextmanager
+from typing import List, Any, TYPE_CHECKING
+from PyQt6.QtCore import QRect, QPoint, Qt
+from PyQt6.QtGui import QPainter, QPen, QColor
+from PyQt6.QtWidgets import QToolTip
+
+from diablos.core.i18n import tr
+from diablos.gui.renderers.sample_time_colors import wire_sample_times
+from diablos.gui.widgets.canvas_state import ValidationState
+
+if TYPE_CHECKING:
+    from diablos.gui.widgets.modern_canvas import ModernCanvas
+
+logger = logging.getLogger(__name__)
+
+
+class RenderingManager:
+    """
+    Manages rendering orchestration and visual feedback on the canvas.
+    Extracted from ModernCanvas to reduce file size and improve maintainability.
+    """
+
+    def __init__(self, canvas: "ModernCanvas"):
+        self.canvas = canvas
+        self.dsim = canvas.dsim
+        # When True, hover decoration is suppressed for the duration of a draw
+        # pass (see decorations_suppressed) without mutating interaction state.
+        self._suppress_hover = False
+        # Rendering owns the diagram-validation state because it also computes
+        # it (run_validation runs the validator); callers reach it as
+        # ``canvas.rendering_manager.validation_state``.
+        self.validation_state = ValidationState()
+
+    # ==================== Block Rendering ====================
+
+    def render_content(self, painter: QPainter) -> None:
+        """Render the diagram content trio in canonical order.
+
+        Blocks (without ports) -> lines -> ports on top, so ports stay visible
+        over connection lines. Single source for both the canvas ``paintEvent``
+        and offscreen exporters, so exported output can never drift from the
+        on-screen look.
+        """
+        self.render_blocks(painter, draw_ports=False)
+        self.render_lines(painter)
+        self.render_ports(painter)
+
+    @contextmanager
+    def decorations_suppressed(self):
+        """Temporarily clear selection/hover styling consumed by the content
+        trio, so :meth:`render_content` draws bare diagram content (used by
+        image export). Restores the exact prior state on exit, even on error --
+        it never mutates the user's diagram permanently."""
+        blocks = list(self.dsim.blocks_list)
+        lines = list(self.dsim.line_list)
+        saved_blocks = [(b, b.selected) for b in blocks]
+        saved_lines = [(line, line.selected, line.selected_segment) for line in lines]
+        # Suppress hover decoration via a draw-time flag rather than mutating the
+        # shared interaction state: _hovered_port_for returns None while set, so
+        # the content trio's draw calls receive hovered_port=None all the same.
+        self._suppress_hover = True
+        try:
+            for b in blocks:
+                b.selected = False
+            for line in lines:
+                line.selected = False
+                line.selected_segment = -1
+            yield
+        finally:
+            for b, sel in saved_blocks:
+                b.selected = sel
+            for line, sel, seg in saved_lines:
+                line.selected = sel
+                line.selected_segment = seg
+            self._suppress_hover = False
+
+    def render_blocks(self, painter: QPainter, draw_ports: bool = True) -> None:
+        """Render all blocks to canvas."""
+        if painter is None:
+            return
+        for block in self.dsim.blocks_list:
+            hovered_port = self._hovered_port_for(block)
+            self.canvas.block_renderer.draw_block(
+                block, painter, draw_ports=draw_ports, hovered_port=hovered_port
+            )
+            if block.selected:
+                self.canvas.block_renderer.draw_resize_handles(block, painter)
+
+    def render_lines(self, painter: QPainter) -> None:
+        """Render all connection lines."""
+        if painter is None:
+            return
+        renderer = self.canvas.connection_renderer
+        rates = wire_sample_times(self.dsim.blocks_list, self.dsim.line_list)
+        # Wires from one output port are drawn as a group: all their crossing
+        # halos first, then their strokes, so siblings that run together and
+        # split never cut gaps into each other (they still cut other wires).
+        groups = {}
+        for line in self.dsim.line_list:
+            if not getattr(line, "hidden", False):
+                groups.setdefault((line.srcblock, line.srcport), []).append(line)
+        for group in groups.values():
+            for line in group:
+                renderer.draw_halo(line, painter)
+            for line in group:
+                renderer.draw_line(line, painter, sample_time=rates.get(id(line), -1.0), halo=False)
+        renderer.draw_junctions(painter, renderer.junction_points(self.dsim.line_list))
+
+    def render_ports(self, painter: QPainter) -> None:
+        """Render all ports on top of lines for better visibility."""
+        for block in self.dsim.blocks_list:
+            hovered_port = self._hovered_port_for(block)
+            self.canvas.block_renderer.draw_ports(block, painter, hovered_port)
+            self.canvas.block_renderer.draw_port_labels(block, painter)
+
+    def _hovered_port_for(self, block):
+        """Return the (port_idx, is_output) hovered on `block`, or None.
+
+        The canvas tracks hover as a (block, port_idx, is_output) triple shared
+        across all blocks; the renderer only needs to know which of *this*
+        block's ports (if any) is hovered, so reduce it to the per-block pair.
+        """
+        if self._suppress_hover:
+            return None
+        hovered = self.canvas.interaction_manager.hover.port
+        if not hovered:
+            return None
+        hover_block, port_idx, is_output = hovered
+        if hover_block is not block:
+            return None
+        return (port_idx, is_output)
+
+    # ==================== Validation Visualization ====================
+
+    def run_validation(self) -> List[Any]:
+        """Run diagram validation and update error visualization."""
+        try:
+            from diablos.core.diagram_validator import DiagramValidator
+
+            validator = DiagramValidator(self.dsim)
+            self.validation_state.errors = validator.validate()
+
+            # Update sets of blocks with errors/warnings
+            self.validation_state.blocks_with_errors = validator.get_blocks_with_errors()
+            self.validation_state.blocks_with_warnings = validator.get_blocks_with_warnings()
+
+            # Enable error visualization
+            self.validation_state.show_errors = True
+
+            # Trigger repaint
+            self.canvas.update()
+
+            logger.info(f"Validation complete: {len(self.validation_state.errors)} issues found")
+            return self.validation_state.errors
+
+        except Exception as e:
+            logger.error(f"Error running validation: {str(e)}")
+            return []
+
+    def clear_validation(self) -> None:
+        """Clear validation errors and hide indicators."""
+        self.validation_state.clear()
+        self.validation_state.show_errors = False  # clear() deliberately leaves this
+        self.canvas.update()
+
+    def draw_block_error_indicator(
+        self, painter: QPainter, block: Any, is_error: bool = True
+    ) -> None:
+        """Draw error/warning indicator on a specific block."""
+        try:
+            # Choose color based on severity
+            if is_error:
+                indicator_color = QColor(220, 53, 69)  # Red for errors
+                border_width = 3
+            else:
+                indicator_color = QColor(255, 193, 7)  # Yellow/orange for warnings
+                border_width = 2
+
+            # Draw pulsing border around block
+            painter.setPen(QPen(indicator_color, border_width, Qt.PenStyle.SolidLine))
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+
+            # Draw outline around block
+            padding = 4
+            error_rect = QRect(
+                block.left - padding,
+                block.top - padding,
+                block.width + 2 * padding,
+                block.height + 2 * padding,
+            )
+            painter.drawRoundedRect(error_rect, 10, 10)
+
+            # Draw error/warning icon in top-right corner
+            icon_size = 16
+            icon_x = block.left + block.width - icon_size - 2
+            icon_y = block.top + 2
+
+            # Draw icon background circle
+            icon_bg = QColor(indicator_color)
+            icon_bg.setAlpha(200)
+            painter.setBrush(icon_bg)
+            painter.setPen(QPen(QColor(255, 255, 255), 1))
+            painter.drawEllipse(icon_x, icon_y, icon_size, icon_size)
+
+            # Draw exclamation mark
+            painter.setPen(QPen(QColor(255, 255, 255), 2))
+            # Vertical line
+            painter.drawLine(
+                icon_x + icon_size // 2, icon_y + 3, icon_x + icon_size // 2, icon_y + icon_size - 6
+            )
+            # Dot
+            painter.drawPoint(icon_x + icon_size // 2, icon_y + icon_size - 3)
+
+        except Exception as e:
+            logger.error(f"Error drawing block error indicator: {str(e)}")
+
+    # ==================== Hover State Management ====================
+
+    def update_hover_states(self, pos: QPoint) -> None:
+        """Update hover states for blocks, ports, and connections."""
+        needs_repaint = False
+
+        # Check for resize handles on selected blocks (highest priority)
+        resize_handle = None
+        for block in self.dsim.blocks_list:
+            if block.selected:
+                handle = self.canvas.block_renderer.get_resize_handle_at(block, pos)
+                if handle:
+                    resize_handle = handle
+                    self.set_resize_cursor(handle)
+                    break
+
+        # Initialize variables
+        new_hovered_port = None
+
+        if not resize_handle:
+            # Check for hovered port
+            for block in self.dsim.blocks_list:
+                # Check output ports
+                for i, port_pos in enumerate(block.out_coords):
+                    if self.point_near_port(pos, port_pos):
+                        new_hovered_port = (block, i, True)  # True = output port
+                        break
+                # Check input ports
+                if not new_hovered_port:
+                    for i, port_pos in enumerate(block.in_coords):
+                        if self.point_near_port(pos, port_pos):
+                            new_hovered_port = (block, i, False)  # False = input port
+                            break
+                if new_hovered_port:
+                    break
+
+            if new_hovered_port != self.canvas.interaction_manager.hover.port:
+                self.canvas.interaction_manager.set_hovered_port(new_hovered_port)
+                needs_repaint = True
+
+                # Show tooltip for hovered port
+                if new_hovered_port:
+                    block, port_idx, is_output = new_hovered_port
+                    input_names, output_names = block.get_port_names()
+                    if is_output and port_idx < len(output_names):
+                        port_name = output_names[port_idx]
+                        tooltip = tr("Output: {name}", name=port_name)
+                    elif not is_output and port_idx < len(input_names):
+                        port_name = input_names[port_idx]
+                        tooltip = tr("Input: {name}", name=port_name)
+                    else:
+                        tooltip = tr("Port {index}", index=port_idx)
+
+                    # Include block documentation excerpt if available
+                    if block.doc:
+                        doc_lines = block.doc.split("\n")
+                        short_doc = (
+                            doc_lines[0][:60] + "..." if len(doc_lines[0]) > 60 else doc_lines[0]
+                        )
+                        tooltip = f"{tooltip}\n{short_doc}"
+
+                    QToolTip.showText(self.canvas.mapToGlobal(pos), tooltip, self.canvas)
+                else:
+                    QToolTip.hideText()
+
+            # Reset cursor if not over resize handle or port
+            if not new_hovered_port:
+                self.canvas.setCursor(Qt.CursorShape.ArrowCursor)
+
+        # Check for hovered block (if no port is hovered)
+        hover = self.canvas.interaction_manager.hover
+        if not new_hovered_port:
+            new_hovered_block = self.canvas._get_clicked_block(pos)
+            if new_hovered_block != hover.block:
+                hover.block = new_hovered_block
+                needs_repaint = True
+        else:
+            if hover.block is not None:
+                hover.block = None
+                needs_repaint = True
+
+        # Check for hovered line (if no block/port is hovered)
+        if not new_hovered_port and not hover.block:
+            line_result, _ = self.canvas._get_clicked_line(pos)
+            if line_result != hover.line:
+                hover.line = line_result
+                needs_repaint = True
+        else:
+            if hover.line is not None:
+                hover.line = None
+                needs_repaint = True
+
+        if needs_repaint:
+            self.canvas.update()
+
+    def point_near_port(self, point: QPoint, port_pos: QPoint, threshold: int = 12) -> bool:
+        """Check if a point is near a port position."""
+        dx = point.x() - port_pos.x()
+        dy = point.y() - port_pos.y()
+        return (dx * dx + dy * dy) < (threshold * threshold)
+
+    def set_resize_cursor(self, handle: str) -> None:
+        """Set the appropriate cursor for a resize handle."""
+        cursor_map = {
+            "top_left": Qt.CursorShape.SizeFDiagCursor,
+            "top_right": Qt.CursorShape.SizeBDiagCursor,
+            "bottom_left": Qt.CursorShape.SizeBDiagCursor,
+            "bottom_right": Qt.CursorShape.SizeFDiagCursor,
+            "top": Qt.CursorShape.SizeVerCursor,
+            "bottom": Qt.CursorShape.SizeVerCursor,
+            "left": Qt.CursorShape.SizeHorCursor,
+            "right": Qt.CursorShape.SizeHorCursor,
+        }
+        self.canvas.setCursor(cursor_map.get(handle, Qt.CursorShape.ArrowCursor))

@@ -11,8 +11,8 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from lib.analysis.analyzers.base_analyzer import BaseAnalyzer
-from lib.workspace import Workspace
+from diablos.core.analysis.analyzers.base_analyzer import BaseAnalyzer
+from diablos.core.workspace import Workspace
 from tests.unit.test_analyzer_subsystem_model import _io_ports, _primitive, _subsystem
 
 
@@ -42,7 +42,7 @@ class TestWorkspaceParamsInAnalysis:
         np.testing.assert_allclose(b[0], [9.0])
 
     def test_gain_variable_inside_a_subsystem_chain(self):
-        from lib.simulation.connection import DLine
+        from diablos.core.simulation.connection import DLine
 
         inport, outport = _io_ports()
         gain = _primitive("Gain", "Gain1", 3, 1, 1, {"gain": "K"})

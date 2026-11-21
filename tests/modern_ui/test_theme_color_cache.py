@@ -15,7 +15,7 @@ Two properties have to hold:
 import pytest
 from PyQt6.QtGui import QFont
 
-from lib.theming.theme_manager import (
+from diablos.core.theming.theme_manager import (
     DEFAULT_PALETTE,
     ThemeManager,
     ThemeType,

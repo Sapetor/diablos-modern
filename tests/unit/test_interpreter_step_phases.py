@@ -1,4 +1,4 @@
-"""Unit tests for the phases of ``DSim._interpreter_step`` (lib/lib.py).
+"""Unit tests for the phases of ``DSim._interpreter_step`` (src/diablos/core/lib.py).
 
 The step is a fixed sequence over small methods: ``_advance_clock``,
 ``_publish_memory_outputs``, ``_run_hierarchy_passes`` /
@@ -14,7 +14,7 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
-from lib.lib import DSim
+from diablos.core.lib import DSim
 
 
 def _dsim(rk45=False, sim_dt=0.1, execution_time=1.0, blocks=()):

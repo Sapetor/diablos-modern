@@ -17,8 +17,8 @@ def _qt(qapp):
 @pytest.fixture
 def palette():
     try:
-        from lib.lib import DSim
-        from modern_ui.widgets.modern_palette import ModernBlockPalette
+        from diablos.core.lib import DSim
+        from diablos.gui.widgets.modern_palette import ModernBlockPalette
 
         dsim = DSim()
         init = getattr(dsim, "menu_blocks_init", None)
@@ -34,7 +34,7 @@ def palette():
 
 
 def test_row_activate_emits_palette_signal_with_block(palette):
-    from modern_ui.widgets.modern_palette import CompactBlockRow
+    from diablos.gui.widgets.modern_palette import CompactBlockRow
 
     rows = palette.findChildren(CompactBlockRow)
     assert rows
@@ -52,7 +52,7 @@ def test_drag_path_does_not_emit_palette_add_signal(palette, monkeypatch):
     # The Enter signal must be distinct from drag-and-drop, or wiring it to the
     # add-block path would double-add on every drag. Starting a drag must NOT
     # emit block_drag_started.
-    from modern_ui.widgets.modern_palette import CompactBlockRow
+    from diablos.gui.widgets.modern_palette import CompactBlockRow
 
     rows = palette.findChildren(CompactBlockRow)
     assert rows

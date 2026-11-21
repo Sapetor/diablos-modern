@@ -22,9 +22,9 @@ EXPECTED_STEADY_STATE = 20.0 * 800.0 / (800.0 + 50.0)
 
 
 def _run(use_fast_solver):
-    from lib.analysis.resim import harvest_scope_signals
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.analysis.resim import harvest_scope_signals
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     previous = WorkspaceManager._instance
     WorkspaceManager._instance = None
@@ -52,7 +52,7 @@ def test_example_files_exist():
 @pytest.mark.integration
 def test_the_shipped_library_block_matches_the_demo(qapp):
     """Pointing DIABLOS_LIBRARY_PATH at examples/library exposes 'Vehicle'."""
-    from lib.library import read_library_file
+    from diablos.core.library import read_library_file
 
     lib_block = read_library_file(str(LIBRARY_DIR / "vehicle.diablos"))
     assert lib_block is not None

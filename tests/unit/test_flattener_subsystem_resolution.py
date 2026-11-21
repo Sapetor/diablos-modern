@@ -16,9 +16,9 @@ older .diablos files.
 import pytest
 from PyQt6.QtCore import QRect
 
-from lib.engine.flattener import Flattener
-from lib.simulation.block import DBlock
-from lib.simulation.connection import DLine
+from diablos.core.engine.flattener import Flattener
+from diablos.core.simulation.block import DBlock
+from diablos.core.simulation.connection import DLine
 
 
 def _make_gain(name, sid):
@@ -89,9 +89,9 @@ class TestFlattenerSubsystemResolution:
         correctly. This exercises the fallback path that historically
         worked and MUST keep working for legacy .diablos files.
         """
-        from blocks.subsystem import Subsystem
-        from blocks.inport import Inport
-        from blocks.outport import Outport
+        from diablos.blocks.subsystem import Subsystem
+        from diablos.blocks.inport import Inport
+        from diablos.blocks.outport import Outport
 
         # Build subsystem: In1 -> Gain1 -> Out1
         subsys = Subsystem()
@@ -150,9 +150,9 @@ class TestFlattenerSubsystemResolution:
         when ALL resolution paths (ports_map + conventional name +
         case-insensitive scan) fail.
         """
-        from blocks.subsystem import Subsystem
-        from blocks.inport import Inport
-        from blocks.outport import Outport
+        from diablos.blocks.subsystem import Subsystem
+        from diablos.blocks.inport import Inport
+        from diablos.blocks.outport import Outport
 
         # Build subsystem: In1 -> Gain1 -> y_out
         # (Outport has a non-convention name and no ports_map entry.)
@@ -200,9 +200,9 @@ class TestFlattenerSubsystemResolution:
         still resolve — documenting the authoritative-map path so future
         callers (UI builders) can rely on it.
         """
-        from blocks.subsystem import Subsystem
-        from blocks.inport import Inport
-        from blocks.outport import Outport
+        from diablos.blocks.subsystem import Subsystem
+        from diablos.blocks.inport import Inport
+        from diablos.blocks.outport import Outport
 
         subsys = Subsystem()
         subsys.name = "Sub1"

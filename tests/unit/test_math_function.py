@@ -9,7 +9,7 @@ falsified the whole run instead of stopping it.
 import numpy as np
 import pytest
 
-from blocks.math_function import MathFunctionBlock
+from diablos.blocks.math_function import MathFunctionBlock
 
 
 @pytest.mark.unit

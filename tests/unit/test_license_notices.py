@@ -79,7 +79,7 @@ class TestAboutDialogCarriesTheNotice:
     """LGPL v3 s4(c) wants the Qt notice among the notices shown at run time."""
 
     def test_about_text_names_the_licences_and_the_file(self):
-        source = (REPO_ROOT / "modern_ui/builders/menu_builder.py").read_text()
+        source = (REPO_ROOT / "src/diablos/gui/builders/menu_builder.py").read_text()
         about = source[source.index("def _show_about") :]
         about = about[: about.index("\n    def ", 1)] if "\n    def " in about[1:] else about
         for expected in ("MIT", "LGPL v3", "GPL v3", "THIRD_PARTY_LICENSES.md"):

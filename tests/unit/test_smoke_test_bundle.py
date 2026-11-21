@@ -67,7 +67,7 @@ class TestSmokeScriptChecks:
 
 @pytest.mark.unit
 def test_self_test_rejects_nan_output(monkeypatch):
-    from lib import api, self_test
+    from diablos.core import api, self_test
 
     class _Result:
         time = np.linspace(0.0, 10.0, 201)

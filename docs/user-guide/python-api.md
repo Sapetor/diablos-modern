@@ -1,6 +1,6 @@
 # Python API
 
-`lib.api` runs diagrams from plain Python, with no window. Load a `.diablos`
+`diablos.core.api` runs diagrams from plain Python, with no window. Load a `.diablos`
 file or build a diagram in code, change parameters, simulate, and get every
 Scope signal back as a numpy array, together with the solver's diagnostics.
 The Monte Carlo, parameter sweep, trim and linearization tools from the
@@ -12,7 +12,7 @@ root (or put the root on `sys.path`).
 ## Load and run
 
 ```python
-from lib.api import load
+from diablos.core.api import load
 
 sim = load("examples/first_order_step_response.diablos")
 sim.blocks                         # ['step0', 'tranfn1', 'scope2']
@@ -58,8 +58,8 @@ sim.variables                    # {"K": 2.0}
 ## Build a diagram in code
 
 ```python
-from lib.api import from_builder
-from lib.diagram_builder import DiagramBuilder
+from diablos.core.api import from_builder
+from diablos.core.diagram_builder import DiagramBuilder
 
 b = DiagramBuilder(sim_time=2.0, sim_dt=0.01)
 u = b.add_block("Step", 0, 0, name="u", params={"value": 1.0, "delay": 0.0})
@@ -122,7 +122,7 @@ bands, which need every trace. The result dictionaries are the ones the Analysis
 | Raised | When |
 |---|---|
 | `FileNotFoundError` | `load` of a missing file |
-| `lib.api.SimulationError` | the diagram will not load, or a run fails (the message says why) |
+| `diablos.core.api.SimulationError` | the diagram will not load, or a run fails (the message says why) |
 | `KeyError` | an unknown block, parameter or signal name |
 | `ValueError` | bad arguments, or `linearize` on a diagram that does not compile or has no continuous states |
 

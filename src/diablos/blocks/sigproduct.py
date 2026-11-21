@@ -1,0 +1,71 @@
+import numpy as np
+from diablos.blocks.base_block import BaseBlock
+
+
+class SigProductBlock(BaseBlock):
+    """
+    A block that calculates the element-wise product of its inputs.
+    """
+
+    @property
+    def block_name(self):
+        return "SgProd"
+
+    @property
+    def display_name(self):
+        return "Signal Product"
+
+    @property
+    def category(self):
+        return "Math"
+
+    @property
+    def color(self):
+        return "lime_green"
+
+    @property
+    def doc(self):
+        return (
+            "Computes the product of input signals."
+            "\n\nOperation:"
+            "\ny = u1 * u2 * ... * un (Element-wise multiplication)."
+            "\n\nParameters:"
+            "\n- Inputs: Number of input ports to multiply."
+            "\n\nUsage:"
+            "\nUsed for modulation, mixing, or non-linear scaling."
+        )
+
+    @property
+    def params(self):
+        return {}
+
+    @property
+    def inputs(self):
+        return [{"name": "in1", "type": "any"}, {"name": "in2", "type": "any"}]
+
+    @property
+    def outputs(self):
+        return [{"name": "out", "type": "any"}]
+
+    def draw_icon(self, block_rect):
+        """Draw multiplication X symbol in normalized 0-1 coordinates."""
+        from diablos.core.icon_path import IconPath
+
+        path = IconPath()
+        path.moveTo(0.2, 0.2)
+        path.lineTo(0.8, 0.8)
+        path.moveTo(0.2, 0.8)
+        path.lineTo(0.8, 0.2)
+        return path
+
+    def execute(self, time, inputs, params, **kwargs):
+        try:
+            mult = 1.0
+            for input_value in inputs.values():
+                mult = mult * np.atleast_1d(np.array(input_value, dtype=float))
+            return {0: mult}
+        except (ValueError, TypeError) as e:
+            return {
+                "E": True,
+                "error": f"Invalid input type in sigproduct block. Expected numeric. Error: {e}",
+            }

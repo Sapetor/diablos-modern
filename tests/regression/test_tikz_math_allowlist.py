@@ -10,7 +10,7 @@ lost -- the exporters fall back to escaping them as text.
 
 import pytest
 
-from lib.export.tex_safety import (
+from diablos.core.export.tex_safety import (
     SAFE_MATH_COMMANDS,
     SAFE_MATH_ENVIRONMENTS,
     math_body_is_safe,

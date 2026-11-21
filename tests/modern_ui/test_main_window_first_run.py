@@ -23,8 +23,8 @@ Run with:
 import pytest
 from PyQt6.QtCore import QSettings
 
-import modern_ui.main_window as main_window
-from modern_ui.main_window import FIRST_RUN_WELCOME_MESSAGE
+import diablos.gui.main_window as main_window
+from diablos.gui.main_window import FIRST_RUN_WELCOME_MESSAGE
 
 
 @pytest.fixture(autouse=True)
@@ -35,7 +35,7 @@ def _qt(qapp):
 
 @pytest.fixture(scope="module")
 def window(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     yield w

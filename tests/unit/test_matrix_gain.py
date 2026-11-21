@@ -9,7 +9,7 @@ class TestMatrixGainBlock:
     """Tests for standalone MatrixGain block."""
 
     def test_block_properties(self):
-        from blocks.matrix_gain import MatrixGainBlock
+        from diablos.blocks.matrix_gain import MatrixGainBlock
 
         block = MatrixGainBlock()
         assert block.block_name == "MatrixGain"
@@ -19,7 +19,7 @@ class TestMatrixGainBlock:
 
     def test_scalar_gain_string(self):
         """String '2.5' parsed as scalar gain."""
-        from blocks.matrix_gain import MatrixGainBlock
+        from diablos.blocks.matrix_gain import MatrixGainBlock
 
         block = MatrixGainBlock()
         params = {"gain": "2.5"}
@@ -28,7 +28,7 @@ class TestMatrixGainBlock:
 
     def test_vector_gain_string(self):
         """String '[2, 3]' parsed as element-wise vector gain."""
-        from blocks.matrix_gain import MatrixGainBlock
+        from diablos.blocks.matrix_gain import MatrixGainBlock
 
         block = MatrixGainBlock()
         params = {"gain": "[2, 3]"}
@@ -37,7 +37,7 @@ class TestMatrixGainBlock:
 
     def test_matrix_gain_string(self):
         """String '[[1, 2], [3, 4]]' parsed as matrix gain (K @ u)."""
-        from blocks.matrix_gain import MatrixGainBlock
+        from diablos.blocks.matrix_gain import MatrixGainBlock
 
         block = MatrixGainBlock()
         params = {"gain": "[[1, 2], [3, 4]]"}
@@ -46,7 +46,7 @@ class TestMatrixGainBlock:
 
     def test_numeric_gain(self):
         """Direct numeric value (already resolved by workspace)."""
-        from blocks.matrix_gain import MatrixGainBlock
+        from diablos.blocks.matrix_gain import MatrixGainBlock
 
         block = MatrixGainBlock()
         params = {"gain": 3.0}
@@ -55,7 +55,7 @@ class TestMatrixGainBlock:
 
     def test_numeric_list_gain(self):
         """Already-resolved list (from workspace)."""
-        from blocks.matrix_gain import MatrixGainBlock
+        from diablos.blocks.matrix_gain import MatrixGainBlock
 
         block = MatrixGainBlock()
         params = {"gain": [[1, 0], [0, 2]]}
@@ -64,8 +64,8 @@ class TestMatrixGainBlock:
 
     def test_workspace_variable_resolution(self):
         """Workspace variable name resolves to matrix at sim time."""
-        from blocks.matrix_gain import MatrixGainBlock
-        from lib.workspace import WorkspaceManager
+        from diablos.blocks.matrix_gain import MatrixGainBlock
+        from diablos.core.workspace import WorkspaceManager
 
         # Set up workspace
         wm = WorkspaceManager()
@@ -84,7 +84,7 @@ class TestMatrixGainBlock:
 
     def test_default_is_string(self):
         """Default gain is a string so property editor uses QLineEdit."""
-        from blocks.matrix_gain import MatrixGainBlock
+        from diablos.blocks.matrix_gain import MatrixGainBlock
 
         block = MatrixGainBlock()
         meta = block.params["gain"]
@@ -92,7 +92,7 @@ class TestMatrixGainBlock:
 
     def test_dimension_mismatch_pads(self):
         """Matrix with more columns than input length pads with zeros."""
-        from blocks.matrix_gain import MatrixGainBlock
+        from diablos.blocks.matrix_gain import MatrixGainBlock
 
         block = MatrixGainBlock()
         params = {"gain": "[[1, 2, 3]]"}
@@ -104,9 +104,9 @@ class TestMatrixGainBlock:
         """MatrixGain works in compiled solver with scalar string gain."""
         from PyQt6.QtCore import QRect, QPoint
         from PyQt6.QtGui import QColor
-        from lib.simulation.block import DBlock
-        from lib.simulation.connection import DLine
-        from lib.engine.system_compiler import SystemCompiler
+        from diablos.core.simulation.block import DBlock
+        from diablos.core.simulation.connection import DLine
+        from diablos.core.engine.system_compiler import SystemCompiler
         from scipy.integrate import solve_ivp
 
         blocks = [

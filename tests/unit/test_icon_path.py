@@ -1,4 +1,4 @@
-"""Block icons are toolkit-neutral IconPaths (lib/icon_path.py).
+"""Block icons are toolkit-neutral IconPaths (src/diablos/core/icon_path.py).
 
 Every block's draw_icon used to import PyQt6's QPainterPath, so the block
 library needed Qt to describe its own icons. It now records the same calls in
@@ -12,7 +12,7 @@ import pytest
 from PyQt6.QtCore import QRect
 from PyQt6.QtGui import QPainterPath
 
-from lib.icon_path import IconPath, to_qpainterpath
+from diablos.core.icon_path import IconPath, to_qpainterpath
 
 pytestmark = pytest.mark.unit
 
@@ -79,7 +79,7 @@ def test_user_block_icons_are_not_shared_between_instances(qapp):
     read instance state, so two instances must keep their own icons."""
     from types import SimpleNamespace
 
-    from modern_ui.renderers.block_renderer import BlockRenderer
+    from diablos.gui.renderers.block_renderer import BlockRenderer
 
     class _Stateful:
         def __init__(self, n):
@@ -116,7 +116,7 @@ def test_renderer_draws_a_user_block_that_still_returns_qpainterpath(qapp):
     """Third-party blocks written before IconPath keep their icons."""
     from types import SimpleNamespace
 
-    from modern_ui.renderers.block_renderer import BlockRenderer
+    from diablos.gui.renderers.block_renderer import BlockRenderer
 
     class _OldStyle:
         def draw_icon(self, rect):
@@ -193,28 +193,28 @@ def test_block_library_imports_no_pyqt6():
     assert offenders == {}
 
 
-# lib/qt_types.py is the one bridge allowed to import PyQt6 eagerly.
+# src/diablos/core/qt_types.py is the one bridge allowed to import PyQt6 eagerly.
 ENGINE_MODULES = [
-    "lib/lib.py",
-    "lib/icon_path.py",
-    "lib/cli.py",
-    "lib/api.py",
-    "lib/simulation/block.py",
-    "lib/simulation/connection.py",
-    "lib/simulation/menu_block.py",
-    "lib/simulation/wire_router.py",
-    "lib/models/simulation_model.py",
-    "lib/managers/subsystem_manager.py",
-    "lib/services/file_service.py",
-    "lib/plotting/__init__.py",
-    "lib/plotting/scope_plotter.py",
-    "lib/plotting/pyqtgraph_scope_mixin.py",
+    "src/diablos/core/lib.py",
+    "src/diablos/core/icon_path.py",
+    "src/diablos/core/cli.py",
+    "src/diablos/core/api.py",
+    "src/diablos/core/simulation/block.py",
+    "src/diablos/core/simulation/connection.py",
+    "src/diablos/core/simulation/menu_block.py",
+    "src/diablos/core/simulation/wire_router.py",
+    "src/diablos/core/models/simulation_model.py",
+    "src/diablos/core/managers/subsystem_manager.py",
+    "src/diablos/core/services/file_service.py",
+    "src/diablos/core/plotting/__init__.py",
+    "src/diablos/core/plotting/scope_plotter.py",
+    "src/diablos/core/plotting/pyqtgraph_scope_mixin.py",
 ]
 
 
 @pytest.mark.parametrize("rel", ENGINE_MODULES)
 def test_engine_module_has_no_module_level_pyqt6_import(rel):
-    """Engine modules take Qt value types from lib.qt_types; GUI-only objects
+    """Engine modules take Qt value types from diablos.core.qt_types; GUI-only objects
     (dialogs, fonts, plot windows) are imported where they are used."""
     with open(os.path.join(REPO, rel), encoding="utf-8") as fh:
         tree = ast.parse(fh.read())

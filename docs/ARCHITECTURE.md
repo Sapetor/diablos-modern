@@ -22,7 +22,7 @@ DiaBloS Modern follows a **Model-View-Controller (MVC)** architecture, separatin
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
 │                     Controller Layer                         │
-│  lib/lib.py (DSim)                                          │
+│  src/diablos/core/lib.py (DSim)                                          │
 │  - Coordinates between UI and backend                        │
 │  - Delegates to MVC components                               │
 │  - Maintains backward compatibility                          │
@@ -32,7 +32,7 @@ DiaBloS Modern follows a **Model-View-Controller (MVC)** architecture, separatin
                     ↓                   ↓
 ┌──────────────────────────┐  ┌─────────────────────────┐
 │      Model Layer         │  │   Engine Layer          │
-│  lib/models/             │  │  lib/engine/            │
+│  src/diablos/core/models/             │  │  src/diablos/core/engine/            │
 │  SimulationModel         │  │  SimulationEngine       │
 │  - blocks_list           │  │  - Diagram validation   │
 │  - line_list             │  │  - Execution logic      │
@@ -43,7 +43,7 @@ DiaBloS Modern follows a **Model-View-Controller (MVC)** architecture, separatin
                     └─────────┬─────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
-│  lib/services/                                               │
+│  src/diablos/core/services/                                               │
 │  ├── FileService           (Save/load diagrams)             │
 │  ├── RunHistoryService     (Simulation history/persistence) │
 │  └── (future services)                                       │
@@ -52,7 +52,7 @@ DiaBloS Modern follows a **Model-View-Controller (MVC)** architecture, separatin
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
 │                     Domain Layer                             │
-│  lib/simulation/                                             │
+│  src/diablos/core/simulation/                                             │
 │  ├── block.py              (DBlock - Block entities)        │
 │  ├── connection.py         (DLine - Connection entities)    │
 │  └── menu_block.py         (MenuBlocks - Block templates)   │
@@ -67,7 +67,7 @@ DiaBloS Modern follows a **Model-View-Controller (MVC)** architecture, separatin
 
 ## Core Components
 
-### 1. Model Layer (`lib/models/`)
+### 1. Model Layer (`src/diablos/core/models/`)
 
 **SimulationModel** (`simulation_model.py`)
 - **Responsibility**: Manages diagram data (blocks, connections, state)
@@ -86,7 +86,7 @@ DiaBloS Modern follows a **Model-View-Controller (MVC)** architecture, separatin
   - `is_port_available(dst_line)` - Check if port is connected
   - `load_all_blocks()` - Load block types from blocks/ directory
 
-### 2. Engine Layer (`lib/engine/`)
+### 2. Engine Layer (`src/diablos/core/engine/`)
 
 **SimulationEngine** (`simulation_engine.py`)
 - **Responsibility**: Business logic for simulation execution
@@ -126,7 +126,7 @@ DiaBloS Modern follows a **Model-View-Controller (MVC)** architecture, separatin
     Euler / RK4 schemes
   - `SCIPY_SOLVER_METHODS` / `FIXED_STEP_METHODS` - the accepted solver names
 
-### 3. Services Layer (`lib/services/`)
+### 3. Services Layer (`src/diablos/core/services/`)
 
 **FileService** (`file_service.py`)
 - **Responsibility**: Persistence (save/load diagrams)
@@ -146,7 +146,7 @@ DiaBloS Modern follows a **Model-View-Controller (MVC)** architecture, separatin
   }
   ```
 
-### 4. Controller Layer (`lib/lib.py`)
+### 4. Controller Layer (`src/diablos/core/lib.py`)
 
 **DSim Class**
 - **Responsibility**: Coordinates between UI and backend
@@ -157,7 +157,7 @@ DiaBloS Modern follows a **Model-View-Controller (MVC)** architecture, separatin
   - `self.file_service = FileService(model)` - Persistence
   - Exposes common properties: `blocks_list`, `line_list`, `colors`
 
-### 5. Domain Entities (`lib/simulation/`)
+### 5. Domain Entities (`src/diablos/core/simulation/`)
 
 **DBlock** (`block.py`)
 - Represents a functional block in the diagram
@@ -222,21 +222,21 @@ class BaseBlock(ABC):
     hidden = True                   # Plain class attribute: keep out of the palette/menus
 
     def draw_icon(self, block_rect):  # Optional: custom icon
-        """Return an IconPath (lib.icon_path) in 0-1 normalized coordinates, or None."""
+        """Return an IconPath (diablos.core.icon_path) in 0-1 normalized coordinates, or None."""
         ...
 ```
 
 **Hidden blocks.** A block class can set a plain `hidden = True` class attribute
 to stay out of every place the user can pick a block from. It is still loaded and
 still deserializes from an existing `.diablos` file -- it is simply not offered
-for placement. `blocks/external.py` uses this: it is an unimplemented stub whose
+for placement. `src/diablos/blocks/external.py` uses this: it is an unimplemented stub whose
 `execute()` only returns an error, so offering it could only produce a diagram
 that refuses to run. The single source of truth is
-`modern_ui/widgets/modern_palette.py` -- `is_hidden_block(menu_block)` and
+`src/diablos/gui/widgets/modern_palette.py` -- `is_hidden_block(menu_block)` and
 `visible_menu_blocks(menu_blocks)` -- and all three pickers filter through it:
 the block palette, the command palette
-(`modern_ui/managers/command_palette_manager.py`) and the canvas right-click
-search / quick-add (`modern_ui/managers/menu_manager.py`).
+(`src/diablos/gui/managers/command_palette_manager.py`) and the canvas right-click
+search / quick-add (`src/diablos/gui/managers/menu_manager.py`).
 
 `BlockRenderer` resolves the outline through `resolve_block_shape()` (a
 circle falls back to a rectangle above three inputs) and draws body, shadow
@@ -293,7 +293,7 @@ DSim.execution_init_time() - Get parameters
   ↓
 DSim._resolve_block_params() - params → exec_params
   └→ masked subsystems layer their mask scope over the workspace
-     variables (lib/masks.py); stored params keep the expressions
+     variables (src/diablos/core/masks.py); stored params keep the expressions
   ↓
 DSim.execution_init() - Initialize simulation
   ├→ Flattener.flatten() - expands subsystems, resolving mask
@@ -319,17 +319,17 @@ interpreter loop above and compiles the whole diagram into a single ODE solved b
 SciPy:
 
 ```
-Mask resolve  - lib/masks.py evaluates each masked subsystem's parameters into
+Mask resolve  - src/diablos/core/masks.py evaluates each masked subsystem's parameters into
                 a scope (outer-to-inner for nested masks) and rewrites the
                 inner blocks' parameter strings against it
   ↓
-Flattening    - Flattener (lib/engine/flattener.py) expands nested
+Flattening    - Flattener (src/diablos/core/engine/flattener.py) expands nested
                 subsystems into a flat block list; the mask resolve above
                 happens inside this walk, on the execution clones only
   ↓
-Compilation   - SystemCompiler.compile_system() (lib/engine/system_compiler.py)
+Compilation   - SystemCompiler.compile_system() (src/diablos/core/engine/system_compiler.py)
                 builds a per-block executor closure for every block by dispatching
-                to the kernel registry in lib/engine/compiler_kernels/
+                to the kernel registry in src/diablos/core/engine/compiler_kernels/
                 (@kernel-decorated builders, one block family per module).
                 Blocks run in three groups:
                 sources → algebraic middle → strictly-proper (D=0) state blocks
@@ -386,33 +386,33 @@ Consequences worth knowing when reading or comparing traces:
 - **PDE blocks self-integrate in the interpreter.** 1D and 2D PDE blocks step
   their own field with Forward Euler and persist it in `params`
   (`_interp_step` / `params['T']`), reusing the same spatial operators as the
-  compiled kernels (`lib/engine/pde_ops.py`). FTCS stability limits apply; use
+  compiled kernels (`src/diablos/core/engine/pde_ops.py`). FTCS stability limits apply; use
   the compiled solver for stiff or fine grids.
 
-For a headless run of either engine, `lib/cli.py`
+For a headless run of either engine, `src/diablos/core/cli.py`
 (`python diablos_modern.py run diagram.diablos -o out.csv [--solver interpreter]`)
 loads a diagram, simulates it, and exports the Scope traces to CSV/NPZ without
 the GUI. It defaults to the compiled path.
 
 The engine does not need PyQt6. The diagram model keeps its geometry and
 colours as `QPoint` / `QRect` / `QColor` / `QPainterPath`, imported from
-`lib/qt_types.py`: the real Qt classes when PyQt6 is installed (so the GUI can
+`src/diablos/core/qt_types.py`: the real Qt classes when PyQt6 is installed (so the GUI can
 hand them straight to `QPainter`), pure-Python stand-ins with the same
 semantics otherwise. Anything that needs a `QGuiApplication` (`QFont`,
 `QPixmap`, dialogs) is created lazily, on first use by the GUI. Engine code in
-`lib/` must import these types from `lib.qt_types`, never from PyQt6 at module
+`lib/` must import these types from `diablos.core.qt_types`, never from PyQt6 at module
 level; `tests/regression/test_engine_without_pyqt6.py` runs examples with
 PyQt6 made unimportable and compares the traces with a normal run.
 
 The block library imports no Qt at all: `draw_icon` returns an `IconPath`
-(`lib/icon_path.py`), a recorder of `QPainterPath`-style calls that the block
+(`src/diablos/core/icon_path.py`), a recorder of `QPainterPath`-style calls that the block
 renderer replays onto a real `QPainterPath` (built-in icons are cached per
 class and size; a user block's `draw_icon` is called on every paint, since it
 may depend on instance state). A headless run creates no `QApplication`, with
 or without PyQt6 installed; set `DIABLOS_HEADLESS_QAPP=1` for a third-party
 block that builds a `QPixmap`/`QFont` outside `draw_icon`. Only process entry
 points (the CLI, Monte Carlo/sweep worker processes) select the offscreen Qt
-and `Agg` matplotlib backends; `lib.api.load()` in a notebook leaves the
+and `Agg` matplotlib backends; `diablos.core.api.load()` in a notebook leaves the
 environment alone. `DSim.execution_init()` opens the settings dialog only when
 a Qt application is running.
 
@@ -446,14 +446,14 @@ DSim.update_lines_data() for each line
 
 Two small modules sit beside the engine rather than inside it:
 
-* **`lib/masks.py`** -- the mask model. A mask lives in the Subsystem block's
+* **`src/diablos/core/masks.py`** -- the mask model. A mask lives in the Subsystem block's
   own `params` dict (`params["_mask"]` for the definition, one ordinary entry
   per parameter value), so it round-trips through `FileService` with no special
   serialization. `resolve_mask_scope()` evaluates the parameter values through
-  `lib/safe_eval.py` with the diagram's workspace variables underneath, and
+  `src/diablos/core/safe_eval.py` with the diagram's workspace variables underneath, and
   `resolve_params_in_scope()` rewrites an inner block's parameter strings
   against that scope.
-* **`lib/library.py`** -- discovery and persistence of user library blocks: one
+* **`src/diablos/core/library.py`** -- discovery and persistence of user library blocks: one
   masked subsystem per `.diablos` file with an added top-level `library_block`
   section. See the Developer Guide for the file layout and the folder search
   order.
@@ -499,7 +499,7 @@ def add_block(self, block, m_pos):
 ### 3. Plugin Architecture (Blocks)
 Blocks are discovered dynamically from `blocks/` directory:
 ```python
-# lib/block_loader.py
+# src/diablos/core/block_loader.py
 def load_blocks():
     for file in blocks_dir.glob("*.py"):
         if file.name != "base_block.py":
@@ -557,7 +557,7 @@ def add_block(self, block: MenuBlocks, m_pos: QPoint) -> DBlock: ...
 1. Create file in `blocks/` directory:
 ```python
 # blocks/my_block.py
-from blocks.base_block import BaseBlock
+from diablos.blocks.base_block import BaseBlock
 import numpy as np
 
 
@@ -587,9 +587,9 @@ class MyBlock(BaseBlock):
 
 ### Adding a New Service
 
-1. Create service file in `lib/services/`:
+1. Create service file in `src/diablos/core/services/`:
 ```python
-# lib/services/my_service.py
+# src/diablos/core/services/my_service.py
 class MyService:
     def __init__(self, model):
         self.model = model
@@ -601,7 +601,7 @@ class MyService:
 
 2. Instantiate in DSim:
 ```python
-# lib/lib.py
+# src/diablos/core/lib.py
 self.my_service = MyService(self.model)
 ```
 

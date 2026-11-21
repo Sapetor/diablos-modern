@@ -2,7 +2,7 @@
 
 import pytest
 import numpy as np
-from blocks.optimization_primitives.residual_norm import ResidualNormBlock
+from diablos.blocks.optimization_primitives.residual_norm import ResidualNormBlock
 
 
 class TestResidualNormBlock:

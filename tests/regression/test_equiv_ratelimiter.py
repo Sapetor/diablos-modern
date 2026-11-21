@@ -16,7 +16,7 @@ STATUS: passing -- the two paths agree within tolerance.
   (reaches 1.0 at t=1.5).
 
   The INTERPRETED path previously ramped at ~2x the configured slew rate: as a
-  memory block (lib/engine/memory_blocks.py) it runs execute() twice per step
+  memory block (src/diablos/core/engine/memory_blocks.py) it runs execute() twice per step
   (an output_only pass plus a state-updating pass), and RateLimiterBlock.execute
   advanced params['_prev'] on both. It now returns the held output without
   advancing on the output_only pass, so it steps once per step and matches the
@@ -166,8 +166,8 @@ def _scope_trace(dsim):
 
 
 def _run(diagram_path: str, use_fast: bool):
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     WorkspaceManager._instance = None
     dsim = DSim()

@@ -1,0 +1,326 @@
+import numpy as np
+import pyqtgraph as pg
+from PyQt6.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QListWidget,
+    QListWidgetItem,
+    QPushButton,
+    QLabel,
+    QSlider,
+    QFileDialog,
+    QMessageBox,
+    QCheckBox,
+)
+from PyQt6.QtCore import Qt
+
+# Aliased: this module uses `tr` as a loop variable name for trace dicts
+# (e.g. `for idx, tr in enumerate(self.traces)`), which would shadow the
+# translation function if imported under its usual name.
+from diablos.core.i18n import tr as _tr
+
+
+class WaveformInspector(QWidget):
+    """
+    Waveform inspector with run history overlay.
+    - Stacked traces with shared time base
+    - Toggle runs and individual traces
+    - Scrub line shows value at cursor
+    - Export selected traces to CSV
+    """
+
+    def __init__(self, dsim):
+        """
+        Args:
+            dsim: DSim instance providing run history and persistence settings
+        """
+        super().__init__()
+        self.dsim = dsim
+        self.run_history = list(getattr(dsim, "run_history", [])) if dsim else []
+        self.active_runs = set(range(len(self.run_history)))
+        # Flatten traces with run tag for plotting
+        self.timeline = None
+        self.traces = []
+        self.active_traces = set()
+        self.persist_enabled = bool(getattr(dsim, "run_history_persist_enabled", False))
+
+        self.setWindowTitle(_tr("Waveform Inspector"))
+        self.resize(900, 650)
+
+        root = QHBoxLayout()
+        self.setLayout(root)
+
+        # Left: run + trace list
+        left = QVBoxLayout()
+        root.addLayout(left, 0)
+
+        self.run_list = QListWidget()
+        self.run_list.itemChanged.connect(self._on_run_changed)
+        for idx, run in enumerate(self.run_history):
+            item = QListWidgetItem(self._run_display_name(run))
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            item.setCheckState(Qt.CheckState.Checked)
+            self.run_list.addItem(item)
+        left.addWidget(QLabel(_tr("Runs")))
+        left.addWidget(self.run_list)
+
+        run_controls = QHBoxLayout()
+        self.pin_btn = QPushButton(_tr("Pin/Unpin"))
+        self.pin_btn.clicked.connect(self._toggle_pin_selected)
+        self.persist_chk = QCheckBox(_tr("Persist history"))
+        self.persist_chk.setChecked(self.persist_enabled)
+        self.persist_chk.toggled.connect(self._toggle_persist)
+        run_controls.addWidget(self.pin_btn)
+        run_controls.addWidget(self.persist_chk)
+        run_controls.addStretch()
+        left.addLayout(run_controls)
+
+        self.trace_list = QListWidget()
+        self.trace_list.itemChanged.connect(self._on_trace_changed)
+        self._populate_trace_list()
+        left.addWidget(QLabel(_tr("Traces")))
+        left.addWidget(self.trace_list)
+
+        # Right: plot + controls
+        right = QVBoxLayout()
+        root.addLayout(right, 1)
+
+        self.plot = pg.PlotWidget(title=_tr("Scopes"))
+        self.plot.showGrid(x=True, y=True)
+        self.plot.addLegend()
+        self.vline = pg.InfiniteLine(
+            angle=90, movable=True, pen=pg.mkPen(color="r", style=Qt.PenStyle.DashLine)
+        )
+        self.plot.addItem(self.vline)
+        self.vline.sigPositionChanged.connect(self._update_readout)
+        self.curves = []
+
+        right.addWidget(self.plot, 1)
+
+        # Scrub slider
+        slider_row = QHBoxLayout()
+        slider_row.addWidget(QLabel(_tr("Scrub")))
+        self.scrub = QSlider(Qt.Orientation.Horizontal)
+        self.scrub.setMinimum(0)
+        self.scrub.setMaximum(
+            len(self.timeline) - 1 if self.timeline is not None and len(self.timeline) else 0
+        )
+        self.scrub.valueChanged.connect(self._on_scrub)
+        slider_row.addWidget(self.scrub, 1)
+        self.readout = QLabel(_tr("t = -, values = -"))
+        slider_row.addWidget(self.readout)
+        right.addLayout(slider_row)
+
+        # Buttons
+        btns = QHBoxLayout()
+        export_btn = QPushButton(_tr("Export CSV"))
+        export_btn.clicked.connect(self._export_csv)
+        autoscale_btn = QPushButton(_tr("Autoscale"))
+        autoscale_btn.clicked.connect(self._autoscale)
+        btns.addWidget(export_btn)
+        btns.addWidget(autoscale_btn)
+        btns.addStretch()
+        right.addLayout(btns)
+
+        # Build traces now that widgets exist
+        self._rebuild_traces()
+        self._refresh_curves()
+        self._update_scrub_max()
+        self._update_readout()
+
+    def _rebuild_traces(self):
+        """
+        Flatten active runs into self.traces and a shared timeline (use longest).
+        """
+        self.traces = []
+        self.timeline = None
+        # Use the longest timeline among active runs for scrub slider; per-trace data remains per-run
+        for run_idx, run in enumerate(self.run_history):
+            if run_idx not in self.active_runs:
+                continue
+            run_name = run["name"]
+            if self.timeline is None or len(run["timeline"]) > len(self.timeline):
+                self.timeline = run["timeline"]
+            for tr in run["traces"]:
+                trace_copy = {
+                    "name": f"{run_name}: {tr['name']}",
+                    "y": tr["y"],
+                    "step": tr.get("step", False),
+                    "run_idx": run_idx,
+                }
+                self.traces.append(trace_copy)
+
+        # rebuild trace list UI
+        self.active_traces = set(range(len(self.traces)))
+        self._populate_trace_list()
+        self._update_scrub_max()
+
+    def _populate_trace_list(self):
+        self.trace_list.blockSignals(True)
+        self.trace_list.clear()
+        for idx, tr in enumerate(self.traces):
+            item = QListWidgetItem(tr["name"])
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            item.setCheckState(
+                Qt.CheckState.Checked if idx in self.active_traces else Qt.CheckState.Unchecked
+            )
+            self.trace_list.addItem(item)
+        self.trace_list.blockSignals(False)
+
+    def _run_display_name(self, run):
+        prefix = "* " if run.get("pinned", False) else ""
+        return f"{prefix}{run.get('name', _tr('Run'))}"
+
+    def _update_scrub_max(self):
+        if hasattr(self, "scrub"):
+            self.scrub.blockSignals(True)
+            self.scrub.setMaximum(
+                len(self.timeline) - 1 if self.timeline is not None and len(self.timeline) else 0
+            )
+            self.scrub.setValue(0)
+            self.scrub.blockSignals(False)
+
+    def _refresh_curves(self):
+        self.plot.clear()
+        self.plot.addItem(self.vline)
+        self.curves = []
+        for idx, tr in enumerate(self.traces):
+            if idx not in self.active_traces:
+                continue
+            step_mode = tr.get("step", False)
+            # Align lengths
+            y = tr["y"]
+            x = self.timeline
+            if x is None or len(x) == 0 or len(y) == 0:
+                continue
+            if step_mode and len(x) == len(y):
+                x = np.append(x, x[-1] + (x[-1] - x[-2] if len(x) > 1 else 1.0))
+            elif len(x) > len(y):
+                x = x[: len(y)]
+            elif len(x) < len(y):
+                y = y[: len(x)]
+            # Color offset per run
+            pen = pg.intColor(tr.get("run_idx", 0), hues=max(len(self.run_history), 8))
+            curve = self.plot.plot(x, y, stepMode=step_mode, pen=pen, name=tr["name"])
+            self.curves.append(curve)
+
+    def _on_trace_changed(self, item):
+        idx = self.trace_list.row(item)
+        if item.checkState() == Qt.CheckState.Checked:
+            self.active_traces.add(idx)
+        else:
+            self.active_traces.discard(idx)
+        self._refresh_curves()
+        self._update_readout()
+
+    def _on_run_changed(self, item):
+        idx = self.run_list.row(item)
+        if item.checkState() == Qt.CheckState.Checked:
+            self.active_runs.add(idx)
+        else:
+            self.active_runs.discard(idx)
+        self._rebuild_traces()
+        self._refresh_curves()
+        self._update_readout()
+
+    def _toggle_pin_selected(self):
+        idx = self.run_list.currentRow()
+        if idx < 0 or idx >= len(self.run_history):
+            return
+        self.run_history[idx]["pinned"] = not self.run_history[idx].get("pinned", False)
+        self.run_list.item(idx).setText(self._run_display_name(self.run_history[idx]))
+        if self.dsim:
+            self.dsim.run_history = self.run_history
+            self.dsim.save_run_history()
+
+    def _toggle_persist(self, checked):
+        self.persist_enabled = bool(checked)
+        if self.dsim and hasattr(self.dsim, "set_run_history_persist"):
+            self.dsim.set_run_history_persist(self.persist_enabled)
+
+    def _on_scrub(self, value):
+        if self.timeline is None or not len(self.timeline):
+            return
+        t = self.timeline[min(value, len(self.timeline) - 1)]
+        self.vline.setPos(t)
+
+    def _update_readout(self):
+        if self.timeline is None or not len(self.timeline):
+            self.readout.setText(_tr("t = -, values = -"))
+            return
+        t = self.vline.value()
+        idx = np.searchsorted(self.timeline, t, side="left")
+        idx = min(max(idx, 0), len(self.timeline) - 1)
+        vals = []
+        for i, tr in enumerate(self.traces):
+            if i not in self.active_traces:
+                continue
+            y = tr["y"]
+            if len(y) == 0:
+                continue
+            # Resolve each trace against its own run timeline; the shared
+            # self.timeline is the longest run's, so a cursor past a shorter
+            # run's data must read "n/a" rather than clamp to its last sample.
+            run = (
+                self.run_history[tr["run_idx"]]
+                if 0 <= tr.get("run_idx", -1) < len(self.run_history)
+                else None
+            )
+            run_timeline = run["timeline"] if run is not None else None
+            if run_timeline is not None and len(run_timeline):
+                tr_idx = int(np.searchsorted(run_timeline, t, side="left"))
+                tr_idx = min(max(tr_idx, 0), len(run_timeline) - 1)
+            else:
+                tr_idx = idx
+            if tr_idx >= len(y):
+                vals.append(_tr("{name}: n/a", name=tr["name"]))
+            else:
+                vals.append(f"{tr['name']}: {y[tr_idx]:.4g}")
+        values_text = "; ".join(vals) if vals else _tr("no active traces")
+        self.readout.setText(
+            _tr("t = {time:.4g}, {values}", time=self.timeline[idx], values=values_text)
+        )
+        self.scrub.blockSignals(True)
+        self.scrub.setValue(idx)
+        self.scrub.blockSignals(False)
+
+    def _autoscale(self):
+        self.plot.enableAutoRange()
+
+    def _export_csv(self):
+        if self.timeline is None or not len(self.timeline):
+            QMessageBox.warning(self, _tr("No Data"), _tr("No data to export."))
+            return
+        filepath, _ = QFileDialog.getSaveFileName(
+            self, _tr("Export CSV"), "waveforms.csv", _tr("CSV Files (*.csv)")
+        )
+        if not filepath:
+            return
+        # Build matrix with selected traces
+        active = [i for i in range(len(self.traces)) if i in self.active_traces]
+        if not active:
+            QMessageBox.warning(
+                self, _tr("No Selection"), _tr("Select at least one trace to export.")
+            )
+            return
+        # Align all columns to a common length so column_stack cannot fail on
+        # traces that are shorter than the (longest-run) timeline.
+        n = len(self.timeline)
+        for i in active:
+            n = min(n, len(self.traces[i]["y"]))
+        if n == 0:
+            QMessageBox.warning(self, _tr("No Data"), _tr("Selected traces contain no samples."))
+            return
+        data_cols = [self.timeline[:n]]
+        header = ["time"]
+        for i in active:
+            data_cols.append(self.traces[i]["y"][:n])
+            header.append(self.traces[i]["name"])
+        try:
+            mat = np.column_stack(data_cols)
+            np.savetxt(filepath, mat, delimiter=",", header=",".join(header), comments="")
+        except (ValueError, OSError) as exc:
+            QMessageBox.warning(
+                self, _tr("Export Failed"), _tr("Could not export CSV:\n{error}", error=exc)
+            )

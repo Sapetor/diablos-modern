@@ -31,7 +31,7 @@ from PyQt6.QtGui import QColor
 
 
 def _mk(fn, sid, inp, outp, params, b_type=2):
-    from lib.simulation.block import DBlock
+    from diablos.core.simulation.block import DBlock
 
     return DBlock(
         block_fn=fn,
@@ -47,7 +47,7 @@ def _mk(fn, sid, inp, outp, params, b_type=2):
 
 
 def _ln(sid, src, sp, dst, dp):
-    from lib.simulation.connection import DLine
+    from diablos.core.simulation.connection import DLine
 
     return DLine(
         sid=sid,
@@ -61,7 +61,7 @@ def _ln(sid, src, sp, dst, dp):
 
 def _resolve(blocks):
     """Populate exec_params the way DSim/initialize_execution would."""
-    from lib.workspace import WorkspaceManager
+    from diablos.core.workspace import WorkspaceManager
 
     WorkspaceManager._instance = None
     wm = WorkspaceManager()
@@ -80,7 +80,7 @@ class TestVectorSignalCompiled:
         The Product '/' branch runs inside the compiled ODE right-hand side; a
         vector divisor used to raise 'truth value of an array is ambiguous'. The
         element-wise quotient must be [2, 2, 2]."""
-        from lib.engine.system_compiler import SystemCompiler
+        from diablos.core.engine.system_compiler import SystemCompiler
 
         blocks = _resolve(
             [
@@ -111,7 +111,7 @@ class TestVectorSignalCompiled:
         'setting an array element with a sequence' at dy_vec[start] = dy. The fix
         reduces the input to its first element (5.0); the derivative must be a
         finite scalar."""
-        from lib.engine.system_compiler import SystemCompiler
+        from diablos.core.engine.system_compiler import SystemCompiler
 
         blocks = _resolve(
             [

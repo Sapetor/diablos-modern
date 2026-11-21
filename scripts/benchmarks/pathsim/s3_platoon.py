@@ -62,7 +62,7 @@ def reference(n, query_t):
 
 
 def build_diablos(n, path):
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     b = DiagramBuilder(sim_time=T_END, sim_dt=DT)
     prev_p = b.add_block("Ramp", 50, 50, name="p0", params={"slope": 1.0, "delay": 0.0})

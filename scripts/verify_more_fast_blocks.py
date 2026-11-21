@@ -26,11 +26,11 @@ if not QApplication.instance():
 import numpy as np
 from PyQt6.QtCore import QRect
 
-from lib.block_loader import load_blocks
-from lib.engine.simulation_engine import SimulationEngine
-from lib.engine.system_compiler import SystemCompiler
-from lib.simulation.block import DBlock
-from lib.simulation.connection import DLine
+from diablos.core.block_loader import load_blocks
+from diablos.core.engine.simulation_engine import SimulationEngine
+from diablos.core.engine.system_compiler import SystemCompiler
+from diablos.core.simulation.block import DBlock
+from diablos.core.simulation.connection import DLine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

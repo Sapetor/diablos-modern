@@ -1,4 +1,4 @@
-"""Unit tests for the compiled-path kernel registry (lib.engine.compiler_kernels).
+"""Unit tests for the compiled-path kernel registry (diablos.core.engine.compiler_kernels).
 
 The golden harness (tests/regression/test_compiled_golden.py) exercises the
 kernels end-to-end; these pin the registry mechanism and a couple of builders
@@ -8,7 +8,7 @@ directly so the infrastructure has its own fast coverage.
 import numpy as np
 import pytest
 
-from lib.engine.compiler_kernels import (
+from diablos.core.engine.compiler_kernels import (
     BuildContext,
     KERNEL_BUILDERS,
     get_kernel_builder,

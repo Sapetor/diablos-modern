@@ -17,7 +17,7 @@ They lock in current behavior so the planned extraction of a
 ``RecentFilesManager`` can be proven behavior-preserving.
 
 The recent-files methods persist to ``user_data_path('config/recent_files.json')``
-which resolves through ``lib.app_paths.get_user_data_dir()``. Every test
+which resolves through ``diablos.core.app_paths.get_user_data_dir()``. Every test
 redirects that to a fresh ``tmp_path`` so the user's real recent-files config is
 never touched and each test is fully isolated.
 
@@ -31,13 +31,13 @@ import os
 
 import pytest
 
-import lib.app_paths
+import diablos.core.app_paths
 
 
 @pytest.fixture(scope="module")
 def window(qapp):
     """Build one real ModernDiaBloSWindow for the module (construction is heavy)."""
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     yield w
@@ -52,7 +52,7 @@ def cfg_dir(tmp_path, monkeypatch):
     which resolves via ``get_user_data_dir()`` at call time, so patching here
     fully isolates each test from the real user config.
     """
-    monkeypatch.setattr(lib.app_paths, "get_user_data_dir", lambda: str(tmp_path))
+    monkeypatch.setattr(diablos.core.app_paths, "get_user_data_dir", lambda: str(tmp_path))
     return tmp_path
 
 

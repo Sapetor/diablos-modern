@@ -2,7 +2,7 @@
 
 Three subjects, all documented in ``docs/SOLVER_SEMANTICS.md``:
 
-* the stiffness heuristic (``lib/engine/solver_diagnostics.estimate_stiffness``),
+* the stiffness heuristic (``src/diablos/core/engine/solver_diagnostics.estimate_stiffness``),
   in two layers:
 
 * the pure function, driven with a hand-built solver result and an analytic
@@ -23,13 +23,13 @@ import numpy as np
 import pytest
 from PyQt6.QtCore import QPoint, QRect
 
-from lib.engine.compiled_runner import (
+from diablos.core.engine.compiled_runner import (
     AUTO_RESOLVED_METHOD,
     AUTO_SOLVER_METHOD,
     resolve_solver_method,
 )
-from lib.engine.simulation_engine import SimulationEngine
-from lib.engine.solver_diagnostics import (
+from diablos.core.engine.simulation_engine import SimulationEngine
+from diablos.core.engine.solver_diagnostics import (
     STIFFNESS_INDEX,
     STIFFNESS_SAMPLE_POINTS,
     STIFFNESS_SPARSE_MAX_EVALS,
@@ -37,8 +37,8 @@ from lib.engine.solver_diagnostics import (
     estimate_stiffness,
     format_stiffness_for_log,
 )
-from lib.simulation.block import DBlock
-from lib.simulation.connection import DLine
+from diablos.core.simulation.block import DBlock
+from diablos.core.simulation.connection import DLine
 
 
 # --------------------------------------------------------------------------- #
@@ -321,11 +321,11 @@ def _van_der_pol(mu):
     spends most of its period on a slow manifold whose transverse mode decays
     ~mu times faster than the motion along it.
     """
-    from blocks.constant import ConstantBlock
-    from blocks.gain import GainBlock
-    from blocks.integrator import IntegratorBlock
-    from blocks.sigproduct import SigProductBlock
-    from blocks.sum import SumBlock
+    from diablos.blocks.constant import ConstantBlock
+    from diablos.blocks.gain import GainBlock
+    from diablos.blocks.integrator import IntegratorBlock
+    from diablos.blocks.sigproduct import SigProductBlock
+    from diablos.blocks.sum import SumBlock
 
     one = _block(ConstantBlock, "Constant", 0, 0, 1, value=1.0)
     i1 = _block(IntegratorBlock, "Integrator", 1, 1, 1, init_conds=2.0)  # x1
@@ -355,9 +355,9 @@ def _van_der_pol(mu):
 
 def _smooth_second_order():
     """x'' + 1.2 x' + 4 x = 0 — a well-damped, entirely non-stiff oscillator."""
-    from blocks.gain import GainBlock
-    from blocks.integrator import IntegratorBlock
-    from blocks.sum import SumBlock
+    from diablos.blocks.gain import GainBlock
+    from diablos.blocks.integrator import IntegratorBlock
+    from diablos.blocks.sum import SumBlock
 
     i1 = _block(IntegratorBlock, "Integrator", 0, 1, 1, init_conds=1.0)  # x
     i2 = _block(IntegratorBlock, "Integrator", 1, 1, 1, init_conds=0.0)  # x'
@@ -463,7 +463,7 @@ class TestAutoSolverMethod:
         assert diag["fallback_reason"] is None  # not a degraded fallback
 
     def test_auto_is_offered_in_the_simulation_dialog(self, qapp):
-        from lib.dialogs import SimulationDialog
+        from diablos.core.dialogs import SimulationDialog
 
         assert AUTO_SOLVER_METHOD in SimulationDialog.SOLVER_METHODS
         # Index 0 is also the fallback for an unrecognised stored method.
@@ -486,7 +486,7 @@ class TestAutoSolverMethod:
         assert file_service.apply_loaded_data(data)["solver_method"] == AUTO_SOLVER_METHOD
 
     def test_auto_round_trips_through_the_dialog(self, qapp):
-        from lib.dialogs import SimulationDialog
+        from diablos.core.dialogs import SimulationDialog
 
         dialog = SimulationDialog(
             sim_time=1.0,
@@ -521,7 +521,7 @@ class TestCompileFallbackReason:
     def test_a_rated_continuous_block_compiles_except_for_the_linearizer(self, qapp):
         # A rated TranFn/StateSpace/PID/Integrator/Derivative runs as a sampled
         # holder on the hybrid path (phase 2).
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         integ = _block(IntegratorBlock, "Integrator", 1, 1, 1, sampling_time=0.1)
         engine = self._engine([integ])
@@ -531,7 +531,7 @@ class TestCompileFallbackReason:
         assert integ.name in reason and "discrete sample time" in reason
 
     def test_a_rate_without_a_sampled_form_names_the_block_and_the_reason(self, qapp):
-        from blocks.first_order_hold import FirstOrderHoldBlock
+        from diablos.blocks.first_order_hold import FirstOrderHoldBlock
 
         foh = _block(FirstOrderHoldBlock, "FirstOrderHold", 1, 1, 1, sampling_time=0.1)
         engine = self._engine([foh])
@@ -540,7 +540,7 @@ class TestCompileFallbackReason:
         assert foh.name in reason and "no sampled kernel" in reason
 
     def test_a_sampled_block_compiles_except_for_the_linearizer(self, qapp):
-        from blocks.zero_order_hold import ZeroOrderHoldBlock
+        from diablos.blocks.zero_order_hold import ZeroOrderHoldBlock
 
         zoh = _block(ZeroOrderHoldBlock, "ZeroOrderHold", 0, 1, 1, sampling_time=0.1)
         engine = self._engine([zoh])
@@ -550,7 +550,7 @@ class TestCompileFallbackReason:
         assert zoh.name in reason and "discrete sample time" in reason
 
     def test_a_sampled_block_under_a_fixed_step_solver_compiles(self, qapp):
-        from blocks.zero_order_hold import ZeroOrderHoldBlock
+        from diablos.blocks.zero_order_hold import ZeroOrderHoldBlock
 
         zoh = _block(ZeroOrderHoldBlock, "ZeroOrderHold", 0, 1, 1, sampling_time=0.1)
         engine = self._engine([zoh])
@@ -559,7 +559,7 @@ class TestCompileFallbackReason:
         assert engine.get_compile_fallback_reason() is None
 
     def test_hysteresis_reason_points_at_zero_crossing(self, qapp):
-        from blocks.hysteresis import HysteresisBlock
+        from diablos.blocks.hysteresis import HysteresisBlock
 
         relay = _block(HysteresisBlock, "Hysteresis", 0, 1, 1)
         engine = self._engine([relay])
@@ -573,7 +573,7 @@ class TestCompileFallbackReason:
         assert engine.get_compile_fallback_reason() is None
 
     def test_an_uncompilable_block_says_so(self, qapp):
-        from blocks.noise import NoiseBlock
+        from diablos.blocks.noise import NoiseBlock
 
         noise = _block(NoiseBlock, "Noise", 0, 0, 1)
         engine = self._engine([noise])

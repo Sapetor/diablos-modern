@@ -10,8 +10,8 @@ import re
 
 import pytest
 
-from lib.export.tex_safety import math_body_is_safe
-from lib.export.tikz_exporter import TikZExporter, _escape_latex
+from diablos.core.export.tex_safety import math_body_is_safe
+from diablos.core.export.tikz_exporter import TikZExporter, _escape_latex
 
 # The exporter's mock factories already model every attribute it reads; a second
 # set here would drift the next time the exporter grows one.
@@ -200,7 +200,7 @@ class TestEscapingWorksInBothModes:
 
     def test_blox_applies_the_same_label_gate(self):
         """Both exporters are reachable from the same dialog."""
-        from lib.export.blox_exporter import BloxExporter
+        from diablos.core.export.blox_exporter import BloxExporter
 
         evil = r"$\immediate\write18{echo pwned}$"
         assert r"\immediate" not in BloxExporter._latex_label(evil)

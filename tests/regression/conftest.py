@@ -10,7 +10,7 @@ def window(qapp):
     Building the main window dominates the runtime of any test that needs it,
     so the three local copies of this fixture were collapsed into one.
     """
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     w.resize(1280, 800)

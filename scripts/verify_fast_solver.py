@@ -26,12 +26,12 @@ if not QApplication.instance():
     _app = QApplication(sys.argv)
 
 from PyQt6.QtCore import QRect
-from blocks.integrator import IntegratorBlock
-from blocks.scope import ScopeBlock
-from blocks.sine import SineBlock
-from lib.engine.simulation_engine import SimulationEngine
-from lib.simulation.block import DBlock
-from lib.simulation.connection import DLine
+from diablos.blocks.integrator import IntegratorBlock
+from diablos.blocks.scope import ScopeBlock
+from diablos.blocks.sine import SineBlock
+from diablos.core.engine.simulation_engine import SimulationEngine
+from diablos.core.simulation.block import DBlock
+from diablos.core.simulation.connection import DLine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

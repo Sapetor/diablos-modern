@@ -24,12 +24,12 @@ Run with:
 import pytest
 from PyQt6.QtCore import QRect
 
-from lib.simulation.block import DBlock
+from diablos.core.simulation.block import DBlock
 
 
 @pytest.fixture(scope="module")
 def window(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
+    from diablos.gui.main_window import ModernDiaBloSWindow
 
     w = ModernDiaBloSWindow()
     yield w

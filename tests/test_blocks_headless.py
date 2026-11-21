@@ -10,7 +10,7 @@ import numpy as np
 
 sys.path.insert(0, os.getcwd())
 
-from lib.diagram_builder import DiagramBuilder
+from diablos.core.diagram_builder import DiagramBuilder
 
 
 def test_diagram_builder():
@@ -47,10 +47,10 @@ def test_diagram_builder():
 
 def test_block_functions():
     """Test block functions directly without simulation."""
-    from blocks.integrator import IntegratorBlock
-    from blocks.gain import GainBlock
-    from blocks.sum import SumBlock
-    from blocks.step import StepBlock
+    from diablos.blocks.integrator import IntegratorBlock
+    from diablos.blocks.gain import GainBlock
+    from diablos.blocks.sum import SumBlock
+    from diablos.blocks.step import StepBlock
 
     # Test Gain using modern block pattern
     gain_block = GainBlock()
@@ -88,7 +88,7 @@ def test_block_functions():
 
 def test_integrator_integration():
     """Test integrator over multiple steps."""
-    from blocks.integrator import IntegratorBlock
+    from diablos.blocks.integrator import IntegratorBlock
 
     block = IntegratorBlock()
 
@@ -107,7 +107,7 @@ def test_integrator_integration():
 
 def test_saturation():
     """Test saturation block."""
-    from blocks.saturation import SaturationBlock
+    from diablos.blocks.saturation import SaturationBlock
 
     sat_block = SaturationBlock()
     params = {"min": -1.0, "max": 1.0}

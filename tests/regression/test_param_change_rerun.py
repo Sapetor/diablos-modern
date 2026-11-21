@@ -12,9 +12,9 @@ import pytest
 import numpy as np
 from PyQt6.QtCore import QRect, QPoint
 from PyQt6.QtGui import QColor
-from lib.simulation.block import DBlock
-from lib.simulation.connection import DLine
-from lib.engine.system_compiler import SystemCompiler
+from diablos.core.simulation.block import DBlock
+from diablos.core.simulation.connection import DLine
+from diablos.core.engine.system_compiler import SystemCompiler
 from scipy.integrate import solve_ivp
 
 

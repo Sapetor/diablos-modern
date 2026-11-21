@@ -1,10 +1,10 @@
-"""Transfer-function identification (lib/analysis/sysid.py)."""
+"""Transfer-function identification (src/diablos/core/analysis/sysid.py)."""
 
 import numpy as np
 import pytest
 from scipy import signal
 
-from lib.analysis.sysid import SysIdError, fit_percent, format_tf, identify_tf
+from diablos.core.analysis.sysid import SysIdError, fit_percent, format_tf, identify_tf
 
 
 def _data(num, den, t, u, noise=0.0, seed=0):

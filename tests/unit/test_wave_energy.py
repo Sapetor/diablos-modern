@@ -9,7 +9,7 @@ lock that in so the divergence cannot silently return.
 import numpy as np
 import pytest
 
-from lib.engine.pde_ops import wave_energy_1d
+from diablos.core.engine.pde_ops import wave_energy_1d
 
 
 @pytest.mark.unit
@@ -38,7 +38,7 @@ class TestWaveEnergy1D:
 
     def test_matches_block_compute_energy(self):
         # The block's _compute_energy must delegate to the shared helper.
-        from blocks.pde.wave_equation_1d import WaveEquation1DBlock
+        from diablos.blocks.pde.wave_equation_1d import WaveEquation1DBlock
 
         block = WaveEquation1DBlock()
         N = 61

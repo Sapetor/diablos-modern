@@ -1,10 +1,10 @@
-"""System Identification source block (blocks/system_identification.py)."""
+"""System Identification source block (src/diablos/blocks/system_identification.py)."""
 
 import numpy as np
 import pytest
 from scipy import signal
 
-from blocks.system_identification import SystemIdentificationBlock
+from diablos.blocks.system_identification import SystemIdentificationBlock
 
 
 @pytest.fixture
@@ -41,7 +41,7 @@ class TestSystemIdentificationBlock:
         assert late[1][0] == pytest.approx(1.5, abs=0.02)
 
     def test_fits_once_per_run(self, experiment, monkeypatch):
-        import lib.analysis.sysid as sysid
+        import diablos.core.analysis.sysid as sysid
 
         calls = []
         real = sysid.identify_tf
@@ -71,9 +71,9 @@ class TestSystemIdentificationBlock:
 
 @pytest.mark.integration
 def test_headless_run_overlays_model_and_measurement(experiment, tmp_path):
-    from lib.analysis.resim import harvest_scope_signals
-    from lib.cli import run_diagram
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.analysis.resim import harvest_scope_signals
+    from diablos.core.cli import run_diagram
+    from diablos.core.diagram_builder import DiagramBuilder
 
     b = DiagramBuilder(sim_time=8.0, sim_dt=0.01)
     sid = b.add_block(

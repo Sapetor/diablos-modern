@@ -1,0 +1,1945 @@
+"""Modern Block Palette — V1 "Tightened" redesign
+
+Drop-in replacement. Same public API as the original:
+  - class ModernBlockPalette(QWidget) with __init__(dsim, parent=None)
+  - Signal block_drag_started(object)
+  - Methods: refresh_blocks(), get_available_blocks()
+
+Layout change
+-------------
+Old:  2-column grid of 60×60 square cards inside a heavy "category" frame.
+New:  Single-column list of ~28px rows — category dot · 18px glyph · name · drag hint.
+      Roughly 3× the blocks visible without scrolling.
+
+Drag MIME and signal are unchanged, so canvas drop logic doesn't need edits.
+"""
+
+import logging
+import math
+import os
+import sys
+from typing import Callable, Dict
+from PyQt6.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QScrollArea,
+    QLineEdit,
+    QFrame,
+    QMenu,
+    QSizePolicy,
+    QToolButton,
+)
+from PyQt6.QtCore import Qt, pyqtSignal, QMimeData, QPoint, QRect, QRectF, QPointF, QSize, QSettings
+from PyQt6.QtGui import QDrag, QPainter, QPixmap, QFont, QColor, QPen, QPainterPath
+
+# QSettings org/app — sourced from the shared constants in diablos.core.app_paths so
+# palette UI state lives in the same store as the rest of the app's UI
+# preferences (see main_window.py first-run flag). ui_settings() is the shared
+# accessor used for Favorites/Recent persistence (same store).
+from diablos.core.app_paths import SETTINGS_ORG as _SETTINGS_ORG, SETTINGS_APP as _SETTINGS_APP
+from diablos.core.app_paths import ui_settings
+from diablos.core.i18n import tr, tr_noop
+from diablos.core.theming.categories import category_theme_key
+from diablos.core.user_blocks import is_user_block, user_block_source
+
+# Chevron glyphs for the collapsible category header (expanded / collapsed).
+_CHEVRON_EXPANDED = "▾"
+_CHEVRON_COLLAPSED = "▸"
+
+# QSettings keys for the curated/auto sections at the top of the palette.
+_FAVORITES_KEY = "palette/favorites"
+_RECENT_KEY = "palette/recent"
+# How many recently-added blocks the Recent section keeps.
+_RECENT_CAP = 3
+
+
+def _collapsed_settings_key(category_name: str) -> str:
+    """QSettings key under which a category's collapsed flag is persisted."""
+    return f"palette/collapsed/{category_name}"
+
+
+def block_label(menu_block) -> str:
+    """Human-readable, translated palette label for ``menu_block``.
+
+    Display-time only: ``fn_name``/``block_fn`` remain the registry keys.
+    Library blocks (no class) carry a user-chosen name and are not translated.
+    """
+    name = (
+        getattr(menu_block, "display_name", None)
+        or getattr(menu_block, "block_fn", "")
+        or getattr(menu_block, "fn_name", "")
+        or "—"
+    )
+    if getattr(menu_block, "block_class", None) is None:
+        return str(name)
+    return tr(str(name))
+
+
+def block_matches_filter(menu_block, text: str) -> bool:
+    """Whether ``text`` (already lower-cased) matches the label or any old id."""
+    if not text:
+        return True
+    try:
+        hay = menu_block.search_text(block_label(menu_block))
+    except Exception:
+        hay = (getattr(menu_block, "fn_name", "") or "").lower()
+    return text in hay or text.replace(" ", "") in hay.replace(" ", "")
+
+
+def block_match_rank(menu_block, text: str):
+    """How well ``text`` (already lower-cased) names ``menu_block``.
+
+    0 = exact label or id, 1 = prefix, 2 = any other match, None = no match.
+    Shared by the palette's Enter and the command palette (canvas
+    double-click), so both pick the same block for the same query.
+    """
+    if not block_matches_filter(menu_block, text):
+        return None
+    if not text:
+        return 0
+    names = (
+        block_label(menu_block).lower(),
+        str(getattr(menu_block, "fn_name", "")).replace("_", " ").lower(),
+    )
+    squeezed = text.replace(" ", "")
+    if text in names or squeezed in (n.replace(" ", "") for n in names):
+        return 0
+    if any(n.startswith(text) for n in names):
+        return 1
+    return 2
+
+
+def update_recents(recents, fn_name, cap=_RECENT_CAP):
+    """Return a new recents list with ``fn_name`` promoted to the front.
+
+    Pure helper (no I/O) so the ordering rule is unit-testable in isolation:
+    newest-first, de-duplicated (a re-added block moves to the front rather
+    than appearing twice), and capped at ``cap`` entries. The input list is
+    not mutated.
+    """
+    if not fn_name:
+        return list(recents)
+    result = [fn_name] + [n for n in recents if n != fn_name]
+    return result[: max(0, int(cap))]
+
+
+def _load_settings_list(key) -> list:
+    """Read a QSettings string-list, normalizing the str/None round-trip quirk.
+
+    QSettings can round-trip a single-element list to a bare string and an empty
+    list to None; this coerces either back to a clean list of non-empty strings.
+    Best-effort: returns [] on any error. The single home for the favorites and
+    recents persistence quirk so it is not encoded per-key.
+    """
+    try:
+        stored = ui_settings().value(key, [])
+        if stored is None:
+            return []
+        if isinstance(stored, str):
+            return [stored] if stored else []
+        return [str(s) for s in stored if s]
+    except Exception:
+        return []
+
+
+def _save_settings_list(key, values) -> None:
+    """Persist a list of strings under ``key`` (best-effort)."""
+    try:
+        ui_settings().setValue(key, list(values))
+    except Exception:
+        logger.debug("Failed to persist settings list for key %r", key, exc_info=True)
+
+
+def _load_favorites() -> set:
+    """Read the persisted set of favorited block fn_names (best-effort)."""
+    return set(_load_settings_list(_FAVORITES_KEY))
+
+
+def _save_favorites(fn_names) -> None:
+    """Persist the set of favorited block fn_names (best-effort)."""
+    _save_settings_list(_FAVORITES_KEY, sorted(fn_names))
+
+
+def _load_recents() -> list:
+    """Read the persisted recents list, newest-first (best-effort)."""
+    return _load_settings_list(_RECENT_KEY)
+
+
+def _save_recents(fn_names) -> None:
+    """Persist the recents list (best-effort)."""
+    _save_settings_list(_RECENT_KEY, fn_names)
+
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+from diablos.gui.themes.theme_manager import theme_manager
+
+logger = logging.getLogger(__name__)
+
+
+def _category_accent(category: str) -> QColor:
+    """The category's accent colour, the family its blocks are painted in on the canvas."""
+    return theme_manager.get_color(category_theme_key(category) + "_accent")
+
+
+# -----------------------------------------------------------------------------
+# Block row — compact draggable item
+# -----------------------------------------------------------------------------
+
+
+class _ElidingLabel(QLabel):
+    """QLabel that may shrink below its text width and elides with an ellipsis.
+
+    ``text()`` keeps the full string. Without this, a long name (e.g. a
+    Spanish block or category name) set the palette content's minimum width
+    above the panel's; the horizontal scrollbar is hidden, but the scroll
+    range still existed, so focusing a row scrolled everything sideways.
+    """
+
+    def minimumSizeHint(self):
+        return QSize(0, super().minimumSizeHint().height())
+
+    def paintEvent(self, event):
+        rect = self.contentsRect()
+        text = self.fontMetrics().elidedText(self.text(), Qt.TextElideMode.ElideRight, rect.width())
+        painter = QPainter(self)
+        self.style().drawItemText(
+            painter,
+            rect,
+            int(self.alignment()),
+            self.palette(),
+            self.isEnabled(),
+            text,
+            self.foregroundRole(),
+        )
+
+
+class CompactBlockRow(QFrame):
+    """Single-row palette item: dot · glyph · name."""
+
+    block_drag_started = pyqtSignal(object, object)  # menu_block, position
+
+    GLYPH_SIZE = 22
+    ROW_HEIGHT = 30
+
+    def __init__(self, menu_block, category_name, colors, parent=None):
+        super().__init__(parent)
+        self.menu_block = menu_block
+        self.category_name = category_name
+        self.colors = colors
+        self.setObjectName("PaletteRow")
+        self.setFixedHeight(self.ROW_HEIGHT)
+        self.setCursor(Qt.CursorShape.OpenHandCursor)
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        # Keyboard navigation: rows accept focus so Down/Up from the filter box
+        # (and Tab) can land on them, and Enter activates the focused row.
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+        # Tooltip with doc / ports / params, same logic as the original widget
+        self._build_tooltip()
+
+        # Layout: 8px gutter · 6px dot · 6px gap · 22px glyph · 8px gap · name · stretch
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(10, 0, 10, 0)
+        lay.setSpacing(8)
+
+        self.dot = _CategoryDot(category_name)
+        lay.addWidget(self.dot, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        self.glyph = _BlockGlyphLabel(menu_block, colors)
+        lay.addWidget(self.glyph, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        self.name_label = _ElidingLabel(block_label(menu_block))
+        font = QFont()
+        font.setPointSize(9)
+        font.setStyleHint(QFont.StyleHint.SansSerif)
+        self.name_label.setFont(font)
+        self.name_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        lay.addWidget(self.name_label, 1, Qt.AlignmentFlag.AlignVCenter)
+
+        # Small marker so a user block is distinguishable from a built-in at a
+        # glance (the tooltip names the file it came from).
+        self.user_badge = None
+        if is_user_menu_block(menu_block):
+            self.user_badge = QLabel("\u25c6")
+            badge_font = QFont()
+            badge_font.setPointSize(7)
+            self.user_badge.setFont(badge_font)
+            self.user_badge.setToolTip(tr("User block"))
+            lay.addWidget(self.user_badge, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        self._apply_styling()
+        # Theme changes are applied centrally by the owning palette
+        # (ModernBlockPalette._on_theme_changed), not a per-row connection.
+
+    def _build_tooltip(self):
+        try:
+            # Full display name first: the row label elides when it is long.
+            doc_lines = [block_label(self.menu_block)]
+            library_def = getattr(self.menu_block, "library_def", None)
+            if library_def is not None:
+                # Library blocks have no block class: describe them from the
+                # mask instead (description, parameter names, source file).
+                doc_lines.append(library_def.description or library_def.name)
+                specs = (library_def.mask or {}).get("parameters") or []
+                if specs:
+                    names = [str(sp.get("name", "")) for sp in specs]
+                    doc_lines.append(tr("Params:  {names}", names=", ".join(names[:6])))
+                doc_lines.append(tr("Library: {file}", file=library_def.file_name))
+                tip = "\n".join([line for line in doc_lines if line])
+                if tip:
+                    self.setToolTip(tip)
+                return
+
+            block_cls = getattr(self.menu_block, "block_class", None)
+            inst = block_cls() if block_cls else None
+            if inst and hasattr(inst, "doc"):
+                doc_lines.append(str(inst.doc))
+            if is_user_menu_block(self.menu_block):
+                source = user_menu_block_source(self.menu_block)
+                doc_lines.append(tr("User block: {file}", file=os.path.basename(source) or "?"))
+
+            def _names(seq):
+                try:
+                    return ", ".join([i.get("name", "") for i in seq if isinstance(i, dict)]) or "—"
+                except Exception:
+                    return "—"
+
+            if inst:
+                doc_lines.append(tr("Inputs:  {names}", names=_names(getattr(inst, "inputs", []))))
+                doc_lines.append(tr("Outputs: {names}", names=_names(getattr(inst, "outputs", []))))
+                params = getattr(self.menu_block, "param_meta", getattr(inst, "params", {}))
+                if isinstance(params, dict) and params:
+                    keys = list(params.keys())
+                    params_str = ", ".join(keys[:6]) + ("…" if len(keys) > 6 else "")
+                    doc_lines.append(tr("Params:  {names}", names=params_str))
+            tip = "\n".join([l for l in doc_lines if l])
+            if tip:
+                self.setToolTip(tip)
+        except Exception:
+            logger.debug("Failed to build palette item tooltip", exc_info=True)
+
+    # -- Styling ------------------------------------------------------------
+
+    def _apply_styling(self):
+        bg_hover = theme_manager.get_color("palette_item_hover").name()
+        text = theme_manager.get_color("text_primary").name()
+        accent = theme_manager.get_color("accent_primary").name()
+        # Slightly transparent border so dark/light read fine
+        border = theme_manager.get_color("border_primary").name()
+
+        self.setStyleSheet(f"""
+            QFrame#PaletteRow {{
+                background-color: transparent;
+                border: 1px solid transparent;
+                border-radius: 6px;
+            }}
+            QFrame#PaletteRow:hover {{
+                background-color: {bg_hover};
+                border: 1px solid {border};
+            }}
+            QFrame#PaletteRow:focus {{
+                background-color: {bg_hover};
+                border: 1px solid {accent};
+            }}
+            QLabel {{
+                color: {text};
+                background: transparent;
+            }}
+        """)
+        # Belt-and-braces: set the label color directly too, since the QSS
+        # cascade from a per-row stylesheet does not always reach the child
+        # QLabel (which then renders as default black).
+        if hasattr(self, "name_label"):
+            self.name_label.setStyleSheet(f"color: {text}; background: transparent;")
+
+    def _on_theme_changed(self):
+        self._apply_styling()
+        self.dot.update()
+        self.glyph.update()
+
+    # -- Drag ---------------------------------------------------------------
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.setCursor(Qt.CursorShape.ClosedHandCursor)
+            self.drag_start_position = event.pos()
+
+    def mouseMoveEvent(self, event):
+        if not (event.buttons() & Qt.MouseButton.LeftButton):
+            return
+        if not hasattr(self, "drag_start_position"):
+            return
+        if (event.pos() - self.drag_start_position).manhattanLength() < 10:
+            return
+        self._start_drag(event)
+
+    def mouseReleaseEvent(self, event):
+        self.setCursor(Qt.CursorShape.OpenHandCursor)
+
+    # -- Context menu (Favorites) -------------------------------------------
+
+    def contextMenuEvent(self, event):
+        """Right-click menu to pin/unpin this block to the Favorites section.
+
+        The menu mutates favorites through the owning palette so persistence
+        and section refresh happen in one place; if the row is detached (no
+        owning palette) the menu is simply not shown.
+        """
+        palette = self._owning_palette()
+        if palette is None:
+            return
+        fn_name = getattr(self.menu_block, "fn_name", None)
+        if not fn_name:
+            return
+
+        is_fav = palette.is_favorite(fn_name)
+        menu = QMenu(self)
+        act = menu.addAction(tr("Unpin from Favorites") if is_fav else tr("Pin to Favorites"))
+        event.accept()
+        # exec_ blocks; mutating favorites here would refresh_blocks() and delete
+        # this row mid-menu. Capture the chosen action and act *after* exec_
+        # returns, going through the captured ``palette`` (never ``self``).
+        chosen = menu.exec(event.globalPos())
+        if chosen is act:
+            if is_fav:
+                palette.unpin_favorite(fn_name)
+            else:
+                palette.pin_favorite(fn_name)
+
+    # -- Keyboard navigation ------------------------------------------------
+
+    def keyPressEvent(self, event):
+        """Enter activates the row; Down/Up move focus to sibling rows.
+
+        Focus traversal hops over hidden rows (filtered out, or inside a
+        collapsed category) so the keyboard walk matches what is on screen.
+        """
+        key = event.key()
+        if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            self.activate()
+            event.accept()
+            return
+        if key == Qt.Key.Key_Down:
+            self._focus_sibling(+1)
+            event.accept()
+            return
+        if key == Qt.Key.Key_Up:
+            self._focus_sibling(-1)
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
+    def _focus_sibling(self, direction: int):
+        """Move focus to the next/previous visible row in the owning palette."""
+        palette = self._owning_palette()
+        if palette is None:
+            return
+        rows = [r for r in palette.findChildren(CompactBlockRow) if r.isVisible()]
+        if self not in rows:
+            return
+        idx = rows.index(self) + direction
+        if 0 <= idx < len(rows):
+            rows[idx].setFocus(Qt.FocusReason.OtherFocusReason)
+
+    def _owning_palette(self):
+        """Walk up to the ModernBlockPalette that owns this row, if any."""
+        w = self.parent()
+        while w is not None and not isinstance(w, ModernBlockPalette):
+            w = w.parent()
+        return w
+
+    def activate(self):
+        """Add this block to the canvas — same effect as a click/drag-add.
+
+        Emits the row-level ``block_drag_started`` (carrying the menu_block and
+        no specific position) and asks the owning palette to re-emit its
+        public ``block_drag_started(object)`` signal so existing consumers fire
+        without needing a real drag gesture.
+        """
+        # Capture fn_name before emitting: when a canvas is wired to the public
+        # add-signal it records recents (rebuilding the palette and deleting this
+        # row), so reading ``self.menu_block`` afterward is unsafe. The
+        # palette-side record_recent below is idempotent with the canvas one
+        # (re-recording the already-most-recent block is a no-op), so this path
+        # still records exactly once whether or not a canvas is connected.
+        fn_name = getattr(self.menu_block, "fn_name", None)
+        self.block_drag_started.emit(self.menu_block, None)
+        palette = self._owning_palette()
+        if palette is not None:
+            # Emit the public add-signal first; record_recent() rebuilds the
+            # palette (deleting this row), so do it last via the captured
+            # ``palette`` and ``fn_name`` after the menu_block has been handed off.
+            palette.block_drag_started.emit(self.menu_block)
+            palette.record_recent(fn_name)
+
+    def _start_drag(self, event):
+        # Recents are NOT recorded here: a drag cancelled with Escape or dropped
+        # outside the canvas must not leave a phantom Recent entry for a block
+        # the user never placed. Recording happens at the single real chokepoint
+        # — the canvas add path (ModernCanvas.add_block_from_palette) — so every
+        # gesture (drag-drop, Enter/activate, double-click) records exactly once
+        # per actual placement.
+        fn_name = getattr(self.menu_block, "fn_name", None)
+        try:
+            drag = QDrag(self)
+            mime = QMimeData()
+            mime.setText(f"diablo_block:{fn_name or 'Unknown'}")
+            drag.menu_block = self.menu_block
+
+            # Drag preview: render a full block via existing BlockRenderer
+            pix = self._drag_pixmap()
+            drag.setPixmap(pix)
+            size = pix.deviceIndependentSize()
+            drag.setHotSpot(QPoint(round(size.width() / 2), round(size.height() / 2)))
+            drag.setMimeData(mime)
+            drag.exec(Qt.DropAction.CopyAction | Qt.DropAction.MoveAction, Qt.DropAction.CopyAction)
+        except Exception as e:
+            logger.error(f"Drag start failed: {e}")
+
+    def _drag_pixmap(self) -> QPixmap:
+        ratio = self.devicePixelRatioF()
+
+        def preview_pixmap(width, height):
+            pixmap = QPixmap(math.ceil(width * ratio), math.ceil(height * ratio))
+            pixmap.setDevicePixelRatio(ratio)
+            return pixmap
+
+        try:
+            from diablos.core.simulation.block import DBlock
+            from diablos.gui.renderers.block_renderer import BlockRenderer
+
+            w, h = 80, 48
+            pix = preview_pixmap(w, h)
+            pix.fill(Qt.GlobalColor.transparent)
+
+            mb = self.menu_block
+            tmp = DBlock(
+                block_fn=mb.block_fn,
+                sid=0,
+                coords=QRect(6, 4, w - 12, h - 8),
+                color=mb.b_color,
+                in_ports=mb.ins,
+                out_ports=mb.outs,
+                b_type=mb.b_type,
+                io_edit=mb.io_edit,
+                fn_name=mb.fn_name,
+                params=mb.params,
+                external=mb.external,
+                colors=self.colors,
+                block_class=getattr(mb, "block_class", None),
+            )
+            tmp.update_Block()
+            p = QPainter(pix)
+            try:
+                p.setOpacity(0.85)
+                p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+                BlockRenderer().draw_block(tmp, p, draw_name=False, draw_ports=True)
+            finally:
+                p.end()
+            return pix
+        except Exception as e:
+            logger.warning(f"drag pixmap fallback: {e}")
+            pix = preview_pixmap(72, 28)
+            pix.fill(theme_manager.get_color("accent_primary"))
+            return pix
+
+
+class _CategoryDot(QWidget):
+    """6px dot showing the row's category color."""
+
+    SIZE = 8
+
+    def __init__(self, category, parent=None):
+        super().__init__(parent)
+        self._cat = category
+        self.setFixedSize(QSize(self.SIZE, self.SIZE))
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+
+    def paintEvent(self, _ev):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(_category_accent(self._cat))
+        p.drawEllipse(0, 0, self.SIZE, self.SIZE)
+
+
+class _BlockGlyphLabel(QWidget):
+    """22px flat thumbnail — category-colored chip with a geometric glyph.
+
+    Replaces the previous BlockRenderer-at-22px which painted a gradient +
+    drop-shadow combo that turned to mud at this size, especially in dark
+    theme. This widget paints a flat rounded chip in the block's category
+    accent color, with a single-stroke geometric icon on top — readable in
+    both themes.
+    """
+
+    SIZE = 22
+
+    def __init__(self, menu_block, colors, parent=None):
+        super().__init__(parent)
+        self.menu_block = menu_block
+        self.colors = colors
+        # Resolve the category once (it may instantiate the block class) so
+        # paintEvent does not reconstruct a block on every repaint.
+        self._category = _block_category_name(menu_block)
+        self._glyph_kind = _glyph_kind_for(getattr(menu_block, "fn_name", "") or "")
+        self.setFixedSize(QSize(self.SIZE, self.SIZE))
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        # Repainted on theme change by the owning CompactBlockRow.
+
+    def paintEvent(self, _ev):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+
+        cat = self._category
+        bg, accent, fg = _category_chip_colors(cat)
+
+        # Chip
+        p.setPen(QPen(accent, 1))
+        p.setBrush(bg)
+        p.drawRoundedRect(QRectF(1, 1, self.SIZE - 2, self.SIZE - 2), 5, 5)
+
+        # Glyph
+        pen = QPen(fg)
+        pen.setWidthF(1.4)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        p.setPen(pen)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+
+        kind = self._glyph_kind
+        _draw_glyph(p, kind, fg, self.SIZE)
+        p.end()
+
+
+def is_hidden_block(menu_block) -> bool:
+    """True when a block declares ``hidden`` and must not appear in the palette.
+
+    Blocks opt out by setting a plain ``hidden = True`` class attribute (see
+    ``src/diablos/blocks/external.py``): External is an unimplemented stub whose execute()
+    only returns an error, so offering it for placement can only produce a
+    diagram that refuses to run.
+    """
+    cls = getattr(menu_block, "block_class", None)
+    return bool(getattr(cls, "hidden", False))
+
+
+def visible_menu_blocks(menu_blocks):
+    """Filter a menu_blocks sequence down to the ones the palette should show."""
+    return [mb for mb in menu_blocks or [] if not is_hidden_block(mb)]
+
+
+def is_user_menu_block(menu_block) -> bool:
+    """True when a palette entry came from a user block module.
+
+    User blocks (``src/diablos/core/user_blocks.py``) are flagged on the palette entry by
+    ``SimulationModel.load_all_blocks``; the class attribute is checked as a
+    fallback so a hand-built entry still marks correctly.
+    """
+    if getattr(menu_block, "user_block", False):
+        return True
+    return is_user_block(getattr(menu_block, "block_class", None))
+
+
+def user_menu_block_source(menu_block) -> str:
+    """Path of the module a user palette entry was loaded from ("" otherwise)."""
+    source = getattr(menu_block, "source_file", "")
+    if source:
+        return str(source)
+    return user_block_source(getattr(menu_block, "block_class", None))
+
+
+def _block_category_name(menu_block) -> str:
+    """Best-effort category lookup from menu_block (class.category, else keyword match).
+
+    The ``category`` attribute set when the palette entry was built wins: it is
+    what ``load_all_blocks`` already recorded for built-in blocks, and it is the
+    *only* source for user library blocks, which have no block class.
+    """
+    declared = getattr(menu_block, "category", None)
+    if declared:
+        return str(declared)
+    cls = getattr(menu_block, "block_class", None)
+    if cls:
+        try:
+            inst = cls()
+            cat = getattr(inst, "category", None)
+            if cat:
+                return str(cat)
+        except Exception:
+            logger.debug(
+                "Failed to read category from block class; falling back to keyword match",
+                exc_info=True,
+            )
+    name = getattr(menu_block, "fn_name", "").lower()
+    if any(
+        k in name for k in ["sine", "step", "ramp", "impulse", "constant", "noise", "prbs", "wave"]
+    ):
+        return "Sources"
+    if any(
+        k in name
+        for k in ["sum", "gain", "product", "abs", "sqrt", "matrix", "mathfunction", "exp"]
+    ):
+        return "Math"
+    if any(
+        k in name
+        for k in [
+            "integ",
+            "deriv",
+            "pid",
+            "delay",
+            "tranfn",
+            "transfer",
+            "state",
+            "lqr",
+            "controller",
+        ]
+    ):
+        return "Control"
+    if any(k in name for k in ["saturation", "rate", "hysteresis", "deadband", "filter"]):
+        return "Filters"
+    if any(
+        k in name
+        for k in [
+            "scope",
+            "display",
+            "bode",
+            "nyquist",
+            "rootlocus",
+            "fft",
+            "export",
+            "term",
+            "xygraph",
+        ]
+    ):
+        return "Sinks"
+    if any(
+        k in name for k in ["mux", "demux", "switch", "selector", "goto", "from", "port", "sub"]
+    ):
+        return "Routing"
+    return "Other"
+
+
+def _category_chip_colors(cat: str):
+    """Return (background QColor, accent border QColor, foreground glyph QColor).
+
+    Chip background is a low-alpha tint of the accent so it reads on both
+    light and dark panel backgrounds without needing different palettes.
+    """
+    accent = _category_accent(cat)
+    bg = QColor(accent)
+    bg.setAlpha(48)
+    # Glyph color: on dark theme use a lightened accent for max readability;
+    # on light theme use a darker variant.
+    if theme_manager.current_theme.value == "dark":
+        fg = QColor(accent).lighter(125)
+    else:
+        fg = QColor(accent).darker(140)
+    return bg, accent, fg
+
+
+# (substring, kind) pairs tried in order against the lower-cased fn_name; the
+# first key contained in the name wins. Because the match is first-wins, a key
+# must never appear after another key that is a substring of it, or the longer
+# key can never match ("matrixgain" after "gain", "export" after "exp", "demux"
+# after "mux" were exactly that bug). tests/modern_ui/test_palette_glyph_registry.py
+# asserts the table stays shadow-free.
+_GLYPH_KIND_TABLE = [
+    ("sine", "sine"),
+    ("wave", "sine"),
+    ("noise", "noise"),
+    ("prbs", "noise"),
+    ("step", "step"),
+    ("ramp", "ramp"),
+    ("impulse", "impulse"),
+    ("constant", "const"),
+    ("sum", "sum"),
+    ("matrixgain", "matrix"),
+    ("gain", "gain"),
+    ("product", "product"),
+    ("abs", "abs"),
+    ("sqrt", "sqrt"),
+    ("mathfunction", "fn"),
+    ("export", "export"),
+    ("exp", "exp"),
+    ("integ", "integ"),
+    ("deriv", "deriv"),
+    ("pid", "pid"),
+    ("tranfn", "tranfn"),
+    ("transfer", "tranfn"),
+    ("state", "state"),
+    ("lqr", "lqr"),
+    ("delay", "delay"),
+    ("saturation", "sat"),
+    ("rate", "rate"),
+    ("hysteresis", "hys"),
+    ("deadband", "dead"),
+    ("filter", "filter"),
+    ("scope", "scope"),
+    ("display", "display"),
+    ("bode", "bode"),
+    ("nyquist", "nyq"),
+    ("rootlocus", "roots"),
+    ("fft", "fft"),
+    ("xygraph", "xy"),
+    ("term", "term"),
+    ("zoh", "zoh"),
+    ("firstorder", "foh"),
+    ("zero", "zoh"),
+    ("hold", "zoh"),
+    ("demux", "demux"),
+    ("mux", "mux"),
+    ("switch", "switch"),
+    ("selector", "sel"),
+    ("goto", "goto"),
+    ("from", "from"),
+    ("inport", "in"),
+    ("outport", "out"),
+    ("sub", "sub"),
+]
+
+
+def _glyph_kind_for(fn_name: str) -> str:
+    """Map an fn_name to a glyph kind. Falls back to letter:<initials>."""
+    n = (fn_name or "").lower()
+    for key, glyph in _GLYPH_KIND_TABLE:
+        if key in n:
+            return glyph
+    return "letter:" + (n[:2].upper() if n else "?")
+
+
+# -----------------------------------------------------------------------------
+# Glyphs — one small painter per kind, dispatched through the _GLYPHS registry
+# -----------------------------------------------------------------------------
+#
+# Every painter draws a single-stroke geometric glyph in an s×s box with the
+# pen already configured by the caller (_GlyphTile.paintEvent). Painters share
+# the same inset (_GLYPH_PAD) and the _line / _glyph_box helpers so the
+# geometry is defined once; the expressions themselves are kept verbatim from
+# the original switch so the rendered pixels are unchanged.
+
+# Inset from the tile edge (px) at every size — the whole glyph lives inside
+# the (s - 2 * _GLYPH_PAD) square this leaves.
+_GLYPH_PAD = 5
+
+
+def _line(p: QPainter, x1, y1, x2, y2):
+    p.drawLine(QPointF(x1, y1), QPointF(x2, y2))
+
+
+def _glyph_box(s: int) -> QRectF:
+    """The padded square every circular/boxed glyph is drawn into."""
+    return QRectF(_GLYPH_PAD, _GLYPH_PAD, s - 2 * _GLYPH_PAD, s - 2 * _GLYPH_PAD)
+
+
+# -- Sources --------------------------------------------------------------------
+
+
+def _glyph_sine(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    path = QPainterPath()
+    path.moveTo(pad, s / 2)
+    path.quadTo(pad + (s - 2 * pad) * 0.25, pad, s / 2, s / 2)
+    path.quadTo(s - pad - (s - 2 * pad) * 0.25, s - pad, s - pad, s / 2)
+    p.drawPath(path)
+
+
+def _glyph_noise(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    pts = [
+        (pad, s * 0.7),
+        (pad + 2.5, s * 0.35),
+        (pad + 4.5, s * 0.6),
+        (pad + 6.5, s * 0.3),
+        (pad + 8.5, s * 0.65),
+        (s - pad, s * 0.45),
+    ]
+    for (x1, y1), (x2, y2) in zip(pts, pts[1:]):
+        _line(p, x1, y1, x2, y2)
+
+
+def _glyph_step(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, s - pad, s / 2, s - pad)
+    _line(p, s / 2, s - pad, s / 2, pad)
+    _line(p, s / 2, pad, s - pad, pad)
+
+
+def _glyph_ramp(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, s - pad, s - pad, pad)
+    _line(p, pad, s - pad, s - pad, s - pad)
+
+
+def _glyph_impulse(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, s - pad, s - pad, s - pad)
+    _line(p, s / 2, pad, s / 2, s - pad)
+
+
+# -- Math -----------------------------------------------------------------------
+
+
+def _glyph_sum(p: QPainter, color: QColor, s: int):
+    p.drawEllipse(_glyph_box(s))
+    _draw_text(p, color, s, "±", italic=False, weight=QFont.Weight.Bold)
+
+
+def _glyph_gain(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    path = QPainterPath()
+    path.moveTo(pad, pad)
+    path.lineTo(s - pad, s / 2)
+    path.lineTo(pad, s - pad)
+    path.closeSubpath()
+    p.drawPath(path)
+
+
+def _glyph_product(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    p.drawEllipse(_glyph_box(s))
+    _line(p, pad + 2, pad + 2, s - pad - 2, s - pad - 2)
+    _line(p, s - pad - 2, pad + 2, pad + 2, s - pad - 2)
+
+
+# -- Control --------------------------------------------------------------------
+
+
+def _glyph_integ(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad + 1, pad, pad + 1, s - pad)
+    _draw_text(p, color, s, "1/s", italic=True, x_off=2.5, size_factor=0.4)
+
+
+def _glyph_tranfn(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _draw_text(p, color, s, "B", italic=True, y_off=-3.5, size_factor=0.42)
+    _line(p, pad + 1.5, s / 2, s - pad - 1.5, s / 2)
+    _draw_text(p, color, s, "A", italic=True, y_off=4.5, size_factor=0.42)
+
+
+def _glyph_delay(p: QPainter, color: QColor, s: int):
+    p.drawEllipse(_glyph_box(s))
+    _draw_text(p, color, s, "→", italic=False)
+
+
+# -- Nonlinear / filters ----------------------------------------------------------
+
+
+def _glyph_sat(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, s - pad, pad + 4, s - pad)
+    _line(p, pad + 4, s - pad, s - pad - 4, pad)
+    _line(p, s - pad - 4, pad, s - pad, pad)
+
+
+def _glyph_rate(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, s - pad, s / 2, pad)
+    _line(p, s / 2, pad, s - pad, pad)
+
+
+def _glyph_hys(p: QPainter, color: QColor, s: int):
+    """Shared by the ``hys`` and ``dead`` kinds."""
+    pad = _GLYPH_PAD
+    _line(p, pad, s / 2, s / 2 - 1, s / 2)
+    _line(p, s / 2 - 1, s / 2, s / 2 + 1, pad + 2)
+    _line(p, s / 2 + 1, pad + 2, s - pad, pad + 2)
+
+
+def _glyph_filter(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    path = QPainterPath()
+    path.moveTo(pad, s - pad)
+    path.quadTo(s / 2, s - pad, s / 2, s / 2)
+    path.quadTo(s / 2, pad, s - pad, pad)
+    p.drawPath(path)
+
+
+# -- Sinks / analysis -------------------------------------------------------------
+
+
+def _glyph_scope(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    p.drawRoundedRect(QRectF(pad - 1, pad + 1, s - 2 * pad + 2, s - 2 * pad - 2), 2, 2)
+    path = QPainterPath()
+    path.moveTo(pad + 1, s / 2 + 2)
+    path.quadTo(pad + 4, pad + 2, s / 2, s / 2)
+    path.quadTo(s - pad - 3, s - pad - 1, s - pad - 1, s / 2 - 1)
+    p.drawPath(path)
+
+
+def _glyph_bode(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, pad, pad, s - pad)
+    _line(p, pad, s - pad, s - pad, s - pad)
+    path = QPainterPath()
+    path.moveTo(pad + 1, pad + 3)
+    path.quadTo(s / 2, pad + 4, s / 2 + 1, s / 2)
+    path.quadTo(s - pad - 2, s - pad - 4, s - pad, s - pad - 2)
+    p.drawPath(path)
+
+
+def _glyph_nyq(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    p.drawEllipse(_glyph_box(s))
+    _line(p, pad, s / 2, s - pad, s / 2)
+    _line(p, s / 2, pad, s / 2, s - pad)
+
+
+def _glyph_roots(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    p.drawEllipse(_glyph_box(s))
+    _line(p, pad, s / 2, s - pad, s / 2)
+    _line(p, s * 0.3, s / 2 - 1.5, s * 0.3 + 1.5, s / 2 + 0.5)
+    _line(p, s * 0.3, s / 2 + 0.5, s * 0.3 + 1.5, s / 2 - 1.5)
+
+
+def _glyph_fft(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    for i, h in enumerate([4, 7, 3, 8, 5, 6, 2, 5]):
+        x = pad + i * (s - 2 * pad) / 8.0
+        _line(p, x, s - pad, x, s - pad - h)
+
+
+def _glyph_xy(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, s - pad, s - pad, s - pad)
+    _line(p, pad, s - pad, pad, pad)
+    _line(p, pad + 1, s - pad - 1, s - pad - 1, pad + 1)
+
+
+def _glyph_export(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    p.drawRoundedRect(QRectF(pad, pad + 1, (s - 2 * pad) * 0.55, s - 2 * pad - 2), 1.2, 1.2)
+    _line(p, pad + 7, s / 2, s - pad - 1, s / 2)
+    _line(p, s - pad - 3, s / 2 - 2, s - pad - 1, s / 2)
+    _line(p, s - pad - 3, s / 2 + 2, s - pad - 1, s / 2)
+
+
+def _glyph_term(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad + 2, s - pad - 1, s - pad - 2, s - pad - 1)
+    _line(p, pad + 4, s - pad - 3, s - pad - 4, s - pad - 3)
+    _line(p, s / 2, pad + 1, s / 2, s - pad - 3)
+
+
+# -- Discrete ---------------------------------------------------------------------
+
+
+def _glyph_zoh(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, s * 0.72, pad + 4, s * 0.72)
+    _line(p, pad + 4, s * 0.72, pad + 4, s / 2)
+    _line(p, pad + 4, s / 2, s - pad - 4, s / 2)
+    _line(p, s - pad - 4, s / 2, s - pad - 4, pad + 2)
+    _line(p, s - pad - 4, pad + 2, s - pad, pad + 2)
+
+
+def _glyph_foh(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, s * 0.7, pad + 5, s * 0.4)
+    _line(p, pad + 5, s * 0.4, s - pad - 5, s * 0.7)
+    _line(p, s - pad - 5, s * 0.7, s - pad, s * 0.3)
+
+
+# -- Routing ----------------------------------------------------------------------
+
+
+def _glyph_mux(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, pad + 1, s / 2, s / 2)
+    _line(p, pad, s - pad - 1, s / 2, s / 2)
+    _line(p, s / 2, s / 2, s - pad, s / 2)
+
+
+def _glyph_demux(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, s - pad, pad + 1, s / 2, s / 2)
+    _line(p, s - pad, s - pad - 1, s / 2, s / 2)
+    _line(p, s / 2, s / 2, pad, s / 2)
+
+
+def _glyph_switch(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, s / 2, s / 2 - 1, s / 2)
+    _line(p, s / 2 + 1, pad + 2, s - pad, s / 2)
+
+
+def _glyph_in(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, s / 2, s - pad, s / 2)
+    _line(p, s - pad - 3, s / 2 - 2, s - pad, s / 2)
+    _line(p, s - pad - 3, s / 2 + 2, s - pad, s / 2)
+
+
+def _glyph_out(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, s / 2, s - pad, s / 2)
+    _line(p, pad + 3, s / 2 - 2, pad, s / 2)
+    _line(p, pad + 3, s / 2 + 2, pad, s / 2)
+
+
+def _glyph_sub(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    p.drawRoundedRect(QRectF(pad, pad, s - 2 * pad, s - 2 * pad), 1.5, 1.5)
+    p.drawRoundedRect(QRectF(pad + 2, pad + 2, (s - 2 * pad) - 4, (s - 2 * pad) - 4), 1.5, 1.5)
+
+
+# -- Text fallbacks ---------------------------------------------------------------
+
+
+def _glyph_letters(p: QPainter, color: QColor, s: int, letters: str):
+    """``letter:<initials>`` kinds produced by _glyph_kind_for's fallback."""
+    _draw_text(
+        p, color, s, letters or "?", italic=False, weight=QFont.Weight.Bold, size_factor=0.42
+    )
+
+
+def _glyph_label(p: QPainter, color: QColor, s: int, kind: str):
+    """Final fallback for kinds with no dedicated painter: a short label."""
+    _draw_text(p, color, s, kind[:3], italic=False, weight=QFont.Weight.Bold, size_factor=0.36)
+
+
+# kind -> painter. Kinds emitted by _glyph_kind_for that are absent here
+# (const, abs, deriv, pid, ...) render through _glyph_label on purpose.
+_GLYPHS: Dict[str, Callable[[QPainter, QColor, int], None]] = {
+    # Sources
+    "sine": _glyph_sine,
+    "noise": _glyph_noise,
+    "step": _glyph_step,
+    "ramp": _glyph_ramp,
+    "impulse": _glyph_impulse,
+    # Math
+    "sum": _glyph_sum,
+    "gain": _glyph_gain,
+    "product": _glyph_product,
+    # Control
+    "integ": _glyph_integ,
+    "tranfn": _glyph_tranfn,
+    "delay": _glyph_delay,
+    # Nonlinear / filters
+    "sat": _glyph_sat,
+    "rate": _glyph_rate,
+    "hys": _glyph_hys,
+    "dead": _glyph_hys,
+    "filter": _glyph_filter,
+    # Sinks / analysis
+    "scope": _glyph_scope,
+    "bode": _glyph_bode,
+    "nyq": _glyph_nyq,
+    "roots": _glyph_roots,
+    "fft": _glyph_fft,
+    "xy": _glyph_xy,
+    "export": _glyph_export,
+    "term": _glyph_term,
+    # Discrete
+    "zoh": _glyph_zoh,
+    "foh": _glyph_foh,
+    # Routing
+    "mux": _glyph_mux,
+    "demux": _glyph_demux,
+    "switch": _glyph_switch,
+    "in": _glyph_in,
+    "out": _glyph_out,
+    "sub": _glyph_sub,
+}
+
+
+def _draw_glyph(p: QPainter, kind: str, color: QColor, s: int):
+    """Single-stroke geometric glyph in an s×s box. Pen is already configured."""
+    painter = _GLYPHS.get(kind)
+    if painter is not None:
+        painter(p, color, s)
+    elif kind.startswith("letter:"):
+        _glyph_letters(p, color, s, kind.split(":", 1)[1])
+    else:
+        _glyph_label(p, color, s, kind)
+
+
+def _draw_text(
+    p: QPainter,
+    color: QColor,
+    s: int,
+    text: str,
+    italic: bool = False,
+    weight=None,
+    size_factor: float = 0.55,
+    x_off: float = 0,
+    y_off: float = 0,
+):
+    f = QFont()
+    if weight is not None:
+        f.setWeight(weight)
+    f.setItalic(italic)
+    f.setPointSizeF(max(7.0, s * size_factor))
+    if italic:
+        f.setStyleHint(QFont.StyleHint.Serif)
+    p.setFont(f)
+    p.setPen(QPen(color))
+    p.drawText(QRectF(0 + x_off, 0 + y_off, s, s), Qt.AlignmentFlag.AlignCenter, text)
+
+
+# -----------------------------------------------------------------------------
+# Category section — slim header + rows
+# -----------------------------------------------------------------------------
+
+
+class _CategorySection(QWidget):
+    """Collapsible category: a clickable header toggles its rows.
+
+    The collapsed state is persisted per-category via QSettings (keyed by
+    category name) and restored when the section is rebuilt, so a user's
+    expand/collapse choices survive ``refresh_blocks()`` and app restarts.
+    """
+
+    def __init__(self, category_name, menu_blocks, colors, parent=None):
+        super().__init__(parent)
+        self.category_name = category_name
+        self.menu_blocks = menu_blocks
+        self.colors = colors
+        # Last filter text, so a header toggle re-applies the active filter
+        # instead of unconditionally showing every row.
+        self._filter_text = ""
+
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(0, 6, 0, 2)
+        lay.setSpacing(0)
+
+        # Restore the persisted collapsed flag before building the header so
+        # the chevron and initial row visibility match the stored state.
+        self._collapsed = self._load_collapsed()
+
+        # Header — clickable label that toggles the section. The chevron prefix
+        # indicates state (▾ expanded / ▸ collapsed).
+        header = _CategoryHeaderLabel(self)
+        f = QFont()
+        f.setPointSize(8)
+        f.setBold(True)
+        f.setLetterSpacing(QFont.SpacingType.PercentageSpacing, 110)
+        header.setFont(f)
+        header.setContentsMargins(12, 2, 8, 4)
+        header.setObjectName("PaletteCategoryHeader")
+        header.setCursor(Qt.CursorShape.PointingHandCursor)
+        lay.addWidget(header)
+        self.header = header
+
+        # Rows
+        self.rows = []
+        for mb in menu_blocks:
+            row = CompactBlockRow(mb, category_name, colors)
+            lay.addWidget(row)
+            self.rows.append(row)
+
+        self._refresh_header_text()
+        self._apply_row_visibility()
+        self._apply_styling()
+        # Restyled on theme change by ModernBlockPalette._on_theme_changed.
+
+    # -- Collapse / persistence --------------------------------------------
+
+    def _load_collapsed(self) -> bool:
+        try:
+            settings = QSettings(_SETTINGS_ORG, _SETTINGS_APP)
+            return bool(
+                settings.value(_collapsed_settings_key(self.category_name), False, type=bool)
+            )
+        except Exception:
+            return False
+
+    def _save_collapsed(self):
+        try:
+            settings = QSettings(_SETTINGS_ORG, _SETTINGS_APP)
+            settings.setValue(_collapsed_settings_key(self.category_name), self._collapsed)
+        except Exception:
+            logger.debug(
+                "Failed to persist collapsed state for category %r",
+                self.category_name,
+                exc_info=True,
+            )
+
+    def toggle_collapsed(self):
+        """Flip collapsed state, persist it, and update the header + rows."""
+        self._collapsed = not self._collapsed
+        self._save_collapsed()
+        self._refresh_header_text()
+        self._apply_row_visibility()
+
+    def set_collapsed(self, collapsed: bool):
+        """Set (and persist) the collapsed state; no-op when unchanged."""
+        if bool(collapsed) != self._collapsed:
+            self.toggle_collapsed()
+
+    def is_collapsed(self) -> bool:
+        return self._collapsed
+
+    def _refresh_header_text(self):
+        chevron = _CHEVRON_COLLAPSED if self._collapsed else _CHEVRON_EXPANDED
+        # category_name is the untranslated identifier (also the QSettings
+        # collapsed-state key); it is translated only here, at display time.
+        self.header.setText(f"{chevron}  {tr(self.category_name).upper()}")
+
+    def _apply_row_visibility(self) -> bool:
+        """Show rows that pass the active filter, unless the section is collapsed.
+
+        Returns whether any row matches the filter (independent of collapse), so
+        ``filter`` can set section visibility from the same single pass.
+        """
+        text = self._filter_text
+        any_match = False
+        for r in self.rows:
+            matches = block_matches_filter(r.menu_block, text)
+            r.setVisible(matches and not self._collapsed)
+            any_match = any_match or matches
+        return any_match
+
+    # -- Styling ------------------------------------------------------------
+
+    def _apply_styling(self):
+        muted = theme_manager.get_color("text_secondary").name()
+        self.findChild(QLabel, "PaletteCategoryHeader").setStyleSheet(
+            f"QLabel#PaletteCategoryHeader {{ color: {muted}; background: transparent; }}"
+        )
+
+    def filter(self, text: str) -> bool:
+        """Apply a filter; return True if the section stays visible.
+
+        A collapsed section keeps its rows hidden but still reports whether any
+        row matches, so the header remains visible (and toggleable) under an
+        active filter.
+        """
+        self._filter_text = text
+        any_match = self._apply_row_visibility()
+        self.setVisible(any_match)
+        return any_match
+
+
+class _CategoryHeaderLabel(_ElidingLabel):
+    """Category header label that toggles its owning section when clicked."""
+
+    def __init__(self, section, parent=None):
+        super().__init__(parent)
+        self._section = section
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._section.toggle_collapsed()
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+
+class _PinnedSection(_CategorySection):
+    """A curated/auto section (Favorites, Recent) at the top of the palette.
+
+    Reuses every bit of ``_CategorySection`` (header, persisted collapse keyed
+    by the section title, per-row filtering, central theme restyling via the
+    ``findChildren(_CategorySection)`` fan-out). The only difference is the row
+    dots: each row keeps its block's *real* category color instead of the
+    section title's, so a pinned block still reads as Source/Math/etc.
+    """
+
+    def __init__(self, title, menu_blocks, colors, parent=None):
+        super().__init__(title, menu_blocks, colors, parent)
+        # Re-color the category dots from each block's own category. The rows
+        # were built with the section title as their category_name, which would
+        # collapse every dot to the default grey otherwise.
+        for row in self.rows:
+            real_cat = _block_category_name(row.menu_block)
+            row.dot._cat = real_cat
+            row.dot.update()
+
+
+# -----------------------------------------------------------------------------
+# Top-level palette
+# -----------------------------------------------------------------------------
+
+
+class ModernBlockPalette(QWidget):
+    """Modern block palette — compact single-column layout."""
+
+    block_drag_started = pyqtSignal(object)
+
+    def __init__(self, dsim, parent=None):
+        super().__init__(parent)
+        self.dsim = dsim
+        self._sections = []
+        self._setup_widget()
+        self._load_blocks()
+        self._apply_styling()
+        theme_manager.theme_changed.connect(self._on_theme_changed)
+        logger.info("Modern block palette initialized (compact V1)")
+
+    def _on_theme_changed(self, *_):
+        """Single theme-change handler for the whole palette.
+
+        Restyles the palette chrome, then fans out to live children. Rows,
+        glyphs, dots and section headers no longer subscribe to
+        theme_manager.theme_changed individually: one connection here replaces
+        ~150 per-widget connections (with ~70 blocks) and removes the
+        dangling-connection lifecycle that refresh_blocks() had to clean up.
+        findChildren reflects the current tree, so dynamically added/removed
+        rows are handled automatically.
+        """
+        self._apply_styling()
+        for section in self.findChildren(_CategorySection):
+            section._apply_styling()
+        for row in self.findChildren(CompactBlockRow):
+            row._on_theme_changed()
+
+    # -- Layout -------------------------------------------------------------
+
+    def _setup_widget(self):
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        # Header — "Library" + count
+        head = QFrame()
+        head.setObjectName("PaletteHead")
+        hl = QHBoxLayout(head)
+        hl.setContentsMargins(8, 10, 8, 6)
+        hl.setSpacing(4)
+        self.title = QLabel(tr("Library"))
+        tf = QFont()
+        tf.setPointSize(9)
+        tf.setBold(True)
+        tf.setLetterSpacing(QFont.SpacingType.PercentageSpacing, 105)
+        self.title.setFont(tf)
+        # The header shares a narrow panel whose width is fixed by the left
+        # panel's explicit minimum, not by this row, so wider platform fonts
+        # (Linux) or a longer translation overflow it. The heading never gives
+        # way (a shrunk QLabel just clips: "Librai"); the count fills the gap
+        # between heading and buttons and is the part that yields.
+        self.title.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Preferred)
+        hl.addWidget(self.title)
+        self.count_label = QLabel("")
+        cf = QFont()
+        cf.setPointSize(9)
+        self.count_label.setFont(cf)
+        self.count_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.count_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        hl.addWidget(self.count_label, 1)
+
+        # Collapse / expand every category at once.
+        self.collapse_button = QToolButton()
+        self.collapse_button.setText("\u229f")
+        self.collapse_button.setAutoRaise(True)
+        self.collapse_button.setFixedWidth(20)
+        self.collapse_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.collapse_button.setToolTip(tr("Collapse all categories"))
+        self.collapse_button.clicked.connect(self.toggle_all_collapsed)
+        hl.addWidget(self.collapse_button)
+
+        # Re-scan the user library folders (see src/diablos/core/library.py) and rebuild.
+        self.refresh_button = QToolButton()
+        self.refresh_button.setText("\u21bb")
+        self.refresh_button.setAutoRaise(True)
+        self.refresh_button.setFixedWidth(20)
+        self.refresh_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.refresh_button.setToolTip(tr("Refresh user library blocks"))
+        self.refresh_button.clicked.connect(self.refresh_library)
+        hl.addWidget(self.refresh_button)
+
+        outer.addWidget(head)
+
+        # Search
+        search_wrap = QFrame()
+        sw = QHBoxLayout(search_wrap)
+        sw.setContentsMargins(10, 0, 10, 8)
+        self.search_bar = QLineEdit()
+        self.search_bar.setPlaceholderText(tr("Filter blocks…"))
+        self.search_bar.setClearButtonEnabled(True)
+        self.search_bar.textChanged.connect(self._filter_blocks)
+        # Enter adds the first visible match to the canvas, then clears the filter.
+        self.search_bar.returnPressed.connect(self._add_first_match)
+        # Down/Up from the search box step into the visible rows (keyboard nav).
+        self.search_bar.installEventFilter(self)
+        sw.addWidget(self.search_bar)
+        outer.addWidget(search_wrap)
+
+        # Scrollable list
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # Horizontal scrolling is off by design; pin it so a focus change can
+        # never shift the content sideways (see _ElidingLabel).
+        hbar = self.scroll.horizontalScrollBar()
+        hbar.valueChanged.connect(lambda v: v and hbar.setValue(0))
+        self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.scroll.setFrameShape(QFrame.Shape.NoFrame)
+
+        self.blocks_container = QWidget()
+        self.blocks_container.setObjectName("PaletteBlocksContainer")
+        self.blocks_container.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.blocks_layout = QVBoxLayout(self.blocks_container)
+        self.blocks_layout.setContentsMargins(4, 0, 4, 12)
+        self.blocks_layout.setSpacing(0)
+
+        self.scroll.setWidget(self.blocks_container)
+        self.scroll.viewport().setAutoFillBackground(False)
+        outer.addWidget(self.scroll, 1)
+
+    # -- Blocks -------------------------------------------------------------
+
+    def _load_blocks(self):
+        try:
+            menu_blocks = visible_menu_blocks(getattr(self.dsim, "menu_blocks", []))
+            if not menu_blocks:
+                logger.warning("No menu blocks found in DSim")
+                self._add_placeholder()
+                return
+
+            # fn_name -> menu_block index, so the Favorites/Recent sections can
+            # resolve persisted fn_names back to live menu_block objects.
+            block_index = {
+                getattr(b, "fn_name", None): b for b in menu_blocks if getattr(b, "fn_name", None)
+            }
+
+            # Pinned sections first (hidden when empty), then categories.
+            self._build_pinned_sections(block_index)
+
+            categories = self._categorize_blocks(menu_blocks)
+            total = 0
+            for cat_name, blocks in categories.items():
+                section = _CategorySection(cat_name, blocks, self.dsim.colors)
+                self.blocks_layout.addWidget(section)
+                self._sections.append(section)
+                total += len(blocks)
+
+            self.blocks_layout.addStretch(1)
+            self.count_label.setText(str(total))
+            logger.info(f"Loaded {total} blocks in {len(categories)} categories")
+        except Exception as e:
+            logger.error(f"Error loading blocks: {e}")
+            self._add_placeholder()
+
+    def _build_pinned_sections(self, index):
+        """Build the Favorites then Recent sections at the top of the list.
+
+        ``index`` is the fn_name -> menu_block map from ``_load_blocks``. Each
+        section is hidden when it has no resolvable blocks; persisted fn_names
+        that no longer map to a loaded block (e.g. a removed block) are skipped.
+        Both are registered in ``self._sections`` so filter/collapse apply.
+        """
+        # "Favorites"/"Recent" are section titles, not block categories, so the
+        # extractor -- which harvests block `category` literals from blocks/*.py,
+        # not the runtime tr(self.category_name) lookup in _refresh_header_text
+        # -- never sees them. "Filters" is in the same boat: _categorize_blocks()
+        # invents it. tr_noop registers the literals for translation while
+        # leaving the values English, which matters because they double as the
+        # QSettings collapsed-state keys and must stay stable across languages.
+        tr_noop("Favorites")
+        tr_noop("Recent")
+        tr_noop("Filters")
+
+        fav_blocks = [index[n] for n in sorted(_load_favorites()) if n in index]
+        if fav_blocks:
+            fav = _PinnedSection("Favorites", fav_blocks, self.dsim.colors)
+            self.blocks_layout.addWidget(fav)
+            self._sections.append(fav)
+
+        recent_blocks = [index[n] for n in _load_recents() if n in index][:_RECENT_CAP]
+        if recent_blocks:
+            recent = _PinnedSection("Recent", recent_blocks, self.dsim.colors)
+            self.blocks_layout.addWidget(recent)
+            self._sections.append(recent)
+
+    def _categorize_blocks(self, menu_blocks):
+        # Same logic as the original
+        categories = {
+            "Sources": [],
+            "Math": [],
+            "Control": [],
+            "Filters": [],
+            "Sinks": [],
+            "Routing": [],
+            "Optimization Primitives": [],
+            "Other": [],
+        }
+        source_kw = [
+            "step",
+            "ramp",
+            "sine",
+            "square",
+            "constant",
+            "source",
+            "noise",
+            "prbs",
+            "impulse",
+        ]
+        math_kw = [
+            "sum",
+            "gain",
+            "multiply",
+            "add",
+            "subtract",
+            "divide",
+            "abs",
+            "sqrt",
+            "product",
+            "matrix",
+        ]
+        control_kw = [
+            "integrator",
+            "derivative",
+            "pid",
+            "controller",
+            "delay",
+            "transfer",
+            "state",
+            "lqr",
+        ]
+        filter_kw = [
+            "filter",
+            "lowpass",
+            "highpass",
+            "bandpass",
+            "hysteresis",
+            "saturation",
+            "deadband",
+            "rate",
+        ]
+        sink_kw = [
+            "scope",
+            "display",
+            "sink",
+            "plot",
+            "output",
+            "export",
+            "term",
+            "bode",
+            "nyquist",
+            "rootlocus",
+            "fft",
+            "xygraph",
+        ]
+        routing_kw = [
+            "mux",
+            "demux",
+            "switch",
+            "selector",
+            "goto",
+            "from",
+            "inport",
+            "outport",
+            "sub",
+        ]
+
+        for b in menu_blocks:
+            # The palette entry's own category wins -- library blocks have no
+            # block class, so keyword-matching their display name would file
+            # them under the wrong section.
+            cat = getattr(b, "category", None)
+            cls = getattr(b, "block_class", None)
+            if not cat and cls:
+                try:
+                    inst = cls()
+                    if hasattr(inst, "category"):
+                        cat = inst.category
+                except Exception:
+                    logger.debug(
+                        "Failed to read category from block class while grouping; falling back to keyword match",
+                        exc_info=True,
+                    )
+            if not cat:
+                name = getattr(b, "fn_name", "").lower()
+                for kws, label in [
+                    (source_kw, "Sources"),
+                    (math_kw, "Math"),
+                    (control_kw, "Control"),
+                    (filter_kw, "Filters"),
+                    (sink_kw, "Sinks"),
+                    (routing_kw, "Routing"),
+                ]:
+                    if any(k in name for k in kws):
+                        cat = label
+                        break
+                cat = cat or "Other"
+            categories.setdefault(cat, []).append(b)
+
+        return {k: v for k, v in categories.items() if v}
+
+    def _add_placeholder(self):
+        p = QLabel(tr("No blocks available.\nCheck DSim initialization."))
+        p.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        p.setWordWrap(True)
+        p.setStyleSheet(
+            f"color:{theme_manager.get_color('text_secondary').name()}; "
+            f"font-style:italic; padding:20px;"
+        )
+        self.blocks_layout.addWidget(p)
+
+    # -- Filtering ----------------------------------------------------------
+
+    def _filter_blocks(self, text):
+        text = (text or "").strip().lower()
+        for s in self._sections:
+            s.filter(text)
+
+    def _add_first_match(self):
+        """Insert the best visible match via the row's normal add path.
+
+        An exact name match beats a prefix match, which beats any other match;
+        ties keep on-screen order. Without the ranking, "transfer function"
+        added whichever of Transfer Function / Discrete Transfer Function the
+        block loader happened to list first (filesystem order, so it differed
+        between Windows and Linux).
+        """
+        rows = self.visible_rows()
+        if not rows:
+            return
+        query = self.search_bar.text().strip().lower()
+
+        def rank(row):
+            r = block_match_rank(row.menu_block, query)
+            return 3 if r is None else r
+
+        best = min(rows, key=rank)  # min() keeps the first of equal ranks
+        best.activate()  # rebuilds the palette (Recent); do not touch rows after
+        self.search_bar.clear()
+
+    # -- Collapse / expand all ----------------------------------------------
+
+    def toggle_all_collapsed(self):
+        """Collapse every section, or expand them all if all are already collapsed."""
+        sections = [s for s in self._sections if isinstance(s, _CategorySection)]
+        collapse = not all(s.is_collapsed() for s in sections)
+        for s in sections:
+            s.set_collapsed(collapse)
+        self._update_collapse_button()
+
+    def _update_collapse_button(self):
+        sections = [s for s in self._sections if isinstance(s, _CategorySection)]
+        all_collapsed = bool(sections) and all(s.is_collapsed() for s in sections)
+        self.collapse_button.setText("\u229e" if all_collapsed else "\u229f")
+        self.collapse_button.setToolTip(
+            tr("Expand all categories") if all_collapsed else tr("Collapse all categories")
+        )
+
+    # -- Keyboard navigation ------------------------------------------------
+
+    def visible_rows(self):
+        """Currently-visible block rows, in on-screen (top-to-bottom) order."""
+        return [r for r in self.findChildren(CompactBlockRow) if r.isVisible()]
+
+    def eventFilter(self, obj, event):
+        """Route Down/Up from the search box into the visible row list.
+
+        Down focuses the first visible row, Up the last, so the user can leave
+        the filter box and walk the results without the mouse. Once on a row,
+        CompactBlockRow.keyPressEvent handles further arrow/Enter navigation.
+        """
+        from PyQt6.QtCore import QEvent
+
+        if obj is self.search_bar and event.type() == QEvent.Type.KeyPress:
+            key = event.key()
+            if key in (Qt.Key.Key_Down, Qt.Key.Key_Up):
+                rows = self.visible_rows()
+                if rows:
+                    target = rows[0] if key == Qt.Key.Key_Down else rows[-1]
+                    target.setFocus(Qt.FocusReason.OtherFocusReason)
+                    return True
+        return super().eventFilter(obj, event)
+
+    # -- Styling ------------------------------------------------------------
+
+    def _apply_styling(self):
+        bg = theme_manager.get_color("palette_bg").name()
+        text = theme_manager.get_color("text_primary").name()
+        text2 = theme_manager.get_color("text_secondary").name()
+        border = theme_manager.get_color("border_primary").name()
+        search_bg = theme_manager.get_color("surface").name()
+        scroll_track = theme_manager.get_color("surface_secondary").name()
+        scroll_thumb = theme_manager.get_color("border_secondary").name()
+
+        self.setStyleSheet(f"""
+            ModernBlockPalette {{
+                background-color: {bg};
+                border: 1px solid {border};
+                border-radius: 8px;
+            }}
+            QLabel {{ color: {text}; background: transparent; }}
+            QFrame#PaletteHead {{ background: transparent; }}
+            QLineEdit {{
+                background-color: {search_bg};
+                color: {text};
+                border: 1px solid {border};
+                border-radius: 6px;
+                padding: 5px 9px;
+                selection-background-color: {theme_manager.get_color("accent_primary").name()};
+            }}
+            QLineEdit:focus {{ border-color: {theme_manager.get_color("border_focus").name()}; }}
+            QScrollArea {{ border: none; background-color: {bg}; }}
+            QWidget#PaletteBlocksContainer {{ background-color: {bg}; }}
+            QScrollArea > QWidget > QWidget {{ background-color: {bg}; }}
+            QScrollBar:vertical {{
+                background: {scroll_track};
+                width: 10px;
+                border-radius: 5px;
+                margin: 0px;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {scroll_thumb};
+                border-radius: 5px;
+                min-height: 24px;
+            }}
+            QScrollBar::handle:vertical:hover {{
+                background: {theme_manager.get_color("border_hover").name()};
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0px; }}
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{ background: none; }}
+        """)
+        # Style the small count badge
+        self.count_label.setStyleSheet(f"color:{text2}; background: transparent; padding: 2px 6px;")
+
+    # -- Favorites / Recent -------------------------------------------------
+
+    def is_favorite(self, fn_name) -> bool:
+        """Whether ``fn_name`` is currently pinned to Favorites."""
+        return bool(fn_name) and fn_name in _load_favorites()
+
+    def pin_favorite(self, fn_name):
+        """Add ``fn_name`` to Favorites, persist, and rebuild the sections."""
+        if not fn_name:
+            return
+        favs = _load_favorites()
+        if fn_name in favs:
+            return
+        favs.add(fn_name)
+        _save_favorites(favs)
+        self.refresh_blocks()
+
+    def unpin_favorite(self, fn_name):
+        """Remove ``fn_name`` from Favorites, persist, and rebuild sections."""
+        if not fn_name:
+            return
+        favs = _load_favorites()
+        if fn_name not in favs:
+            return
+        favs.discard(fn_name)
+        _save_favorites(favs)
+        self.refresh_blocks()
+
+    def record_recent(self, fn_name):
+        """Record a block addition into the Recent list and rebuild sections.
+
+        Newest-first, de-duplicated and capped via ``update_recents``. No-ops
+        (and avoids a rebuild) when the list is unchanged, so re-adding the
+        already-most-recent block doesn't churn the UI.
+        """
+        if not fn_name:
+            return
+        current = _load_recents()
+        updated = update_recents(current, fn_name, _RECENT_CAP)
+        if updated == current:
+            return
+        _save_recents(updated)
+        self._rebuild_recent_section()
+
+    def _rebuild_recent_section(self):
+        """Swap in a fresh Recent section without rebuilding the whole palette.
+
+        This runs on every block drop; a full ``refresh_blocks()`` tears down
+        and recreates ~400 widgets, which is a visible stall right after the
+        drop. Falls back to the full rebuild if the palette is not in its
+        normal (sectioned) state.
+        """
+        try:
+            menu_blocks = visible_menu_blocks(getattr(self.dsim, "menu_blocks", []))
+            if not menu_blocks or not self._sections:
+                self.refresh_blocks()
+                return
+            index = {
+                getattr(b, "fn_name", None): b for b in menu_blocks if getattr(b, "fn_name", None)
+            }
+            pinned = [s for s in self._sections if isinstance(s, _PinnedSection)]
+            old = next((s for s in pinned if s.category_name == "Recent"), None)
+            if old is not None:
+                layout_pos = self.blocks_layout.indexOf(old)
+                section_pos = self._sections.index(old)
+                self._sections.remove(old)
+                self.blocks_layout.removeWidget(old)
+                old.setParent(None)
+                old.deleteLater()
+            else:
+                # Recent sits right after Favorites (when shown), else first.
+                fav = next((s for s in pinned if s.category_name == "Favorites"), None)
+                layout_pos = self.blocks_layout.indexOf(fav) + 1 if fav is not None else 0
+                section_pos = self._sections.index(fav) + 1 if fav is not None else 0
+
+            recent_blocks = [index[n] for n in _load_recents() if n in index][:_RECENT_CAP]
+            if recent_blocks:
+                recent = _PinnedSection("Recent", recent_blocks, self.dsim.colors)
+                self.blocks_layout.insertWidget(layout_pos, recent)
+                self._sections.insert(section_pos, recent)
+                recent.filter((self.search_bar.text() or "").strip().lower())
+            self._update_collapse_button()
+        except Exception as e:
+            logger.error(f"Error updating Recent section: {e}")
+            self.refresh_blocks()
+
+    # -- Public API (preserved) --------------------------------------------
+
+    def refresh_library(self):
+        """Re-scan the library folders and rebuild the palette.
+
+        Safe to call when the model predates library support (older tests and
+        embedders construct a bare stand-in ``dsim``): the rescan is skipped
+        and the palette is simply rebuilt.
+        """
+        try:
+            # The main window knows the open diagram's path (needed for the
+            # project-local library/ folder) and rebuilds this palette itself.
+            window = self.window()
+            hook = getattr(window, "refresh_block_library", None)
+            if callable(hook):
+                hook()
+                return
+            model = getattr(self.dsim, "model", None)
+            loader = getattr(model, "load_library_blocks", None)
+            if callable(loader):
+                loader(getattr(self.dsim, "current_filepath", None))
+        except Exception as e:
+            logger.error(f"Error refreshing user library: {e}")
+        self.refresh_blocks()
+
+    def refresh_blocks(self):
+        try:
+            for i in reversed(range(self.blocks_layout.count())):
+                item = self.blocks_layout.itemAt(i)
+                w = item.widget()
+                if w:
+                    # Detach from the layout and schedule for deletion. Theme
+                    # restyling is now driven centrally via findChildren in
+                    # _on_theme_changed, so detached widgets (parent cleared
+                    # below) are simply excluded from the next fan-out.
+                    self.blocks_layout.removeWidget(w)
+                    w.setParent(None)
+                    w.deleteLater()
+                else:
+                    self.blocks_layout.removeItem(item)
+            self._sections.clear()
+            self._load_blocks()
+            self._update_collapse_button()
+        except Exception as e:
+            logger.error(f"Error refreshing palette: {e}")
+
+    def retranslate_ui(self):
+        """Re-apply every palette string in the active language.
+
+        The section headers and row tooltips are rebuilt wholesale by
+        ``refresh_blocks()`` (they translate their category/block text at paint
+        time), so only the chrome needs explicit re-setting here.
+        """
+        self.title.setText(tr("Library"))
+        self.search_bar.setPlaceholderText(tr("Filter blocks…"))
+        self.refresh_blocks()
+        self._update_collapse_button()
+
+    def get_available_blocks(self):
+        return getattr(self.dsim, "menu_blocks", [])

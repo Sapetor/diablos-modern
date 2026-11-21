@@ -11,9 +11,9 @@ All blocks emit 1.0 for true and 0.0 for false, element-wise.
 import numpy as np
 import pytest
 
-from blocks.relational_operator import RelationalOperatorBlock
-from blocks.compare_to_constant import CompareToConstantBlock
-from blocks.logical_operator import LogicalOperatorBlock
+from diablos.blocks.relational_operator import RelationalOperatorBlock
+from diablos.blocks.compare_to_constant import CompareToConstantBlock
+from diablos.blocks.logical_operator import LogicalOperatorBlock
 
 
 @pytest.mark.unit

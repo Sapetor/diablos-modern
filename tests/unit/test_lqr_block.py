@@ -1,4 +1,4 @@
-"""Unit tests for the LQR design block (blocks/lqr.py).
+"""Unit tests for the LQR design block (src/diablos/blocks/lqr.py).
 
 LQR is a *design* block, not a simulation block: it carries the A/B/Q/R spec
 that the right-click "Compute LQR Gain" action reads, and its ``execute()`` is
@@ -13,7 +13,7 @@ import ast
 import numpy as np
 import pytest
 
-from blocks.lqr import LQRBlock
+from diablos.blocks.lqr import LQRBlock
 
 
 @pytest.mark.unit
@@ -90,7 +90,7 @@ class TestLQRBlockExecution:
 
     def test_draw_icon_returns_a_painter_path(self, qapp):
         from PyQt6.QtCore import QRect
-        from lib.icon_path import IconPath
+        from diablos.core.icon_path import IconPath
 
         path = LQRBlock().draw_icon(QRect(0, 0, 100, 60))
         assert isinstance(path, IconPath)

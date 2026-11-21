@@ -9,8 +9,8 @@ import subprocess
 import pytest
 from types import SimpleNamespace
 
-from lib.export.tikz_exporter import TikZExporter
-from lib.export.blox_exporter import BloxExporter
+from diablos.core.export.tikz_exporter import TikZExporter
+from diablos.core.export.blox_exporter import BloxExporter
 
 
 # ---------------------------------------------------------------------------

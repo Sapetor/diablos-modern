@@ -5,7 +5,7 @@ Companion to ``test_equiv_pde_neumann2d.py`` (same harness, same two paths):
   * compiled    -- ``SystemCompiler`` + ``solve_ivp`` (RK45), and
   * interpreter -- the ``block.execute()`` fixed-step loop.
 
-Both paths run the SAME spatial operator out of ``lib/engine/pde_ops.py`` and
+Both paths run the SAME spatial operator out of ``src/diablos/core/engine/pde_ops.py`` and
 differ only in the time integrator, so a divergence here means the periodic /
 Robin branches were added to one path but not the other -- exactly the class of
 bug that the single-sourced operator module exists to prevent.
@@ -347,8 +347,8 @@ def _scope_traces(dsim):
 
 
 def _run(filepath, fast):
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
+    from diablos.core.lib import DSim
+    from diablos.core.workspace import WorkspaceManager
 
     WorkspaceManager._instance = None
     dsim = DSim()

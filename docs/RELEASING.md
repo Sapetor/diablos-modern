@@ -21,7 +21,7 @@ is written. Everything else reads it back:
 
 | Consumer | How it reads the version |
 |---|---|
-| `modern_ui/__init__.py` | Parses `pyproject.toml` in a checkout; reads the bundled `_version.txt` in a frozen build |
+| `src/diablos/gui/__init__.py` | Parses `pyproject.toml` in a checkout; reads the bundled `_version.txt` in a frozen build |
 | `diablos.spec` | Parses it for `CFBundleShortVersionString` |
 | `tools/build.sh` | Parses it for the DMG filename |
 | `.github/workflows/release.yml` | Parses it for the Windows zip and Linux tarball filenames |
@@ -142,7 +142,7 @@ Do this before announcing the release.
    missed sync shows up.
 6. **Open an example** from **File ▸ Examples** and run it. A packaged build
    resolves resource paths differently from a checkout
-   (`lib/app_paths.py`), so this catches path bugs a source run never sees.
+   (`src/diablos/core/app_paths.py`), so this catches path bugs a source run never sees.
 
 There is no automated Intel-macOS or ARM-Linux artifact. Build those from source
 if you need them — see [Building & Packaging](building.md).

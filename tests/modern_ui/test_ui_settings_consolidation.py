@@ -4,7 +4,7 @@ The org/app pair for UI preferences used to be duplicated — ``main_window.py``
 inlined ``QSettings("DiaBloS", "DiaBloS")`` (first-run flag) while
 ``modern_palette.py`` defined its own ``_SETTINGS_ORG``/``_SETTINGS_APP``
 (per-category collapsed flags). Both now route through a single source of
-truth in ``lib.app_paths``: the ``SETTINGS_ORG``/``SETTINGS_APP`` constants and
+truth in ``diablos.core.app_paths``: the ``SETTINGS_ORG``/``SETTINGS_APP`` constants and
 the ``ui_settings()`` accessor.
 
 These tests pin down that every call site resolves to the *same* store, and
@@ -21,9 +21,9 @@ import os
 
 import pytest
 
-from lib.app_paths import SETTINGS_ORG, SETTINGS_APP, ui_settings
-import modern_ui.main_window as main_window
-import modern_ui.widgets.modern_palette as mp
+from diablos.core.app_paths import SETTINGS_ORG, SETTINGS_APP, ui_settings
+import diablos.gui.main_window as main_window
+import diablos.gui.widgets.modern_palette as mp
 
 
 @pytest.fixture(autouse=True)
@@ -97,8 +97,8 @@ class TestUiSettingsAccessor:
         assert pairs == {(SETTINGS_ORG, SETTINGS_APP)}
 
     def test_helper_does_not_import_qt_at_module_top(self):
-        """``lib.app_paths`` stays Qt-free at module scope (lazy import)."""
-        import lib.app_paths as ap
+        """``diablos.core.app_paths`` stays Qt-free at module scope (lazy import)."""
+        import diablos.core.app_paths as ap
 
         # The QSettings import lives inside ui_settings(), not at module top.
         assert not hasattr(ap, "QSettings")

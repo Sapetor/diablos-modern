@@ -1,4 +1,4 @@
-"""Unit tests for the shared sample-time gating helpers in ``blocks.input_helpers``.
+"""Unit tests for the shared sample-time gating helpers in ``diablos.blocks.input_helpers``.
 
 Sample-instant gating used to be copy-pasted into every discrete-rate block with
 two different tolerances (1e-9 in ZeroOrderHold/FirstOrderHold/RateTransition,
@@ -8,7 +8,7 @@ guard against a non-positive period. Both now live here.
 
 import pytest
 
-from blocks.input_helpers import SAMPLE_TIME_EPS, advance_sample_time, sample_due
+from diablos.blocks.input_helpers import SAMPLE_TIME_EPS, advance_sample_time, sample_due
 
 
 @pytest.mark.unit

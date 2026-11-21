@@ -154,7 +154,7 @@ Blocks implement their execution logic directly in the `execute()` method.
 > [`examples/custom_block_template.py`](examples/custom_block_template.py)
 > (stateless + stateful) or
 > [`examples/custom_kernel_template.py`](examples/custom_kernel_template.py)
-> (compiled-path kernel). The loader is `lib/user_blocks.py`.
+> (compiled-path kernel). The loader is `src/diablos/core/user_blocks.py`.
 
 ### Step 1: Create Block Class
 
@@ -162,7 +162,7 @@ Create a new file in `blocks/` directory:
 
 ```python
 # blocks/my_custom_block.py
-from blocks.base_block import BaseBlock
+from diablos.blocks.base_block import BaseBlock
 
 
 class MyCustomBlock(BaseBlock):
@@ -245,7 +245,7 @@ Your block should appear in the Block Palette under the category you specified!
 ### Step 3: Validate the contract
 
 ```python
-from blocks.base_block import validate_block_class
+from diablos.blocks.base_block import validate_block_class
 from blocks.my_custom_block import MyCustomBlock
 
 validate_block_class(MyCustomBlock)   # raises BlockContractError with details
@@ -286,7 +286,7 @@ class TestMyCustomBlock:
 Use `SimulationModel` for all diagram data operations:
 
 ```python
-from lib.models.simulation_model import SimulationModel
+from diablos.core.models.simulation_model import SimulationModel
 
 model = SimulationModel()
 
@@ -317,7 +317,7 @@ print(f"Blocks: {stats['blocks']}, Lines: {stats['lines']}")
 Use `SimulationEngine` for simulation operations:
 
 ```python
-from lib.engine.simulation_engine import SimulationEngine
+from diablos.core.engine.simulation_engine import SimulationEngine
 
 engine = SimulationEngine(model)
 
@@ -339,7 +339,7 @@ status = engine.get_execution_status()
 Use `FileService` for persistence:
 
 ```python
-from lib.services.file_service import FileService
+from diablos.core.services.file_service import FileService
 
 file_service = FileService(model)
 
@@ -358,7 +358,7 @@ if data:
 `DSim` coordinates between layers:
 
 ```python
-from lib.lib import DSim
+from diablos.core.lib import DSim
 
 dsim = DSim()
 
@@ -376,7 +376,7 @@ dsim.save()  # → file_service.save()
 
 ### Where a mask is stored
 
-`lib/masks.py` keeps a mask inside the Subsystem block's own `params` dict, so
+`src/diablos/core/masks.py` keeps a mask inside the Subsystem block's own `params` dict, so
 it round-trips through `FileService` with no extra serialization:
 
 | Key | Holds |
@@ -401,12 +401,12 @@ cases. The `_`-prefixed keys are hidden from the generic parameter loop.
 
 Mask expressions are resolved into the **exec-time** copies only:
 
-* `Flattener._collect_recursive` (`lib/engine/flattener.py`) opens a new scope
+* `Flattener._collect_recursive` (`src/diablos/core/engine/flattener.py`) opens a new scope
   via `masks.child_scope_for()` when it descends into a masked subsystem, and
   applies `masks.resolve_params_in_scope()` to each clone it emits. Nested
   masks resolve outer-to-inner; an *unmasked* subsystem passes the enclosing
   scope straight through.
-* `DSim._resolve_block_params` (`lib/lib.py`) applies the same scope when it
+* `DSim._resolve_block_params` (`src/diablos/core/lib.py`) applies the same scope when it
   builds `exec_params`, so `SimulationEngine.set_block_type` sees resolved
   transfer-function coefficients rather than raw variable names.
 
@@ -653,13 +653,13 @@ from PyQt6.QtCore import Qt, QPoint
 from PyQt6.QtWidgets import QApplication
 
 # Local application
-from lib.models.simulation_model import SimulationModel
-from lib.simulation.block import DBlock
+from diablos.core.models.simulation_model import SimulationModel
+from diablos.core.simulation.block import DBlock
 ```
 
 ## Localization
 
-The UI is translated through a small home-grown catalog system (`lib/i18n.py`),
+The UI is translated through a small home-grown catalog system (`src/diablos/core/i18n.py`),
 not Qt's `.ts`/`.qm` toolchain — catalogs are plain JSON, need no build step and
 are unit-testable.
 
@@ -680,7 +680,7 @@ are unit-testable.
 ### Wrapping a string
 
 ```python
-from lib.i18n import tr
+from diablos.core.i18n import tr
 
 self.setWindowTitle(tr("Monte Carlo"))
 self.statusBar().showMessage(tr("Loaded {name}", name=filename))
@@ -745,7 +745,7 @@ Rules:
 ### Live retranslation
 
 `ModernDiaBloSWindow.retranslate_ui()` rebuilds the menu bar, toolbar, palette,
-dock titles and status bar in the new language; `lib.i18n.add_language_listener`
+dock titles and status bar in the new language; `diablos.core.i18n.add_language_listener`
 lets other components hook the same event. Widgets built inside already-open
 dialogs and result windows keep the language they were created with — reopening
 them picks up the new one.
@@ -754,7 +754,7 @@ them picks up the new one.
 
 ### Adding a Menu Action
 
-1. Edit `modern_ui/main_window.py`:
+1. Edit `src/diablos/gui/main_window.py`:
 
 ```python
 def _create_menu_bar(self):
@@ -800,7 +800,7 @@ def keyPressEvent(self, event):
 ### Adding a Theme Color
 
 ```python
-# modern_ui/themes/theme_manager.py
+# src/diablos/gui/themes/theme_manager.py
 
 THEMES = {
     "light": {
@@ -814,7 +814,7 @@ THEMES = {
 }
 
 # Use in code:
-from modern_ui.themes.theme_manager import theme_manager
+from diablos.gui.themes.theme_manager import theme_manager
 
 color = theme_manager.get_color("my_new_color")
 ```
@@ -830,7 +830,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 # Or for specific modules
-logger = logging.getLogger("lib.models.simulation_model")
+logger = logging.getLogger("diablos.core.models.simulation_model")
 logger.setLevel(logging.DEBUG)
 ```
 

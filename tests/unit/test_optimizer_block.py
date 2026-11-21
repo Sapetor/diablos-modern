@@ -1,4 +1,4 @@
-"""Unit tests for the Optimizer meta-block (blocks/optimization/optimizer.py).
+"""Unit tests for the Optimizer meta-block (src/diablos/blocks/optimization/optimizer.py).
 
 ``OptimizerBlock`` is a configuration carrier, not a signal processor: it has no
 ports, never runs during simulation, and exists so ``get_optimizer_config()`` can
@@ -13,7 +13,7 @@ hand a settings dict to the optimization engine. Two things are worth pinning:
 
 import pytest
 
-from blocks.optimization.optimizer import OptimizerBlock
+from diablos.blocks.optimization.optimizer import OptimizerBlock
 
 
 def _defaults(**overrides):
@@ -75,7 +75,7 @@ class TestOptimizerContract:
 
     def test_draw_icon_returns_a_painter_path(self, qapp):
         from PyQt6.QtCore import QRect
-        from lib.icon_path import IconPath
+        from diablos.core.icon_path import IconPath
 
         path = OptimizerBlock().draw_icon(QRect(0, 0, 100, 60))
         assert isinstance(path, IconPath)

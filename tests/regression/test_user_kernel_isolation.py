@@ -15,15 +15,15 @@ over 1 s, so the scope ends at ``factor * c``.
 import numpy as np
 import pytest
 
-import lib.user_blocks as ub
+import diablos.core.user_blocks as ub
 
 pytestmark = pytest.mark.regression
 
 BLOCK_SOURCE = """\
 import numpy as np
 
-from blocks.base_block import BaseBlock
-from lib.engine.compiler_kernels import EventSpec, events, kernel, signal_scalar
+from diablos.blocks.base_block import BaseBlock
+from diablos.core.engine.compiler_kernels import EventSpec, events, kernel, signal_scalar
 
 FACTOR = {factor}
 
@@ -82,7 +82,7 @@ ORDERS = pytest.mark.parametrize("order", [("a", "b"), ("b", "a")], ids=["a_then
 
 def write_project(root, factor):
     """A trusted project: ``blocks/review_tripler.py`` plus ``model.diablos``."""
-    from lib.diagram_builder import DiagramBuilder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     blocks = root / "blocks"
     blocks.mkdir(parents=True)
@@ -106,13 +106,13 @@ def write_project(root, factor):
 @pytest.fixture
 def projects(tmp_path, monkeypatch):
     """Two trusted projects with identically named, different ReviewTripler blocks."""
-    import lib.app_paths
+    import diablos.core.app_paths
 
     monkeypatch.delenv(ub.BLOCKS_ENV_VAR, raising=False)
     home = tmp_path / "userdata"
     home.mkdir()
     monkeypatch.setattr(ub, "get_user_data_dir", lambda: str(home))
-    monkeypatch.setattr(lib.app_paths, "get_user_data_dir", lambda: str(home))
+    monkeypatch.setattr(diablos.core.app_paths, "get_user_data_dir", lambda: str(home))
     monkeypatch.setattr(ub, "_SESSION_TRUSTED", set(), raising=False)
     ub.purge_user_modules()
     paths = {key: write_project(tmp_path / key, factor) for key, factor in FACTORS.items()}
@@ -121,7 +121,7 @@ def projects(tmp_path, monkeypatch):
 
 
 def load_in_order(paths, order):
-    from lib import api
+    from diablos.core import api
 
     return {key: api.load(paths[key]) for key in order}
 
@@ -180,7 +180,7 @@ def test_analysis_clone_keeps_own_kernel(qapp, projects, order):
 
 @pytest.mark.qt
 def test_events_are_bound_to_the_owning_block(qapp, projects):
-    from lib.engine.compiler_kernels import BuildContext, build_events
+    from diablos.core.engine.compiler_kernels import BuildContext, build_events
 
     diagrams = load_in_order(projects, ("a", "b"))
     for key, diagram in diagrams.items():
@@ -202,7 +202,7 @@ def test_events_are_bound_to_the_owning_block(qapp, projects):
 @pytest.mark.qt
 def test_user_kernel_is_not_reachable_by_name_alone(qapp, projects):
     """Only the owning block class reaches a user kernel; a bare name does not."""
-    from lib.engine.compiler_kernels import get_event_builder, get_kernel_builder
+    from diablos.core.engine.compiler_kernels import get_event_builder, get_kernel_builder
 
     load_in_order(projects, ("a",))
     assert get_kernel_builder("Reviewtripler") is None
@@ -225,7 +225,7 @@ def test_experiment_workers_keep_own_kernel(qapp, projects, workers):
 
 @pytest.mark.qt
 def test_lookup_by_block_instance_and_class(qapp, projects):
-    from lib.engine.compiler_kernels import get_kernel_builder
+    from diablos.core.engine.compiler_kernels import get_kernel_builder
 
     diagrams = load_in_order(projects, ("a", "b"))
     builders = set()

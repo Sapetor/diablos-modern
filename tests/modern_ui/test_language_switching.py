@@ -2,8 +2,8 @@
 
 import pytest
 
-from lib import i18n
-from modern_ui.main_window import ModernDiaBloSWindow
+from diablos.core import i18n
+from diablos.gui.main_window import ModernDiaBloSWindow
 
 
 @pytest.fixture
@@ -26,7 +26,7 @@ class TestLanguagePreference:
     """Language is chosen in File > Preferences (it used to be View > Language)."""
 
     def _labels(self, window):
-        from modern_ui.widgets.preferences_dialog import PreferencesDialog
+        from diablos.gui.widgets.preferences_dialog import PreferencesDialog
 
         dialog = PreferencesDialog(window)
         combo = dialog.language_combo

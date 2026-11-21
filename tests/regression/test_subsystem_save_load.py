@@ -23,9 +23,9 @@ class TestSubsystemSaveLoad:
         """
         Build:  Step  ->  Subsystem(In1 -> Gain -> Out1)  ->  Scope
         """
-        from blocks.subsystem import Subsystem
-        from lib.simulation.block import DBlock
-        from lib.simulation.connection import DLine
+        from diablos.blocks.subsystem import Subsystem
+        from diablos.core.simulation.block import DBlock
+        from diablos.core.simulation.connection import DLine
 
         # Look up palette templates the same way real UI code does so the
         # MenuBlock's category/color/io_edit are realistic.
@@ -52,8 +52,8 @@ class TestSubsystemSaveLoad:
 
         # Internal blocks — keep names matching the convention the flattener
         # falls back to ("inport1", "outport1", "<fn>0").
-        from blocks.inport import Inport
-        from blocks.outport import Outport
+        from diablos.blocks.inport import Inport
+        from diablos.blocks.outport import Outport
 
         inport = Inport(block_name="In1")
         inport.name = "inport1"
@@ -149,7 +149,7 @@ class TestSubsystemSaveLoad:
 
     def test_round_trip_flattens_to_primitives(self, file_service, simulation_model, tmp_path):
         """After reload, the flattener should still see the inner Gain block."""
-        from lib.engine.flattener import Flattener
+        from diablos.core.engine.flattener import Flattener
 
         self._build_diagram_with_subsystem(simulation_model)
 

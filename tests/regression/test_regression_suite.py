@@ -20,7 +20,7 @@ class TestBlockNumericalRegression:
 
     def test_integrator_fwd_euler_unit_step(self):
         """Integrating constant 1.0 for 1 second should give ~1.0."""
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         block = IntegratorBlock()
         params = {"init_conds": 0.0, "method": "FWD_EULER", "_init_start_": True, "_name_": "int"}
@@ -33,7 +33,7 @@ class TestBlockNumericalRegression:
 
     def test_integrator_bwd_euler_unit_step(self):
         """Backward Euler should also integrate correctly."""
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         block = IntegratorBlock()
         params = {"init_conds": 0.0, "method": "BWD_EULER", "_init_start_": True, "_name_": "int"}
@@ -46,7 +46,7 @@ class TestBlockNumericalRegression:
 
     def test_integrator_tustin_unit_step(self):
         """Tustin (trapezoidal) should integrate correctly."""
-        from blocks.integrator import IntegratorBlock
+        from diablos.blocks.integrator import IntegratorBlock
 
         block = IntegratorBlock()
         params = {"init_conds": 0.0, "method": "TUSTIN", "_init_start_": True, "_name_": "int"}
@@ -59,7 +59,7 @@ class TestBlockNumericalRegression:
 
     def test_derivative_sine_wave(self):
         """Derivative of sin(t) should be cos(t)."""
-        from blocks.derivative import DerivativeBlock
+        from diablos.blocks.derivative import DerivativeBlock
 
         block = DerivativeBlock()
         params = {"_init_start_": True}
@@ -78,7 +78,7 @@ class TestBlockNumericalRegression:
 
     def test_statespace_first_order_step_response(self):
         """First-order state-space step response should approach 1.0."""
-        from blocks.statespace import StateSpaceBlock
+        from diablos.blocks.statespace import StateSpaceBlock
 
         block = StateSpaceBlock()
         params = {
@@ -101,7 +101,7 @@ class TestBlockNumericalRegression:
 
     def test_transfer_function_lowpass(self):
         """Low-pass TF H(s)=1/(s+1) step response should approach 1.0."""
-        from blocks.transfer_function import TransferFunctionBlock
+        from diablos.blocks.transfer_function import TransferFunctionBlock
 
         block = TransferFunctionBlock()
         params = {
@@ -121,7 +121,7 @@ class TestBlockNumericalRegression:
 
     def test_transport_delay_exact(self):
         """Transport delay should delay signal by exactly delay_time."""
-        from blocks.transport_delay import TransportDelayBlock
+        from diablos.blocks.transport_delay import TransportDelayBlock
 
         block = TransportDelayBlock()
         params = {"delay_time": 0.1, "initial_value": 0.0, "_init_start_": True}
@@ -139,7 +139,7 @@ class TestBlockNumericalRegression:
 
     def test_pid_proportional_only(self):
         """PID with only Kp should act as gain on error."""
-        from blocks.pid import PIDBlock
+        from diablos.blocks.pid import PIDBlock
 
         block = PIDBlock()
         params = {
@@ -160,7 +160,7 @@ class TestBlockNumericalRegression:
 
     def test_saturation_clipping(self):
         """Saturation block should clip values."""
-        from blocks.saturation import SaturationBlock
+        from diablos.blocks.saturation import SaturationBlock
 
         block = SaturationBlock()
         params = {"max": 5.0, "min": -5.0}
@@ -184,7 +184,7 @@ class TestBugFixRegression:
 
     def test_step_block_uses_get_for_params(self):
         """Step block should use .get() for optional params (fixes KeyError)."""
-        from blocks.step import StepBlock
+        from diablos.blocks.step import StepBlock
 
         block = StepBlock()
         # Minimal params - should not raise KeyError
@@ -197,7 +197,7 @@ class TestBugFixRegression:
 
     def test_scope_block_uses_get_for_labels(self):
         """Scope block should use .get() for labels param (fixes KeyError)."""
-        from blocks.scope import ScopeBlock
+        from diablos.blocks.scope import ScopeBlock
 
         block = ScopeBlock()
         # Minimal params
@@ -210,7 +210,7 @@ class TestBugFixRegression:
 
     def test_external_block_returns_error_dict(self):
         """External block should return error dict, not None."""
-        from blocks.external import ExternalBlock
+        from diablos.blocks.external import ExternalBlock
 
         block = ExternalBlock()
         params = {"filename": "nonexistent.py"}
@@ -222,7 +222,7 @@ class TestBugFixRegression:
 
     def test_state_variable_optional_input(self):
         """StateVariable should have optional input for feedback loops."""
-        from blocks.optimization_primitives.state_variable import StateVariableBlock
+        from diablos.blocks.optimization_primitives.state_variable import StateVariableBlock
 
         block = StateVariableBlock()
         assert hasattr(block, "optional_inputs"), "StateVariable should have optional_inputs"
@@ -230,7 +230,7 @@ class TestBugFixRegression:
 
     def test_gain_handles_vector_input(self):
         """Gain block should handle vector inputs correctly."""
-        from blocks.gain import GainBlock
+        from diablos.blocks.gain import GainBlock
 
         block = GainBlock()
         params = {"gain": 2.0}
@@ -243,7 +243,7 @@ class TestBugFixRegression:
 
     def test_sum_block_dynamic_ports(self):
         """Sum block should handle dynamic number of ports."""
-        from blocks.sum import SumBlock
+        from diablos.blocks.sum import SumBlock
 
         block = SumBlock()
 
@@ -264,7 +264,7 @@ class TestPDEBlockRegression:
 
     def test_heat_1d_conservation(self):
         """Heat equation with Neumann BCs should conserve total energy."""
-        from blocks.pde.heat_equation_1d import HeatEquation1DBlock
+        from diablos.blocks.pde.heat_equation_1d import HeatEquation1DBlock
 
         block = HeatEquation1DBlock()
         params = {
@@ -296,7 +296,7 @@ class TestPDEBlockRegression:
 
     def test_heat_2d_initialization(self):
         """Heat equation 2D should initialize with correct sinusoidal IC."""
-        from blocks.pde.heat_equation_2d import HeatEquation2DBlock
+        from diablos.blocks.pde.heat_equation_2d import HeatEquation2DBlock
 
         block = HeatEquation2DBlock()
         params = {
@@ -332,7 +332,7 @@ class TestPDEBlockRegression:
 
     def test_heat_2d_derivatives_nonzero(self):
         """Heat equation 2D should have non-zero derivatives (validates physics)."""
-        from blocks.pde.heat_equation_2d import HeatEquation2DBlock
+        from diablos.blocks.pde.heat_equation_2d import HeatEquation2DBlock
 
         block = HeatEquation2DBlock()
         params = {
@@ -366,7 +366,7 @@ class TestOptimizationPrimitivesRegression:
 
     def test_objective_function_quadratic(self):
         """ObjectiveFunction should evaluate f(x) = x1^2 + x2^2 correctly."""
-        from blocks.optimization_primitives.objective_function import ObjectiveFunctionBlock
+        from diablos.blocks.optimization_primitives.objective_function import ObjectiveFunctionBlock
 
         block = ObjectiveFunctionBlock()
         params = {"expression": "x1**2 + x2**2", "n_variables": 2}
@@ -383,7 +383,7 @@ class TestOptimizationPrimitivesRegression:
         - f_plus_1 = 3^2 + (4+eps)^2 = 9 + 16 + 8*eps + eps^2 ≈ 25 + 8*eps
         - gradient ≈ [6, 8]
         """
-        from blocks.optimization_primitives.numerical_gradient import NumericalGradientBlock
+        from diablos.blocks.optimization_primitives.numerical_gradient import NumericalGradientBlock
 
         block = NumericalGradientBlock()
         eps = 1e-6
@@ -405,7 +405,7 @@ class TestOptimizationPrimitivesRegression:
 
     def test_vector_gain_scaling(self):
         """VectorGain should scale entire vector."""
-        from blocks.optimization_primitives.vector_gain import VectorGainBlock
+        from diablos.blocks.optimization_primitives.vector_gain import VectorGainBlock
 
         block = VectorGainBlock()
         params = {"gain": -0.1}
@@ -416,7 +416,7 @@ class TestOptimizationPrimitivesRegression:
 
     def test_vector_sum_gradient_descent_step(self):
         """VectorSum should compute x - alpha*grad correctly."""
-        from blocks.optimization_primitives.vector_sum import VectorSumBlock
+        from diablos.blocks.optimization_primitives.vector_sum import VectorSumBlock
 
         block = VectorSumBlock()
         # VectorSum uses 'signs' (plural) not 'sign'
@@ -436,7 +436,7 @@ class TestSourceBlocksRegression:
 
     def test_sine_omega_parameter(self):
         """Sine block should use omega parameter (not frequency)."""
-        from blocks.sine import SineBlock
+        from diablos.blocks.sine import SineBlock
 
         block = SineBlock()
         params = {"amplitude": 1.0, "omega": 2 * np.pi, "init_angle": 0.0}
@@ -447,7 +447,7 @@ class TestSourceBlocksRegression:
 
     def test_step_delay_behavior(self):
         """Step block delay should work correctly."""
-        from blocks.step import StepBlock
+        from diablos.blocks.step import StepBlock
 
         block = StepBlock()
         params = {
@@ -468,7 +468,7 @@ class TestSourceBlocksRegression:
 
     def test_ramp_slope(self):
         """Ramp block should have correct slope."""
-        from blocks.ramp import RampBlock
+        from diablos.blocks.ramp import RampBlock
 
         block = RampBlock()
         params = {"slope": 5.0, "delay": 0.0}
@@ -478,7 +478,7 @@ class TestSourceBlocksRegression:
 
     def test_constant_vector_value(self):
         """Constant block should handle vector values."""
-        from blocks.constant import ConstantBlock
+        from diablos.blocks.constant import ConstantBlock
 
         block = ConstantBlock()
         params = {"value": [1.0, 2.0, 3.0]}

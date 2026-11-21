@@ -1,0 +1,357 @@
+"""
+StatusBarManager -- builds and refreshes the main window's compact pill-style
+status bar.
+
+Extracted verbatim (behavior-preserving) from ``ModernDiaBloSWindow`` so the
+main window keeps only thin facades. Follows the same manager pattern as the
+other ``src/diablos/gui/managers`` (constructed with the main window, held as
+``self.window``).
+
+``setup()`` assigns the status-bar segments back onto the window as attributes
+(``status_message``, ``status_pill``, ``file_status``, ``file_unsaved_status``,
+``counts_status``, ``cursor_status``, ``zoom_status``, ``theme_status``,
+``_counts_refresh_timer``) because those names are referenced widely across the
+codebase (e.g. ``window.status_message.setText(...)`` appears in many call
+sites, and ``AppearanceManager`` reads ``window.theme_status``).
+"""
+
+import os
+import logging
+
+from PyQt6.QtCore import QEvent, QObject, QTimer
+from PyQt6.QtWidgets import QLabel, QFrame
+
+from diablos.gui.themes.theme_manager import theme_manager, ThemeType
+
+from diablos.core.i18n import tr
+
+logger = logging.getLogger(__name__)
+
+
+def _diagram_path(window):
+    """Path of the open diagram (the diagram service owns it), or None."""
+    getter = getattr(window, "_current_diagram_path", None)
+    return getter() if callable(getter) else None
+
+
+class StatusBarManager:
+    """Owns construction and periodic refresh of the window status bar."""
+
+    def __init__(self, main_window):
+        self.window = main_window
+
+    def setup(self):
+        """Compact pill-style status bar (≤ 28px tall).
+
+        Layout left-to-right:  state-pill · file-pill · counts · ⟶ · cursor · zoom · theme-pill
+        Segments are separated by 1px vertical dividers (no pipes).
+        """
+        from diablos.gui.widgets.modern_toolbar import (  # reuse toolbar pill
+            _StatusPill,
+            PILL_CAP_STATUSBAR,
+        )
+
+        window = self.window
+        statusbar = window.statusBar()
+        statusbar.setSizeGripEnabled(False)
+        statusbar.setFixedHeight(26)
+
+        def _vsep():
+            f = QFrame()
+            f.setFrameShape(QFrame.Shape.VLine)
+            f.setObjectName("StatusDivider")
+            f.setStyleSheet(
+                f"color: {theme_manager.get_color('border_primary').name()};"
+                f" background: {theme_manager.get_color('border_primary').name()};"
+                f" max-width: 1px; min-width: 1px;"
+            )
+            f.setFixedHeight(14)
+            return f
+
+        def _mono_label(text=""):
+            from PyQt6.QtGui import QFont as _QF
+
+            lbl = QLabel(text)
+            f = _QF("Menlo")
+            f.setStyleHint(_QF.StyleHint.Monospace)
+            f.setFamilies(["Menlo", "Consolas", "JetBrains Mono", "DejaVu Sans Mono", "monospace"])
+            f.setPointSize(8)
+            lbl.setFont(f)
+            return lbl
+
+        # Left: status pill (reused from toolbar)
+        # The bottom bar is where a long message belongs, so it gets a more
+        # generous cap than the toolbar copy (which must leave room for the
+        # tools to its right).
+        window.status_pill = _StatusPill(window, max_text_width=PILL_CAP_STATUSBAR)
+        window.status_pill.set_base_tooltip(tr("Simulation state"))
+        statusbar.addWidget(window.status_pill)
+
+        # Hidden compatibility shim — many call sites still call status_message.setText(...)
+        window.status_message = QLabel()
+        window.status_message.hide()
+
+        # Forward text changes to both pills. Only the *label* travels this
+        # way: the state comes from SimulationController.state_changed (via
+        # window._on_simulation_state_changed), never from the message text.
+        def _on_status_text_changed(text):
+            try:
+                window.toolbar.set_status(text)
+            except Exception:
+                logger.debug("Failed to forward status text to toolbar", exc_info=True)
+            window.status_pill.set_message(text)
+
+        # Replace setText to propagate to the pill
+        _orig_setText = window.status_message.setText
+
+        def _propagating_setText(text):
+            _orig_setText(text)
+            _on_status_text_changed(text)
+
+        window.status_message.setText = _propagating_setText  # type: ignore[attr-defined]
+
+        statusbar.addWidget(_vsep())
+
+        # File info: filename + unsaved indicator
+        window.file_status = QLabel(tr("untitled"))
+        window.file_status.setToolTip(tr("Current diagram file"))
+        window.file_status.setStyleSheet(
+            f"color: {theme_manager.get_color('text_primary').name()};"
+        )
+        window.file_unsaved_status = QLabel("")
+        window.file_unsaved_status.setToolTip(tr("Unsaved changes indicator"))
+        window.file_unsaved_status.setStyleSheet(
+            f"color: {theme_manager.get_color('text_disabled').name()}; font-size: 9pt;"
+        )
+        statusbar.addWidget(window.file_status)
+        statusbar.addWidget(window.file_unsaved_status)
+
+        statusbar.addWidget(_vsep())
+
+        # Counts pill: blocks N · wires M · scopes K
+        window.counts_status = _mono_label(
+            tr("blocks {blocks} · wires {wires} · scopes {scopes}", blocks=0, wires=0, scopes=0)
+        )
+        window.counts_status.setToolTip(tr("Blocks · wires · scopes"))
+        window.counts_status.setStyleSheet(
+            f"color: {theme_manager.get_color('text_secondary').name()};"
+        )
+        statusbar.addWidget(window.counts_status)
+
+        # ----- right-aligned permanent widgets -----
+        window.cursor_status = _mono_label(tr("cursor {x},{y}", x=0, y=0))
+        window.cursor_status.setToolTip(tr("Cursor position (x, y)"))
+        window.cursor_status.setStyleSheet(
+            f"color: {theme_manager.get_color('text_secondary').name()};"
+        )
+        statusbar.addPermanentWidget(window.cursor_status)
+
+        statusbar.addPermanentWidget(_vsep())
+
+        window.zoom_status = _mono_label(tr("zoom {percent}%", percent=100))
+        window.zoom_status.setToolTip(tr("Canvas zoom level"))
+        window.zoom_status.setStyleSheet(
+            f"color: {theme_manager.get_color('text_secondary').name()};"
+        )
+        statusbar.addPermanentWidget(window.zoom_status)
+
+        statusbar.addPermanentWidget(_vsep())
+
+        # Theme + palette tag
+        theme_label = tr("Dark") if theme_manager.current_theme == ThemeType.DARK else tr("Light")
+        from diablos.gui.themes.theme_manager import PALETTE_DISPLAY_NAMES
+
+        palette_label = PALETTE_DISPLAY_NAMES.get(
+            theme_manager.current_palette, theme_manager.current_palette
+        ).split()[0]
+        window.theme_status = QLabel(f"{theme_label} · {palette_label}")
+        window.theme_status.setToolTip(tr("Click to toggle theme (Ctrl+T)"))
+        window.theme_status.setStyleSheet(
+            f"color: {theme_manager.get_color('text_secondary').name()};"
+            f" background-color: {theme_manager.get_color('background_tertiary').name()};"
+            f" padding: 1px 8px; border-radius: 4px; font-size: 9pt;"
+        )
+        statusbar.addPermanentWidget(window.theme_status)
+
+        # Drive zoom from toolbar's zoom rocker so the two stay in sync
+        try:
+            window.toolbar.zoom_changed.connect(
+                lambda f: window.zoom_status.setText(
+                    tr("zoom {percent}%", percent=int(round(f * 100)))
+                )
+            )
+        except Exception:
+            logger.debug("Failed to wire toolbar zoom_changed to zoom status label", exc_info=True)
+
+        # Cursor pos from canvas
+        try:
+            window.canvas.cursor_moved.connect(
+                lambda x, y: window.cursor_status.setText(tr("cursor {x},{y}", x=x, y=y))
+            )
+        except Exception:
+            logger.debug("Failed to wire canvas cursor_moved to cursor status label", exc_info=True)
+
+        # Periodic counts refresh (cheap; runs on the same timer that paints)
+        window._counts_refresh_timer = QTimer(window)
+        window._counts_refresh_timer.timeout.connect(self.refresh_counts)
+        window._counts_refresh_timer.start(500)
+
+        # Keep the counts / file pills current on every diagram change (open,
+        # new, undo, paste, delete, subsystem navigation ...). Each of those
+        # repaints the canvas, so a coalesced refresh hooked on its Paint events
+        # catches them all without touching every call site; the 500ms timer
+        # above remains the backstop.
+        self._install_canvas_refresh_hook()
+
+        # Keep the theme pill in step with the active theme however the toggle
+        # was triggered (Ctrl+T / menu / palette / toolbar / palette switch).
+        self._connect_theme_pill()
+
+        # Initial state
+        self.refresh_counts()
+        self.refresh_file_status()
+
+        # Apply theme palette to the statusbar host
+        window.appearance_manager.update_statusbar_colors()
+
+    def _install_canvas_refresh_hook(self):
+        window = self.window
+        canvas = getattr(window, "canvas", None)
+        if canvas is None:
+            return
+        manager = self
+        pending = []
+
+        def _run():
+            pending.clear()
+            manager.refresh_counts()
+            manager.refresh_file_status()
+
+        class _PaintHook(QObject):
+            def eventFilter(self, obj, event):  # noqa: N802 (Qt override)
+                if event.type() == QEvent.Type.Paint and not pending:
+                    pending.append(1)
+                    QTimer.singleShot(0, _run)
+                return False
+
+        self._paint_hook = _PaintHook(window)
+        canvas.installEventFilter(self._paint_hook)
+
+    def _connect_theme_pill(self):
+        window = self.window
+
+        def _on_theme(*_args):
+            try:
+                window.on_theme_changed()  # status bar shell, menubar, canvas area
+                self._restyle_pills()
+            except RuntimeError:
+                pass  # window already destroyed (theme_manager is a singleton)
+            except Exception:
+                logger.debug("Failed to refresh the theme pill", exc_info=True)
+
+        theme_manager.theme_changed.connect(_on_theme)
+
+        def _disconnect(*_args):
+            try:
+                theme_manager.theme_changed.disconnect(_on_theme)
+            except (TypeError, RuntimeError):
+                pass
+
+        window.destroyed.connect(_disconnect)
+
+    def _restyle_pills(self):
+        """Re-colour the status-bar labels whose inline styles were baked at setup."""
+        window = self.window
+        for name, key in (
+            ("file_status", "text_primary"),
+            ("counts_status", "text_secondary"),
+            ("cursor_status", "text_secondary"),
+            ("zoom_status", "text_secondary"),
+        ):
+            widget = getattr(window, name, None)
+            if widget is not None:
+                widget.setStyleSheet(f"color: {theme_manager.get_color(key).name()};")
+        unsaved = getattr(window, "file_unsaved_status", None)
+        if unsaved is not None:
+            unsaved.setStyleSheet(
+                f"color: {theme_manager.get_color('text_disabled').name()}; font-size: 9pt;"
+            )
+        border = theme_manager.get_color("border_primary").name()
+        for sep in window.statusBar().findChildren(QFrame, "StatusDivider"):
+            sep.setStyleSheet(
+                f"color: {border}; background: {border}; max-width: 1px; min-width: 1px;"
+            )
+
+    def retranslate_ui(self):
+        """Re-apply every status-bar string in the active language.
+
+        The pills are reused (only their text and tooltips are replaced) so the
+        widget references held all over the window stay valid.
+        """
+        window = self.window
+        for widget, text in (
+            (getattr(window, "file_status", None), tr("Current diagram file")),
+            (getattr(window, "file_unsaved_status", None), tr("Unsaved changes indicator")),
+            (getattr(window, "counts_status", None), tr("Blocks · wires · scopes")),
+            (getattr(window, "cursor_status", None), tr("Cursor position (x, y)")),
+            (getattr(window, "zoom_status", None), tr("Canvas zoom level")),
+            (getattr(window, "theme_status", None), tr("Click to toggle theme (Ctrl+T)")),
+        ):
+            if widget is not None:
+                widget.setToolTip(text)
+        # The status pill owns its tooltip slot (it borrows it while its label
+        # is elided), so it gets the text through set_base_tooltip -- which also
+        # re-derives its own "Ready"/"Paused"/... label.
+        pill = getattr(window, "status_pill", None)
+        if pill is not None and hasattr(pill, "set_base_tooltip"):
+            pill.set_base_tooltip(tr("Simulation state"))
+        self.refresh_counts()
+        self.refresh_file_status()
+        # Rebuilds the "Dark · Solarized" pill text, which embeds a translated
+        # theme name.
+        try:
+            window.appearance_manager.update_statusbar_colors()
+        except Exception:
+            logger.debug("Failed to refresh the theme pill after a language change", exc_info=True)
+
+    def refresh_counts(self):
+        """Update the counts pill from current dsim state."""
+        window = self.window
+        try:
+            dsim = getattr(window, "dsim", None)
+            if dsim is None:
+                return
+            blocks = list(getattr(dsim, "blocks_list", []) or [])
+            wires = list(getattr(dsim, "line_list", []) or [])
+            scopes = sum(1 for b in blocks if getattr(b, "block_fn", "") in ("Scope", "FieldScope"))
+            window.counts_status.setText(
+                tr(
+                    "blocks {blocks} · wires {wires} · scopes {scopes}",
+                    blocks=len(blocks),
+                    wires=len(wires),
+                    scopes=scopes,
+                )
+            )
+            # The Properties panel's empty-selection view shows the same
+            # counts and file name; rebuild it only when they change.
+            signature = (_diagram_path(window), len(blocks), len(wires))
+            if signature != getattr(self, "_inspector_signature", None):
+                self._inspector_signature = signature
+                editor = getattr(window, "property_editor", None)
+                if editor is not None and hasattr(editor, "refresh_diagram_inspector"):
+                    editor.refresh_diagram_inspector()
+        except Exception:
+            logger.debug("Failed to refresh counts pill from dsim state", exc_info=True)
+
+    def refresh_file_status(self):
+        """Update filename + unsaved indicator in the status bar."""
+        window = self.window
+        try:
+            path = _diagram_path(window)
+            name = os.path.basename(path) if path else tr("untitled")
+            window.file_status.setText(name)
+            window.file_unsaved_status.setText(
+                tr("unsaved") if getattr(window.dsim, "dirty", False) else ""
+            )
+        except Exception:
+            logger.debug("Failed to refresh file/unsaved status in status bar", exc_info=True)

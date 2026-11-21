@@ -951,7 +951,7 @@ class Test2DPDEBlockImplementations:
 
     def test_heat_equation_2d_block_initialization(self):
         """Test HeatEquation2DBlock initializes correctly."""
-        from blocks.pde.heat_equation_2d import HeatEquation2DBlock
+        from diablos.blocks.pde.heat_equation_2d import HeatEquation2DBlock
 
         block = HeatEquation2DBlock()
         params = {
@@ -980,7 +980,7 @@ class Test2DPDEBlockImplementations:
 
     def test_wave_equation_2d_block_initialization(self):
         """Test WaveEquation2DBlock initializes correctly."""
-        from blocks.pde.wave_equation_2d import WaveEquation2DBlock
+        from diablos.blocks.pde.wave_equation_2d import WaveEquation2DBlock
 
         block = WaveEquation2DBlock()
         params = {
@@ -1013,7 +1013,7 @@ class Test2DPDEBlockImplementations:
 
     def test_advection_equation_2d_block_initialization(self):
         """Test AdvectionEquation2DBlock initializes correctly."""
-        from blocks.pde.advection_equation_2d import AdvectionEquation2DBlock
+        from diablos.blocks.pde.advection_equation_2d import AdvectionEquation2DBlock
 
         block = AdvectionEquation2DBlock()
         params = {
@@ -1040,7 +1040,7 @@ class Test2DPDEBlockImplementations:
 
     def test_heat_2d_block_compute_derivatives(self):
         """Test HeatEquation2DBlock computes derivatives correctly."""
-        from blocks.pde.heat_equation_2d import HeatEquation2DBlock
+        from diablos.blocks.pde.heat_equation_2d import HeatEquation2DBlock
 
         block = HeatEquation2DBlock()
         params = {
@@ -1071,7 +1071,7 @@ class Test2DPDEBlockImplementations:
 
     def test_wave_2d_block_compute_derivatives(self):
         """Test WaveEquation2DBlock computes derivatives correctly."""
-        from blocks.pde.wave_equation_2d import WaveEquation2DBlock
+        from diablos.blocks.pde.wave_equation_2d import WaveEquation2DBlock
 
         block = WaveEquation2DBlock()
         params = {

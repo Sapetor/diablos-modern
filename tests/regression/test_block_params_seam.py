@@ -1,5 +1,5 @@
 """
-Regression tests for the params / exec_params seam (lib/engine/block_params.py).
+Regression tests for the params / exec_params seam (src/diablos/core/engine/block_params.py).
 
 Two shipped bugs had the same shape, one per direction of the lossy copy
 between a block's configured ``params`` and its runtime ``exec_params``:
@@ -19,7 +19,7 @@ plus the one key that must *never* join the push-down set.
 
 import pytest
 
-from lib.engine.block_params import (
+from diablos.core.engine.block_params import (
     PUSH_DOWN_KEYS,
     push_down_internal_params,
     runtime_params,
@@ -67,13 +67,13 @@ class TestEveryReaderSharesOneImplementation:
     """The idiom had independently evolved in three places before this."""
 
     def test_memory_blocks_delegates(self):
-        from lib.engine import memory_blocks
+        from diablos.core.engine import memory_blocks
 
         block = _block({"a": 1}, {"a": 2})
         assert memory_blocks._params_source(block) is block.exec_params
 
     def test_optimization_engine_delegates(self):
-        from lib.engine.optimization_engine import OptimizationEngine
+        from diablos.core.engine.optimization_engine import OptimizationEngine
 
         block = _block({"a": 1}, {"a": 2})
         assert OptimizationEngine.runtime_params(block) is block.exec_params
@@ -82,7 +82,7 @@ class TestEveryReaderSharesOneImplementation:
         """harvest_scope_signals must read the buffer the run actually filled."""
         import numpy as np
 
-        from lib.analysis.resim import harvest_scope_signals
+        from diablos.core.analysis.resim import harvest_scope_signals
 
         class _Scope:
             name = "scope0"
@@ -123,7 +123,7 @@ class TestEveryReaderSharesOneImplementation:
                     offenders.append(f"{path.relative_to(root)}:{n}")
         assert not offenders, (
             "hand-rolled exec_params fallback found; use "
-            "lib.engine.block_params.runtime_params instead: " + ", ".join(offenders)
+            "diablos.core.engine.block_params.runtime_params instead: " + ", ".join(offenders)
         )
 
 
@@ -165,7 +165,7 @@ class TestPushDownReachesTheBlockOnACacheHit:
 class TestResolveHonoursThePushDownOnItsFastPath:
     def test_mid_run_write_reaches_exec_params(self, qapp):
         """The exact shape of the _skip_ bug, at the seam that dropped it."""
-        from lib.engine.simulation_engine import SimulationEngine
+        from diablos.core.engine.simulation_engine import SimulationEngine
 
         engine = SimulationEngine(model=None)
         block = _block({"gain": 2.0}, None)
@@ -186,8 +186,8 @@ class TestResolveHonoursThePushDownOnItsFastPath:
 
     def test_the_cache_hit_is_real(self, qapp):
         """If the fingerprint changed, the push-down would be untested."""
-        from lib.engine.simulation_engine import SimulationEngine
-        from lib.engine.compile_cache import source_params_fingerprint
+        from diablos.core.engine.simulation_engine import SimulationEngine
+        from diablos.core.engine.compile_cache import source_params_fingerprint
 
         block = _block({"gain": 2.0}, None)
         before = source_params_fingerprint(block.params)

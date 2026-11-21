@@ -1,7 +1,7 @@
 """
-Unit tests for lib/engine/memory_blocks.py — single source of truth for
+Unit tests for src/diablos/core/engine/memory_blocks.py — single source of truth for
 memory-block classification used by both `SimulationEngine.identify_memory_blocks`
-and the pre-flight `detect_algebraic_loops` in lib/diagram_validator.py.
+and the pre-flight `detect_algebraic_loops` in src/diablos/core/diagram_validator.py.
 """
 
 from types import SimpleNamespace
@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from lib.engine.memory_blocks import (
+from diablos.core.engine.memory_blocks import (
     OUTPUT_ONLY_SAFE_BLOCK_FNS,
     is_memory_block,
     is_strictly_proper_tf,
@@ -95,7 +95,7 @@ class TestStrictlyProperTF:
         assert not is_memory_block(block)
 
     def test_falls_back_to_params_when_exec_params_empty(self):
-        """Pre-flight callers (lib.diagram_validator) may pass raw params only."""
+        """Pre-flight callers (diablos.core.diagram_validator) may pass raw params only."""
         block = _stub(
             "TranFn",
             params={
@@ -135,17 +135,17 @@ class TestZeroDStateSpace:
 class TestSharedTaxonomyConsistency:
     """
     Make sure the unified module stays the single source of truth — both
-    call sites import from lib.engine.memory_blocks and produce the same
+    call sites import from diablos.core.engine.memory_blocks and produce the same
     classification.
     """
 
     def test_engine_uses_shared_module(self):
         """SimulationEngine.identify_memory_blocks imports the shared helper."""
         import inspect
-        from lib.engine import simulation_engine
+        from diablos.core.engine import simulation_engine
 
         src = inspect.getsource(simulation_engine.SimulationEngine.identify_memory_blocks)
-        assert "from lib.engine.memory_blocks import" in src or "memory_blocks import" in src, (
+        assert "from diablos.core.engine.memory_blocks import" in src or "memory_blocks import" in src, (
             "identify_memory_blocks no longer references the shared "
             "memory_blocks module — the taxonomy has drifted again."
         )
@@ -153,20 +153,20 @@ class TestSharedTaxonomyConsistency:
     def test_preflight_uses_shared_module(self):
         """The pre-flight detect_algebraic_loops imports the shared helper."""
         import inspect
-        import lib.diagram_validator as dv
+        import diablos.core.diagram_validator as dv
 
         src = inspect.getsource(dv)
-        assert "from lib.engine.memory_blocks import" in src, (
+        assert "from diablos.core.engine.memory_blocks import" in src, (
             "detect_algebraic_loops no longer references the shared "
             "memory_blocks module — the taxonomy has drifted again."
         )
 
     def test_no_inline_MEMORY_BLOCK_TYPES_set_in_preflight(self):
         """The duplicate MEMORY_BLOCK_TYPES literal must be gone."""
-        with open("lib/diagram_validator.py") as f:
+        with open("src/diablos/core/diagram_validator.py") as f:
             content = f.read()
         assert "MEMORY_BLOCK_TYPES = {" not in content, (
-            "lib/diagram_validator.py defines a local MEMORY_BLOCK_TYPES "
+            "src/diablos/core/diagram_validator.py defines a local MEMORY_BLOCK_TYPES "
             "set — this duplicates the shared OUTPUT_ONLY_SAFE_BLOCK_FNS "
             "and is exactly the drift this refactor was meant to remove."
         )

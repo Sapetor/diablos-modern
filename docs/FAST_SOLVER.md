@@ -118,7 +118,7 @@ drop just its own events while the rest of the diagram keeps theirs.
 ### Adding events to a new block
 
 Declare them next to the kernel that implements the discontinuity, in
-`lib/engine/compiler_kernels/`:
+`src/diablos/core/engine/compiler_kernels/`:
 
 ```python
 @events("MyBlock")
@@ -241,7 +241,7 @@ If a diagram contains unsupported blocks (e.g., custom scripted blocks, `PythonF
 
 ### Algebraic Loops
 *   **Issue**: A feedback loop without a delay/integrator (e.g., `Gain` -> `Sum` -> `Gain` -> ...).
-*   **Behavior**: Solved, on both paths. The compiler runs each loop as one unit and solves it with Newton (`hybr`) at every right-hand-side evaluation (`lib/engine/compiled_loops.py`), so the diagram stays compiled and can be linearized. A loop with no solution fails the compiled run, and the interpreter then reports it ("did not converge").
+*   **Behavior**: Solved, on both paths. The compiler runs each loop as one unit and solves it with Newton (`hybr`) at every right-hand-side evaluation (`src/diablos/core/engine/compiled_loops.py`), so the diagram stays compiled and can be linearized. A loop with no solution fails the compiled run, and the interpreter then reports it ("did not converge").
 *   **Cost**: One nonlinear solve per RHS evaluation. If a loop is an artifact of the model rather than physics, an `Integrator` or a strictly proper `TransferFcn` in the feedback path removes it.
 
 ## Performance

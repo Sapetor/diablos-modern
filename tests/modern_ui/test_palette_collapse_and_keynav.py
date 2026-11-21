@@ -1,6 +1,6 @@
 """Tests for collapsible palette categories and keyboard navigation.
 
-Covers two additions to ``modern_ui.widgets.modern_palette``:
+Covers two additions to ``diablos.gui.widgets.modern_palette``:
 
 1. Collapsible ``_CategorySection`` — clicking the header toggles its rows'
    visibility, flips the chevron, and persists the collapsed flag via QSettings
@@ -18,8 +18,8 @@ import pytest
 from PyQt6.QtCore import Qt, QSettings, QEvent
 from PyQt6.QtGui import QKeyEvent
 
-import modern_ui.widgets.modern_palette as mp
-from modern_ui.widgets.modern_palette import (
+import diablos.gui.widgets.modern_palette as mp
+from diablos.gui.widgets.modern_palette import (
     CompactBlockRow,
     _CategorySection,
     _CHEVRON_EXPANDED,
@@ -53,8 +53,8 @@ def isolated_settings(tmp_path, monkeypatch):
 def palette(qapp, isolated_settings):
     """Build a real palette, or skip when no menu_blocks are available."""
     try:
-        from lib.lib import DSim
-        from modern_ui.widgets.modern_palette import ModernBlockPalette
+        from diablos.core.lib import DSim
+        from diablos.gui.widgets.modern_palette import ModernBlockPalette
 
         dsim = DSim()
         init = getattr(dsim, "menu_blocks_init", None)

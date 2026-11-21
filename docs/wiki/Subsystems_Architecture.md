@@ -6,7 +6,7 @@ Modern DiaBloS simulates hierarchical models (models containing Subsystems) by *
 
 ## Flattening Process
 
-The flattening logic resides in `lib/engine/flattener.py`.
+The flattening logic resides in `src/diablos/core/engine/flattener.py`.
 
 1.  **Recursion**: The `Flattener` recursively traverses the block list.
 2.  **Naming**: It renames blocks using a path-like convention: `SubsystemName/BlockName`.

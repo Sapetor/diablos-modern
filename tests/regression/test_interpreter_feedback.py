@@ -15,7 +15,7 @@ path froze the state of any closed-loop system:
     At runtime, Sum/MatrixGain ran at hier=0 in cascade order — fragile,
     and any "wrong" block-list order would silently break the cascade.
 
-(2) `lib.lib.DSim.execution_loop` and `execution_loop_headless` did a
+(2) `diablos.core.lib.DSim.execution_loop` and `execution_loop_headless` did a
     single pass per hier level. Within a level, two blocks with an
     intra-level data dependency could be ordered such that the consumer
     was checked before its producer fired. Across levels, memory blocks
@@ -54,7 +54,7 @@ def _load_and_swap(qapp, swap_sum_before_matrixgain: bool):
 
     Returns the configured DSim instance, ready for run_tuning_simulation.
     """
-    from lib.lib import DSim
+    from diablos.core.lib import DSim
 
     dsim = DSim()
     data = dsim.file_service.load(filepath=str(C06_EXAMPLE))

@@ -23,7 +23,7 @@ sys.path.insert(0, os.getcwd())
 
 def test_statespace_block():
     """Test StateSpaceBlock implements dx/dt = Ax + Bu, y = Cx + Du."""
-    from blocks.statespace import StateSpaceBlock
+    from diablos.blocks.statespace import StateSpaceBlock
 
     block = StateSpaceBlock()
 
@@ -53,7 +53,7 @@ def test_statespace_block():
 
 def test_transfer_function_block():
     """Test TransferFunctionBlock implements continuous TF."""
-    from blocks.transfer_function import TransferFunctionBlock
+    from diablos.blocks.transfer_function import TransferFunctionBlock
 
     block = TransferFunctionBlock()
 
@@ -75,7 +75,7 @@ def test_transfer_function_block():
 
 def test_discrete_statespace_block():
     """Test DiscreteStateSpaceBlock implements discrete state-space."""
-    from blocks.discrete_statespace import DiscreteStateSpaceBlock
+    from diablos.blocks.discrete_statespace import DiscreteStateSpaceBlock
 
     block = DiscreteStateSpaceBlock()
 
@@ -105,7 +105,7 @@ def test_discrete_statespace_block():
 
 def test_transport_delay_block():
     """Test TransportDelayBlock delays signal by specified time."""
-    from blocks.transport_delay import TransportDelayBlock
+    from diablos.blocks.transport_delay import TransportDelayBlock
 
     block = TransportDelayBlock()
 
@@ -132,7 +132,7 @@ def test_transport_delay_block():
 
 def test_goto_block():
     """Test GotoBlock passes through input (actual routing is external)."""
-    from blocks.goto import GotoBlock
+    from diablos.blocks.goto import GotoBlock
 
     block = GotoBlock()
     params = {"tag": "A"}
@@ -144,7 +144,7 @@ def test_goto_block():
 
 def test_from_block():
     """Test FromBlock (signal source from Goto tag)."""
-    from blocks.from_block import FromBlock
+    from diablos.blocks.from_block import FromBlock
 
     block = FromBlock()
     params = {"tag": "A", "_init_start_": True}
@@ -160,7 +160,7 @@ def test_from_block():
 
 def test_scope_block():
     """Test ScopeBlock accumulates data for plotting."""
-    from blocks.scope import ScopeBlock
+    from diablos.blocks.scope import ScopeBlock
 
     block = ScopeBlock()
     params = {"_init_start_": True, "title": "test", "labels": "signal1"}
@@ -176,7 +176,7 @@ def test_scope_block():
 
 def test_display_block():
     """Test DisplayBlock stores value for display."""
-    from blocks.display import DisplayBlock
+    from diablos.blocks.display import DisplayBlock
 
     block = DisplayBlock()
     params = {}
@@ -190,7 +190,7 @@ def test_display_block():
 
 def test_export_block():
     """Test ExportBlock stores data for export."""
-    from blocks.export import ExportBlock
+    from diablos.blocks.export import ExportBlock
 
     block = ExportBlock()
     params = {"_init_start_": True, "variable_name": "test_var", "str_name": "test_export"}
@@ -207,7 +207,7 @@ def test_export_block():
 
 def test_terminator_block():
     """Test TerminatorBlock consumes input without output."""
-    from blocks.terminator import TerminatorBlock
+    from diablos.blocks.terminator import TerminatorBlock
 
     block = TerminatorBlock()
     params = {}
@@ -219,7 +219,7 @@ def test_terminator_block():
 
 def test_xygraph_block():
     """Test XYGraphBlock stores x,y data pairs."""
-    from blocks.xygraph import XYGraphBlock
+    from diablos.blocks.xygraph import XYGraphBlock
 
     block = XYGraphBlock()
     params = {"_init_start_": True}
@@ -237,7 +237,7 @@ def test_xygraph_block():
 
 def test_fft_block():
     """Test FFTBlock accumulates data for FFT."""
-    from blocks.fft import FFTBlock
+    from diablos.blocks.fft import FFTBlock
 
     block = FFTBlock()
     params = {"_init_start_": True, "window_size": 64}
@@ -258,7 +258,7 @@ def test_fft_block():
 
 def test_assert_block():
     """Test AssertBlock checks conditions."""
-    from blocks.assert_block import AssertBlock
+    from diablos.blocks.assert_block import AssertBlock
 
     block = AssertBlock()
 
@@ -271,7 +271,7 @@ def test_assert_block():
 
 def test_bodemag_block():
     """Test BodeMagBlock (analysis block, returns empty during sim)."""
-    from blocks.bodemag import BodeMagBlock
+    from diablos.blocks.bodemag import BodeMagBlock
 
     block = BodeMagBlock()
     params = {"_init_start_": True}
@@ -284,7 +284,7 @@ def test_bodemag_block():
 
 def test_rootlocus_block():
     """Test RootLocusBlock (analysis block, returns empty during sim)."""
-    from blocks.rootlocus import RootLocusBlock
+    from diablos.blocks.rootlocus import RootLocusBlock
 
     block = RootLocusBlock()
     params = {"_init_start_": True}
@@ -297,7 +297,7 @@ def test_rootlocus_block():
 
 def test_external_block():
     """Test ExternalBlock (not fully implemented, returns error)."""
-    from blocks.external import ExternalBlock
+    from diablos.blocks.external import ExternalBlock
 
     block = ExternalBlock()
     params = {"filename": "test.py"}

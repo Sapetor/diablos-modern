@@ -40,7 +40,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SHIPPED_ROOTS = ("lib", "modern_ui", "blocks", "config")
 SHIPPED_FILES = ("diablos_modern.py",)
 
-#: lib/app_paths.py is the one place allowed to name the ``saves`` folder.
+#: src/diablos/core/app_paths.py is the one place allowed to name the ``saves`` folder.
 PATH_AUTHORITY = Path("lib") / "app_paths.py"
 
 
@@ -57,7 +57,7 @@ def frozen_app(tmp_path, monkeypatch):
     back to (``<home>/Library/Application Support/DiaBloS`` on macOS,
     ``%APPDATA%/DiaBloS`` on Windows, ``$XDG_DATA_HOME/DiaBloS`` elsewhere).
     """
-    import lib.app_paths as app_paths
+    import diablos.core.app_paths as app_paths
 
     bundle = tmp_path / "bundle"
     (bundle / "config").mkdir(parents=True)
@@ -114,7 +114,7 @@ class TestFrozenModeWrites:
                 fh.write("x")
 
     def test_user_saves_path_is_absolute_and_writable(self, frozen_app):
-        from lib.app_paths import user_saves_path
+        from diablos.core.app_paths import user_saves_path
 
         target = user_saves_path("probe.json")
         with open(target, "w", encoding="utf-8") as fh:
@@ -123,7 +123,7 @@ class TestFrozenModeWrites:
 
     def test_autosave_writes_under_the_user_data_dir(self, frozen_app, qapp):
         """The ``saves/data_AUTOSAVE.dat`` crash: FileService's autosave branch."""
-        from lib.services.file_service import FileService
+        from diablos.core.services.file_service import FileService
 
         class _Model:
             blocks_list = []
@@ -141,7 +141,7 @@ class TestFrozenModeWrites:
         """``DSim.export_data`` used os.path.join("saves", ...)."""
         import numpy as np
 
-        from lib.lib import DSim
+        from diablos.core.lib import DSim
 
         class _ExportBlock:
             block_fn = "Export"
@@ -161,7 +161,7 @@ class TestFrozenModeWrites:
         _assert_written_under(frozen_app / "saves" / "frozen_model.csv", frozen_app)
 
     def test_run_history_persists_under_the_user_data_dir(self, frozen_app):
-        from lib.services.run_history_service import RunHistoryService
+        from diablos.core.services.run_history_service import RunHistoryService
 
         service = RunHistoryService()
         service.set_persist(True)  # writes immediately
@@ -169,7 +169,7 @@ class TestFrozenModeWrites:
         _assert_written_under(frozen_app / "saves" / "run_history.json", frozen_app)
 
     def test_recent_files_persist_under_the_user_data_dir(self, frozen_app):
-        from modern_ui.managers.recent_files_manager import RecentFilesManager
+        from diablos.gui.managers.recent_files_manager import RecentFilesManager
 
         manager = RecentFilesManager.__new__(RecentFilesManager)
         manager.save(["/somewhere/model.diablos"])
@@ -181,7 +181,7 @@ class TestFrozenModeWrites:
         """Modified settings go to the user copy; the bundled one stays read-only."""
         import json
 
-        from lib.app_paths import resource_path, user_data_path
+        from diablos.core.app_paths import resource_path, user_data_path
 
         bundled = Path(resource_path("config/default_config.json"))
         user_copy = Path(user_data_path("config/default_config.json"))
@@ -195,7 +195,7 @@ class TestFrozenModeWrites:
 
     def test_dialog_default_directory_is_writable(self, frozen_app):
         """The Save dialog must not open inside the read-only bundle."""
-        from lib.services.file_dialogs import default_directory
+        from diablos.core.services.file_dialogs import default_directory
 
         directory = Path(default_directory())
         assert directory.is_dir()
@@ -203,7 +203,7 @@ class TestFrozenModeWrites:
         assert frozen_app in directory.parents or directory == frozen_app / "saves"
 
     def test_log_file_path_is_writable(self, frozen_app):
-        from lib.logging_config import _get_log_file_path
+        from diablos.core.logging_config import _get_log_file_path
 
         resolved = Path(_get_log_file_path("diablos_modern.log"))
         assert resolved.is_absolute()
@@ -211,8 +211,8 @@ class TestFrozenModeWrites:
 
     def test_diagram_service_construction_does_not_mkdir_in_the_cwd(self, frozen_app, qapp):
         """It used to makedirs(os.getcwd() + "/saves") -> '/saves' from Finder."""
-        from lib.lib import DSim
-        from lib.services.diagram_service import DiagramService
+        from diablos.core.lib import DSim
+        from diablos.core.services.diagram_service import DiagramService
 
         class _Window:
             def __init__(self):
@@ -304,12 +304,12 @@ class TestNoRelativeWrites:
         assert not offenders, (
             "Relative path literal passed to a filesystem call. In a packaged "
             "build the CWD is read-only (a macOS .app starts at '/'), so this "
-            "fails with [Errno 30]. Route it through lib.app_paths "
+            "fails with [Errno 30]. Route it through diablos.core.app_paths "
             "(user_data_path / user_saves_path / user_logs_path):\n  " + "\n  ".join(offenders)
         )
 
     def test_only_app_paths_names_the_saves_folder(self):
-        """``saves/`` is spelled once, in lib/app_paths.py."""
+        """``saves/`` is spelled once, in src/diablos/core/app_paths.py."""
         offenders = []
         for module in _shipped_modules():
             tree = ast.parse(module.read_text(encoding="utf-8"), filename=str(module))
@@ -326,7 +326,7 @@ class TestNoRelativeWrites:
                         )
 
         assert not offenders, (
-            "The writable saves/ folder is resolved by lib.app_paths."
+            "The writable saves/ folder is resolved by diablos.core.app_paths."
             "user_saves_path(); no other module should build the path itself:\n  "
             + "\n  ".join(offenders)
         )

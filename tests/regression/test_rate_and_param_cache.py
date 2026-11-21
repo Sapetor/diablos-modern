@@ -8,7 +8,7 @@
    gave rates 0.1/0.1/0.1 and a final value of 45 (compiled) in source->sink
    order, but 0.1/0.1/-1 and 450 (interpreter fallback) reversed.  The
    exporter had a copy of the same loop.  Both now share
-   ``lib.engine.sample_times.propagate_sample_times``.
+   ``diablos.core.engine.sample_times.propagate_sample_times``.
 
 2. A sample period written as a workspace variable (``sampling_time="Ts"``)
    went through ``float()`` on the raw string and silently became continuous
@@ -34,9 +34,9 @@ INTEGRATING_DTF = {"numerator": [1.0], "denominator": [1.0, -1.0], "sampling_tim
 
 
 def _diagram(specs, connections, order, variables=None):
-    """A headless ``lib.api.Diagram`` with its blocks stored in ``order``."""
-    from lib.api import from_builder
-    from lib.diagram_builder import DiagramBuilder
+    """A headless ``diablos.core.api.Diagram`` with its blocks stored in ``order``."""
+    from diablos.core.api import from_builder
+    from diablos.core.diagram_builder import DiagramBuilder
 
     builder = DiagramBuilder(sim_time=1.0, sim_dt=0.01)
     for i, name in enumerate(order):
@@ -105,7 +105,7 @@ def _run(diagram):
 
 
 def _export_rates(diagram):
-    from lib.export.python_codegen import PythonCodeGenerator
+    from diablos.core.export.python_codegen import PythonCodeGenerator
 
     gen = PythonCodeGenerator.from_dsim(diagram.dsim)
     source = gen.generate()
@@ -192,7 +192,7 @@ class TestInheritedRatesAreOrderIndependent:
 @pytest.mark.regression
 class TestPropagationFunction:
     def test_cycle_of_inheriting_blocks_reaches_the_discrete_rate(self):
-        from lib.engine.sample_times import propagate_sample_times
+        from diablos.core.engine.sample_times import propagate_sample_times
 
         declared = {"z": 0.1, "a": 0.0, "b": 0.0, "u": 0.0}
         sources = {"a": ["z", "b"], "b": ["a"], "u": []}
@@ -201,7 +201,7 @@ class TestPropagationFunction:
             assert rates == {"z": 0.1, "a": 0.1, "b": 0.1, "u": -1.0}
 
     def test_continuous_inputs_do_not_count(self):
-        from lib.engine.sample_times import propagate_sample_times
+        from diablos.core.engine.sample_times import propagate_sample_times
 
         rates = propagate_sample_times({"c": -1.0, "z": 0.3, "x": 0.0}, {"x": ["c", "z"]})
         assert rates["x"] == pytest.approx(0.3)
@@ -245,7 +245,7 @@ class TestWorkspaceSamplePeriods:
 
     @pytest.mark.parametrize("bad", ["Tq", "[0.1, 0.2]", "float('nan')"])
     def test_unresolvable_period_is_a_validation_error(self, qapp, bad, caplog):
-        from lib.api import SimulationError
+        from diablos.core.api import SimulationError
 
         specs, conns = _chain(bad)
         diagram = _diagram(specs, conns, list(specs), {"Ts": 0.1})
@@ -255,7 +255,7 @@ class TestWorkspaceSamplePeriods:
         assert diagram.dsim.engine.error_block == "zoh"
 
     def test_unresolvable_period_is_refused_by_the_exporter(self, qapp):
-        from lib.export.python_codegen import CodegenUnsupportedError
+        from diablos.core.export.python_codegen import CodegenUnsupportedError
 
         specs, conns = _chain("Tq")
         with pytest.raises(CodegenUnsupportedError, match="sample period"):
@@ -263,7 +263,7 @@ class TestWorkspaceSamplePeriods:
 
     def test_block_resolver_literal_beats_stale_resolution(self, qapp):
         """A literal typed after a run wins over the run's exec_params."""
-        from lib.engine.sample_times import SampleTimeError, declared_sample_time
+        from diablos.core.engine.sample_times import SampleTimeError, declared_sample_time
 
         assert declared_sample_time({"sampling_time": 0.05}, {"sampling_time": 0.2}) == 0.05
         assert declared_sample_time({"sampling_time": "Ts"}, {"sampling_time": 0.2}) == 0.2
@@ -344,7 +344,7 @@ class TestAnalysisSeesWorkspaceChanges:
         assert np.ravel(res["residual"])[0] == pytest.approx(5.0)
 
     def test_exporter_sees_the_change_after_a_run(self, qapp):
-        from lib.export.python_codegen import PythonCodeGenerator
+        from diablos.core.export.python_codegen import PythonCodeGenerator
 
         diagram = _gain_integrator(2.0)
         diagram.run(t=1.0, dt=0.01)
