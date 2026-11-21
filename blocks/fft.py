@@ -2,7 +2,6 @@ import numpy as np
 from blocks.base_block import BaseBlock
 from blocks.input_helpers import get_vector
 from blocks.param_templates import init_flag_param
-import matplotlib.pyplot as plt
 
 
 class FFTBlock(BaseBlock):
@@ -155,6 +154,8 @@ class FFTBlock(BaseBlock):
             magnitude = 20 * np.log10(magnitude + 1e-12)  # Add small value to avoid log(0)
 
         # Plot
+        import matplotlib.pyplot as plt  # display only; the block computes without it
+
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.plot(freqs, magnitude, "b-", linewidth=1)
         ax.set_xlabel("Frequency (Hz)")

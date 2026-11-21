@@ -245,3 +245,56 @@ def test_forced_stand_ins_work_with_pyqt6_installed():
     assert out.returncode == 0, out.stderr[-4000:]
     result = json.loads(out.stdout.strip().splitlines()[-1])
     assert result["has_qt"] is False and result["blocks"] == 3 and result["signals"]
+
+
+_MINIMAL = textwrap.dedent(
+    """
+    import importlib.abc, sys
+
+    _OPTIONAL = ("PyQt6", "PyQt5", "PySide6", "pyqtgraph", "matplotlib", "tqdm", "PIL", "sympy")
+
+    class _NumpyScipyOnly(importlib.abc.MetaPathFinder):
+        def find_spec(self, name, path, target=None):
+            if name.split(".")[0] in _OPTIONAL:
+                raise ImportError(name.split(".")[0] + " is not installed (blocked by the test)")
+
+    sys.meta_path.insert(0, _NumpyScipyOnly())
+    """
+)
+
+
+@pytest.mark.regression
+@pytest.mark.slow
+def test_engine_needs_only_numpy_and_scipy(tmp_path):
+    """The engine's dependency contract: numpy + scipy. tqdm (progress bar) and
+    matplotlib (FFT block's plot window) used to be imported at module level,
+    so DSim failed without tqdm and the FFT block silently disappeared."""
+    (tmp_path / "sitecustomize.py").write_text(_MINIMAL)
+    paths = [os.path.join("examples", name) for name in EXAMPLES]
+    result = _run_without_qt(
+        f"""
+        import json
+        from lib.analysis.monte_carlo import MonteCarloRunner
+        from lib.analysis.resim import harvest_scope_signals
+        from lib.block_loader import load_blocks
+        from lib.cli import load_diagram, run_diagram
+
+        out = {{"blocks": sorted(c().block_name for c in load_blocks())}}
+        for path in {paths!r}:
+            sig = harvest_scope_signals(run_diagram(path))
+            out[path] = {{k: list(map(float, v)) for k, v in sig["signals"].items()}}
+        dsim, _ = load_diagram({paths[0]!r})
+        mc = MonteCarloRunner(dsim).run(2, master_seed=1, sim_time=1.0, sim_dt=0.01)
+        out["mc_ok"] = mc["n_ok"]
+        print(json.dumps(out))
+        """,
+        no_qt=str(tmp_path),
+    )
+    from lib.block_loader import load_blocks
+
+    assert result.pop("blocks") == sorted(c().block_name for c in load_blocks())
+    assert result.pop("mc_ok") == 2
+    for path in paths:
+        expected = _traces(os.path.join(REPO, path))
+        for name, trace in expected.items():
+            assert np.allclose(result[path][name], trace, rtol=1e-12, atol=1e-12, equal_nan=True)

@@ -4,7 +4,6 @@ import numpy as np
 import os
 import time
 from typing import Dict, Any, Optional
-from tqdm import tqdm
 from lib.workspace import Workspace
 from lib.i18n import tr
 from lib.sim_prefs import ask_before_run as _stored_ask_before_run, set_ask_before_run
@@ -18,6 +17,33 @@ from lib.plotting.scope_plotter import ScopePlotter
 from lib.managers.subsystem_manager import SubsystemManager
 
 logger = logging.getLogger(__name__)
+
+
+class _NoProgress:
+    """Stand-in for a tqdm bar when tqdm is not installed (it is optional:
+    the engine needs only numpy and scipy)."""
+
+    def __init__(self, *args, total=0, **kwargs):
+        self.n = 0
+        self.total = total
+        self.last_print_n = 0
+
+    def update(self, n=1):
+        self.n += n
+
+    def refresh(self):
+        pass
+
+    def close(self):
+        pass
+
+
+def _progress_bar(**kwargs):
+    try:
+        from tqdm import tqdm
+    except ImportError:
+        return _NoProgress(**kwargs)
+    return tqdm(**kwargs)
 
 
 def _gui_running() -> bool:
@@ -888,7 +914,7 @@ class DSim:
         _t3 = time.time()
 
         # Initialization of the progress bar
-        self.pbar = tqdm(
+        self.pbar = _progress_bar(
             desc="SIMULATION PROGRESS", total=int(self.execution_time / self.sim_dt), unit="itr"
         )
         # The Scope data about to be produced belongs to *this* diagram, so
