@@ -404,6 +404,18 @@ semantics otherwise. Anything that needs a `QGuiApplication` (`QFont`,
 level; `tests/regression/test_engine_without_pyqt6.py` runs examples with
 PyQt6 made unimportable and compares the traces with a normal run.
 
+Nothing in `diablos.core` imports PyQt6, pyqtgraph or `diablos.gui`
+(`tests/unit/test_core_gui_boundary.py` checks every module, nested imports
+included); the plot windows, dialogs, analyzer windows, theme manager and
+preference store are GUI code. Where the engine needs one, the main window
+attaches it to its `DSim`: `scope_plotter` (absent in a headless run, which
+still records run history through `core/plotting/scope_traces.py`),
+`settings_dialog` (whether the first Play asks depends on it, not on a Qt
+application existing), `category_color` (block fill colours; grey headless),
+the `FileService` file choosers, and the "ask before every run" preference.
+Experiment workers and analysis clones are plain `DSim`s, so they carry none
+of these.
+
 The block library imports no Qt at all: `draw_icon` returns an `IconPath`
 (`src/diablos/core/icon_path.py`), a recorder of `QPainterPath`-style calls that the block
 renderer replays onto a real `QPainterPath` (built-in icons are cached per

@@ -11,8 +11,14 @@ from diablos.core import self_test
 @pytest.mark.unit
 class TestSelfTest:
     def test_all_checks_pass_from_source(self, qapp, tmp_path):
+        import diablos.main as launcher
+
         report = tmp_path / "report.json"
-        assert self_test.main(["--report", str(report)]) == 0
+        # The window check comes from the launcher (the engine has no window).
+        assert (
+            self_test.main(["--report", str(report)], gui_check=launcher._self_test_window_check)
+            == 0
+        )
         data = json.loads(report.read_text())
         assert data["passed"] is True
         assert [c["name"] for c in data["checks"]] == [
@@ -42,6 +48,19 @@ class TestSelfTest:
         import diablos.main as diablos_modern
 
         seen = {}
-        monkeypatch.setattr(self_test, "main", lambda argv: seen.setdefault("argv", argv) and 0)
+
+        def fake_main(argv, gui_check=None):
+            seen.update(argv=argv, gui_check=gui_check)
+            return 0
+
+        monkeypatch.setattr(self_test, "main", fake_main)
         diablos_modern.entry(["DiaBloS", "self-test", "--no-gui"])
         assert seen["argv"] == ["--no-gui"]
+        assert seen["gui_check"] is diablos_modern._self_test_window_check
+
+    def test_without_the_window_check_the_gui_check_fails_clearly(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(self_test, "_check_workers", lambda: "skipped here")
+        report = tmp_path / "report.json"
+        assert self_test.main(["--report", str(report)]) == 1
+        gui = [c for c in json.loads(report.read_text())["checks"] if c["name"] == "gui"][0]
+        assert not gui["ok"] and "gui extra" in gui["detail"]

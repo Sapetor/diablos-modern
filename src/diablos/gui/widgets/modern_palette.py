@@ -37,8 +37,8 @@ from PyQt6.QtGui import QDrag, QPainter, QPixmap, QFont, QColor, QPen, QPainterP
 # palette UI state lives in the same store as the rest of the app's UI
 # preferences (see main_window.py first-run flag). ui_settings() is the shared
 # accessor used for Favorites/Recent persistence (same store).
-from diablos.core.app_paths import SETTINGS_ORG as _SETTINGS_ORG, SETTINGS_APP as _SETTINGS_APP
-from diablos.core.app_paths import ui_settings
+from diablos.gui.settings import SETTINGS_ORG as _SETTINGS_ORG, SETTINGS_APP as _SETTINGS_APP
+from diablos.gui.settings import ui_settings
 from diablos.core.i18n import tr, tr_noop
 from diablos.core.theming.categories import category_theme_key
 from diablos.core.user_blocks import is_user_block, user_block_source

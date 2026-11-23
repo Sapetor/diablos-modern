@@ -1,4 +1,4 @@
-"""Window layout under a UI scale (QT_SCALE_FACTOR, see src/diablos/core/ui_scale.py).
+"""Window layout under a UI scale (QT_SCALE_FACTOR, see src/diablos/gui/ui_scale.py).
 
 The screen's devicePixelRatio includes the UI scale, so at 150% a standard
 screen read as high-DPI and PlatformConfig widened the Properties panel by

@@ -67,16 +67,22 @@ from diablos.core.qt_setup import configure_qt_env
 
 configure_qt_env()  # must precede the first Qt / pyqtgraph import
 
-try:
-    import PyQt6  # noqa: F401
-except ImportError as _exc:
-    # Headless install: the run / export-python / diff subcommands still work
-    # (see entry()); only the GUI needs PyQt6.
-    _GUI_UNAVAILABLE = _exc
-else:
-    _GUI_UNAVAILABLE = None
-    from PyQt6.QtWidgets import QApplication
-    from PyQt6.QtGui import QFont
+# Nothing GUI is imported at module level: `diablos run` / export-python /
+# diff / self-test --no-gui (see entry()) must not load window code, and a
+# headless install has no PyQt6 at all. setup_application() and main()
+# import what the window needs.
+
+
+def _gui_unavailable():
+    """None when PyQt6 is importable, else the reason (headless install)."""
+    import importlib.util
+
+    try:
+        if importlib.util.find_spec("PyQt6") is None:
+            return "No module named 'PyQt6'"
+    except ImportError as exc:  # an import hook may refuse instead of returning None
+        return str(exc)
+    return None
 
 
 def _preload_heavy_modules():
@@ -116,12 +122,6 @@ def _preload_heavy_modules():
 _preload_thread = threading.Thread(target=_preload_heavy_modules, daemon=True)
 _preload_thread.start()
 
-# Import modern UI components
-if _GUI_UNAVAILABLE is None:
-    from diablos.gui.main_window import ModernDiaBloSWindow
-    from diablos.gui.styles.qss_styles import apply_modern_theme
-    from diablos.gui.themes.theme_manager import theme_manager, ThemeType
-
 # Setup logging from config file
 from diablos.core.logging_config import setup_logging
 
@@ -135,7 +135,11 @@ def setup_application():
     # (AA_EnableHighDpiScaling / AA_UseHighDpiPixmaps) no longer exist.
     # UI scale (File > Preferences): Qt reads QT_SCALE_FACTOR when the
     # QApplication is built, so set it first.
-    from diablos.core.ui_scale import apply_ui_scale
+    from PyQt6.QtGui import QFont
+    from PyQt6.QtWidgets import QApplication
+
+    from diablos.gui.styles.qss_styles import apply_modern_theme
+    from diablos.gui.ui_scale import apply_ui_scale
 
     apply_ui_scale()
 
@@ -144,7 +148,7 @@ def setup_application():
 
     # Activate the UI language before any widget text is built. Must come
     # after QApplication so QLocale.system() is available for "system".
-    from diablos.core.i18n import init_language
+    from diablos.gui.language_settings import init_language
 
     init_language()
 
@@ -155,7 +159,7 @@ def setup_application():
     app.setOrganizationName("DiaBloS Project")
 
     # Platform-appropriate font. Always 10pt: the UI scale preference is
-    # applied as QT_SCALE_FACTOR (see src/diablos/core/ui_scale.py), which scales this and
+    # applied as QT_SCALE_FACTOR (see src/diablos/gui/ui_scale.py), which scales this and
     # every other size alike.
     if sys.platform == "darwin":
         font = QFont(".AppleSystemUIFont", 10)
@@ -172,9 +176,10 @@ def setup_application():
 
 def main():
     """Main application entry point."""
-    if _GUI_UNAVAILABLE is not None:
+    missing = _gui_unavailable()
+    if missing is not None:
         print(
-            f"The DiaBloS window needs PyQt6, which is not installed ({_GUI_UNAVAILABLE}).\n"
+            f"The DiaBloS window needs PyQt6, which is not installed ({missing}).\n"
             "Install it with: pip install 'diablos-modern[gui]'\n"
             "Without it you can still run diagrams headlessly: "
             "diablos run <diagram.diablos> (see diablos --help)",
@@ -186,7 +191,8 @@ def main():
 
         # Restore persisted UI preferences (theme, palette, solid_fills)
         from diablos.core.app_paths import user_data_path
-        from diablos.gui.themes.theme_manager import PALETTES
+        from diablos.gui.main_window import ModernDiaBloSWindow
+        from diablos.gui.themes.theme_manager import PALETTES, ThemeType, theme_manager
 
         try:
             _prefs_path = user_data_path("user_preferences.json")
@@ -312,6 +318,14 @@ def main():
         return 1
 
 
+def _self_test_window_check():
+    """The self-test's GUI check, imported only when it runs (not --no-gui)."""
+    from diablos.core.self_test import GUI_EXAMPLE, _example
+    from diablos.gui.self_test import check_main_window
+
+    return check_main_window(_example(GUI_EXAMPLE), GUI_EXAMPLE)
+
+
 _USAGE = """usage: diablos [diagram.diablos]          open the application (needs the gui extra)
        diablos run DIAGRAM [options]      simulate headlessly, write CSV/NPZ
        diablos export-python DIAGRAM      write a standalone Python script
@@ -344,7 +358,7 @@ def entry(argv=None):
     if len(argv) > 1 and argv[1] == "self-test":
         from diablos.core.self_test import main as self_test_main
 
-        return self_test_main(argv[2:])
+        return self_test_main(argv[2:], gui_check=_self_test_window_check)
     if len(argv) > 1 and argv[1] in ("run", "export-python", "diff"):
         from diablos.core.cli import main as cli_main
 

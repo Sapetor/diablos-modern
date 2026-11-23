@@ -60,7 +60,7 @@ def _legacy_config_scale():
 def stored_ui_scale() -> float:
     """The scale the next launch will use (1.0 when unset or invalid)."""
     try:
-        from diablos.core.app_paths import ui_settings
+        from diablos.gui.settings import ui_settings
 
         factor = _valid(ui_settings().value(SETTINGS_KEY, None))
         if factor is not None:
@@ -76,7 +76,7 @@ def store_ui_scale(factor: float) -> bool:
     if _valid(factor) is None:
         raise ValueError(f"UI scale out of range: {factor!r}")
     try:
-        from diablos.core.app_paths import ui_settings
+        from diablos.gui.settings import ui_settings
 
         settings = ui_settings()
         settings.setValue(SETTINGS_KEY, float(factor))

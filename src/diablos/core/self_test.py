@@ -102,36 +102,13 @@ def _check_workers():
     return f"4 runs x {len(names)} signals identical with 1 and 2 worker processes"
 
 
-def _check_gui():
-    from diablos.core.qt_setup import configure_qt_env
+def run_checks(gui=True, gui_check=None):
+    """Run the checks. ``gui_check`` (no arguments, returns a detail string)
+    is supplied by the launcher; the engine has no window to open itself."""
 
-    if not os.environ.get("QT_QPA_PLATFORM"):
-        os.environ["QT_QPA_PLATFORM"] = "offscreen"
-    configure_qt_env()
-    from PyQt6.QtWidgets import QApplication
+    def _no_gui_check():
+        raise RuntimeError("no GUI check available (is the gui extra installed?)")
 
-    from diablos.gui.main_window import ModernDiaBloSWindow
-
-    app = QApplication.instance() or QApplication([sys.argv[0]])
-    window = ModernDiaBloSWindow()
-    window.show()
-    app.processEvents()
-    # The Examples-menu route: no recent-files entry, no trust prompt.
-    if window.open_example(_example(GUI_EXAMPLE)) is None:
-        raise AssertionError(f"could not open {GUI_EXAMPLE}")
-    app.processEvents()
-    n_blocks = len(window.dsim.blocks_list)
-    image = window.canvas.grab()
-    if n_blocks == 0 or image.isNull():
-        raise AssertionError(f"{n_blocks} blocks, canvas image null={image.isNull()}")
-    # hide(), not close(): closeEvent deletes the user's autosave file.
-    window.dsim.dirty = False
-    window.hide()
-    app.processEvents()
-    return f"main window opened {GUI_EXAMPLE} ({n_blocks} blocks) and painted the canvas"
-
-
-def run_checks(gui=True):
     checks = [
         ("resources", _check_resources),
         ("simulate-compiled", lambda: _check_simulation("compiled")),
@@ -139,7 +116,7 @@ def run_checks(gui=True):
         ("monte-carlo-workers", _check_workers),
     ]
     if gui:
-        checks.append(("gui", _check_gui))
+        checks.append(("gui", gui_check or _no_gui_check))
     results = []
     for name, check in checks:
         start = time.perf_counter()
@@ -159,7 +136,7 @@ def run_checks(gui=True):
     return results
 
 
-def main(argv=None):
+def main(argv=None, gui_check=None):
     parser = argparse.ArgumentParser(
         prog="diablos self-test", description="Check that this DiaBloS installation works."
     )
@@ -167,7 +144,7 @@ def main(argv=None):
     parser.add_argument("--no-gui", action="store_true", help="skip the main-window check")
     args = parser.parse_args(argv)
 
-    results = run_checks(gui=not args.no_gui)
+    results = run_checks(gui=not args.no_gui, gui_check=gui_check)
     passed = all(r["ok"] for r in results)
     report = {
         "passed": passed,

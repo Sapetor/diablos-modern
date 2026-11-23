@@ -10,7 +10,7 @@ from typing import Any
 from PyQt6.QtWidgets import QMainWindow, QWidget, QMessageBox, QFileDialog
 from diablos.core.workspace import WorkspaceManager
 from PyQt6.QtCore import Qt, QTimer, QEvent, QSettings
-from diablos.core.app_paths import SETTINGS_ORG, SETTINGS_APP
+from diablos.gui.settings import SETTINGS_ORG, SETTINGS_APP
 from diablos.core.i18n import tr
 
 # Import existing DSim functionality
@@ -280,7 +280,8 @@ class ModernDiaBloSWindow(QMainWindow):
         locale. The chrome retranslates immediately; windows that are already
         open keep the language they were built with until reopened.
         """
-        from diablos.core.i18n import set_language, store_language_setting
+        from diablos.core.i18n import set_language
+        from diablos.gui.language_settings import store_language_setting
 
         store_language_setting(code)
         resolved = set_language(code)
@@ -558,8 +559,8 @@ class ModernDiaBloSWindow(QMainWindow):
         dsim.on_ask_before_run_changed = sim_prefs.set_ask_before_run
 
     def _set_scaling(self, factor):
-        """Store the UI scale for the next launch (see src/diablos/core/ui_scale.py)."""
-        from diablos.core.ui_scale import store_ui_scale
+        """Store the UI scale for the next launch (see src/diablos/gui/ui_scale.py)."""
+        from diablos.gui.ui_scale import store_ui_scale
 
         if not store_ui_scale(factor):
             # Don't claim a restart will apply something that was never stored.

@@ -1,4 +1,4 @@
-"""UI scale preference (src/diablos/core/ui_scale.py).
+"""UI scale preference (src/diablos/gui/ui_scale.py).
 
 Before 2026-11 Preferences > UI Scale only set the app font to 10pt * factor.
 Widgets styled from the fixed TYPE point sizes (menu bar, palette, Properties
@@ -16,7 +16,7 @@ import textwrap
 
 import pytest
 
-from diablos.core import ui_scale
+from diablos.gui import ui_scale
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

@@ -13,14 +13,14 @@ Only one preference lives here today:
     straight away with the settings stored in the diagram, and the dialog is
     reached on purpose through Simulation > Simulation Settings...
 
-The store is the shared one from :func:`diablos.core.app_paths.ui_settings`, imported at
+The store is the shared one from :func:`diablos.gui.settings.ui_settings`, imported at
 module scope (not inside the functions) so tests can monkeypatch
 ``diablos.gui.sim_prefs.ui_settings`` the same way the block-palette tests do.
 """
 
 import logging
 
-from diablos.core.app_paths import ui_settings
+from diablos.gui.settings import ui_settings
 
 logger = logging.getLogger(__name__)
 

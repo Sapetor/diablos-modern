@@ -39,14 +39,9 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from diablos.core.i18n import (
-    SYSTEM_LANGUAGE,
-    available_languages,
-    stored_language_setting,
-    tr,
-    tr_noop,
-)
-from diablos.core.ui_scale import CHOICES as UI_SCALE_CHOICES
+from diablos.core.i18n import SYSTEM_LANGUAGE, available_languages, tr, tr_noop
+from diablos.gui.language_settings import stored_language_setting
+from diablos.gui.ui_scale import CHOICES as UI_SCALE_CHOICES
 from diablos.gui.themes.theme_manager import PALETTE_DISPLAY_NAMES, ThemeType, theme_manager
 
 logger = logging.getLogger(__name__)
@@ -60,7 +55,7 @@ ROUTING_CHOICES = (
 
 def _stored_scaling() -> float:
     """The scaling factor the app will use on next start."""
-    from diablos.core.ui_scale import stored_ui_scale
+    from diablos.gui.ui_scale import stored_ui_scale
 
     return stored_ui_scale()
 

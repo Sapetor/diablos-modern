@@ -193,29 +193,5 @@ def test_block_library_imports_no_pyqt6():
     assert offenders == {}
 
 
-# src/diablos/core/qt_types.py is the one bridge allowed to import PyQt6 eagerly.
-ENGINE_MODULES = [
-    "src/diablos/core/lib.py",
-    "src/diablos/core/icon_path.py",
-    "src/diablos/core/cli.py",
-    "src/diablos/core/api.py",
-    "src/diablos/core/simulation/block.py",
-    "src/diablos/core/simulation/connection.py",
-    "src/diablos/core/simulation/menu_block.py",
-    "src/diablos/core/simulation/wire_router.py",
-    "src/diablos/core/models/simulation_model.py",
-    "src/diablos/core/managers/subsystem_manager.py",
-    "src/diablos/core/services/file_service.py",
-    "src/diablos/core/plotting/__init__.py",
-    "src/diablos/gui/plotting/scope_plotter.py",
-    "src/diablos/gui/plotting/pyqtgraph_scope_mixin.py",
-]
-
-
-@pytest.mark.parametrize("rel", ENGINE_MODULES)
-def test_engine_module_has_no_module_level_pyqt6_import(rel):
-    """Engine modules take Qt value types from diablos.core.qt_types; GUI-only objects
-    (dialogs, fonts, plot windows) are imported where they are used."""
-    with open(os.path.join(REPO, rel), encoding="utf-8") as fh:
-        tree = ast.parse(fh.read())
-    assert _pyqt_imports(tree, module_level_only=True) == []
+# The engine side (no PyQt6 / pyqtgraph / diablos.gui in diablos.core, at any
+# nesting depth) is guarded by tests/unit/test_core_gui_boundary.py.

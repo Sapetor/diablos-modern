@@ -21,7 +21,7 @@ import os
 
 import pytest
 
-from diablos.core.app_paths import SETTINGS_ORG, SETTINGS_APP, ui_settings
+from diablos.gui.settings import SETTINGS_ORG, SETTINGS_APP, ui_settings
 import diablos.gui.main_window as main_window
 import diablos.gui.widgets.modern_palette as mp
 

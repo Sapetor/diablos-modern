@@ -29,7 +29,7 @@ class PlatformConfig:
         if screen is None:
             raise RuntimeError("PlatformConfig requires an active QApplication with a display")
         # Classify the screen independently of the UI scale preference.
-        from diablos.core.ui_scale import qt_scale_factor
+        from diablos.gui.ui_scale import qt_scale_factor
 
         ui_scale = qt_scale_factor()
         self.device_ratio = screen.devicePixelRatio() / ui_scale

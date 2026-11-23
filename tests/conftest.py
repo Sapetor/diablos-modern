@@ -32,7 +32,7 @@ from diablos.core.qt_setup import configure_qt_env  # noqa: E402
 # win on platforms where the shell env does propagate.
 configure_qt_env(headless=not os.environ.get("DIABLOS_SHOW_WINDOWS"))
 
-# Point diablos.core.app_paths.ui_settings() at a throwaway INI file for the session.
+# Point diablos.gui.settings.ui_settings() at a throwaway INI file for the session.
 # Otherwise the suite runs against the developer's real QSettings store (the
 # registry on Windows): a stored preference such as "ask before every run"
 # flips test outcomes that pass in CI, and tests overwrite real preferences.

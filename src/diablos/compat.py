@@ -180,6 +180,7 @@ MOVED_MODULES = {
     "diablos.core.plotting.scope_plotter": "diablos.gui.plotting.scope_plotter",
     "diablos.core.dialogs": "diablos.gui.widgets.simulation_dialogs",
     "diablos.core.sim_prefs": "diablos.gui.sim_prefs",
+    "diablos.core.ui_scale": "diablos.gui.ui_scale",
     "diablos.core.services.diagram_service": "diablos.gui.services.diagram_service",
     "diablos.core.services.file_dialogs": "diablos.gui.services.file_dialogs",
     "diablos.core.analysis.analyzers": "diablos.gui.analysis.analyzers",

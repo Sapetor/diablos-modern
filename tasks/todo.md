@@ -87,7 +87,7 @@ None/empty-input hardening and param docs. Still open:
 - [x] **UI scale only resized the app font (found 2026-10-10, fixed
   2026-11-20).** UI scale is now Qt's global `QT_SCALE_FACTOR`, set from the
   QSettings key `ui/scale` before the QApplication is built
-  (`src/diablos/core/ui_scale.py`), so every font, icon, pixel metric and the canvas scale
+  (`src/diablos/gui/ui_scale.py`), so every font, icon, pixel metric and the canvas scale
   alike; the app font stays 10pt. The old `display.scaling_factor` config key
   is gone (in a checkout it was the bundled file, which is how 125% leaked into
   the shipped default); a packaged build migrates a previous choice from its
@@ -108,14 +108,13 @@ branches (see git log). Still open, both architectural:
   (`pip install .` = engine, `.[gui]` = app + `diablos` command;
   `diablos.compat` keeps old `blocks.*`/`lib.*` imports working for user
   blocks, opt-in for scripts; CI `package` job). Still open:
-  - **Stage 3b: GUI-only modules out of `diablos.core`** into `diablos.gui`:
-    `core/dialogs.py`, `core/analysis/analyzers/` + `control_system_analyzer.py`,
-    `core/theming/theme_manager.py`, `core/plotting/signal_plot.py` and the
-    pyqtgraph scope mixin, `core/services/diagram_service.py`,
-    `core/services/file_dialogs.py`. The seam is `DSim`: it builds a
-    `ScopePlotter` and opens the settings dialog itself; inject the plotter,
-    dialog callbacks and theme colours from the GUI instead. Same split for
-    `MenuBlocks` metadata vs drawing.
+  - Stage 3b done 2026-11-23: the GUI-only modules (plot windows, dialogs,
+    analyzer windows, theme manager, document services, preference store,
+    UI scale, saved language) live in `diablos.gui`; the main window attaches
+    hooks to its DSim (`scope_plotter`, `settings_dialog`, `category_color`,
+    `file_service.choose_save_path/choose_open_path`, `ask_before_run`).
+    Old `diablos.core.*` paths resolve via `diablos.compat`. Guard:
+    `tests/unit/test_core_gui_boundary.py`.
   - **Publish to PyPI** from the tagged release flow (needs a PyPI project and
     a trusted-publisher token); README/python-api docs install from git until
     then.

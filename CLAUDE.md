@@ -11,8 +11,9 @@ src/diablos/
   api.py            Public scripting API (from diablos.api import load); re-exports diablos.core.api
   main.py           Process entry point: entry() dispatches run/export-python/diff/self-test, else the GUI
   compat.py         Old lib/blocks/modern_ui names -> diablos.* (user-block loader hook; opt-in for scripts)
-  core/             Engine, no PyQt6 at import (engine/, simulation/, analysis/, plotting/, services/,
-                    export/, managers/, models/); Qt value types via core/qt_types.py, paths via core/app_paths.py
+  core/             Engine, no PyQt6/pyqtgraph/diablos.gui (engine/, simulation/, analysis/, plotting/,
+                    services/, export/, managers/, models/); Qt value types via core/qt_types.py, paths via
+                    core/app_paths.py; guarded by tests/unit/test_core_gui_boundary.py
   blocks/           Block implementations: mostly flat .py files (one block class each); subdirs pde/,
                     optimization/, optimization_primitives/; no Qt (icons are core/icon_path.IconPath)
   gui/              PyQt6 GUI: main_window.py; widgets/ [modern_canvas.py], controllers/, managers/ [undo/redo,
@@ -28,6 +29,8 @@ tests/              Unit, integration, regression, and GUI (tests/modern_ui/) te
 tools/              Build scripts (build.sh, sync_block_registry.py)
 tasks/              TODO list (todo.md) and lessons learned (lessons.md)
 ```
+
+The engine reaches GUI pieces only through hooks the main window attaches to its `DSim` (`gui/main_window.py::_attach_engine_ui`): `scope_plotter` (plot windows; `None` headless, run history comes from `core/plotting/scope_traces.py`), `settings_dialog`, `category_color` (constructor arg), `file_service.choose_save_path`/`choose_open_path`, and the `ask_before_run` preference. A bare `DSim` never prompts.
 
 `diablos.core.app_paths.resource_path()` resolves data to the repository root in a checkout (incl. `pip install -e .`), to `diablos/resources/` in an installed wheel, and to `sys._MEIPASS` in a PyInstaller bundle.
 

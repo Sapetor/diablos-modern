@@ -107,12 +107,16 @@ class TestLanguageSelection:
         assert i18n.resolve_language("xx") == "xx"
 
     def test_system_language_from_environment(self, monkeypatch):
-        monkeypatch.setattr(
-            i18n, "system_language", i18n.system_language
-        )  # keep the real implementation
+        """The engine reads the environment; the GUI installs Qt's reader."""
+        monkeypatch.setattr(i18n, "_system_locale_reader", None)
+        monkeypatch.delenv("LC_ALL", raising=False)
+        monkeypatch.delenv("LC_MESSAGES", raising=False)
         monkeypatch.setenv("LANG", "es_ES.UTF-8")
-        # QLocale wins when Qt is importable; the env fallback must still parse.
-        assert isinstance(i18n.system_language(), str)
+        assert i18n.system_language() == "es"
+
+    def test_system_language_uses_the_installed_reader(self, monkeypatch):
+        monkeypatch.setattr(i18n, "_system_locale_reader", lambda: "pt_BR")
+        assert i18n.system_language() == "pt"
 
     def test_listeners_fire_on_language_change(self, temp_locales):
         seen = []

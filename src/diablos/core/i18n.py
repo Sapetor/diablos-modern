@@ -164,16 +164,27 @@ def available_languages() -> List[Dict[str, str]]:
 
 
 # --- language selection -----------------------------------------------------
+#: Optional ``() -> str`` returning the OS locale name (e.g. "es_ES"). The GUI
+#: installs Qt's ``QLocale.system()`` reader (diablos.gui.language_settings);
+#: the engine itself falls back to the environment.
+_system_locale_reader = None
+
+
+def set_system_locale_reader(reader) -> None:
+    """Install ``reader() -> "ll_CC"`` used by :func:`system_language`."""
+    global _system_locale_reader
+    _system_locale_reader = reader
+
+
 def system_language() -> str:
     """Best-effort two-letter language code for the host system."""
-    try:
-        from PyQt6.QtCore import QLocale
-
-        name = QLocale.system().name()  # e.g. "es_ES"
-        if name:
-            return name.split("_")[0].lower()
-    except Exception:  # pragma: no cover - Qt missing or headless oddity
-        logger.debug("QLocale unavailable; falling back to environment locale")
+    if _system_locale_reader is not None:
+        try:
+            name = _system_locale_reader()
+            if name:
+                return name.split("_")[0].lower()
+        except Exception:  # pragma: no cover - a reader must never break i18n
+            logger.debug("System locale reader failed; using the environment")
     for var in ("LC_ALL", "LC_MESSAGES", "LANG"):
         value = os.environ.get(var)
         if value and value not in ("C", "POSIX"):
@@ -238,20 +249,10 @@ def _notify_listeners(code: str) -> None:
 
 
 # --- persisted setting ------------------------------------------------------
-def stored_language_setting() -> str:
-    """Read the user's language preference (``"system"`` when unset).
-
-    QSettings (written by the Language menu) wins; the config file provides the
-    packaged default.
-    """
-    try:
-        from diablos.core.app_paths import ui_settings
-
-        value = ui_settings().value(SETTINGS_KEY, None)
-        if value:
-            return str(value)
-    except Exception:  # pragma: no cover - Qt unavailable
-        logger.debug("QSettings unavailable when reading language setting")
+def config_language_setting() -> str:
+    """The configured default language (``ui.language`` in the config file),
+    ``"system"`` when unset. The user's own choice from the Language menu is a
+    GUI preference: see ``diablos.gui.language_settings``."""
     try:
         value = _config_file_language()
         if value:
@@ -290,19 +291,20 @@ def _config_file_language() -> Optional[str]:
     return None
 
 
-def store_language_setting(code: str) -> None:
-    """Persist the language preference for the next launch."""
-    try:
-        from diablos.core.app_paths import ui_settings
-
-        ui_settings().setValue(SETTINGS_KEY, code)
-    except Exception:  # pragma: no cover - Qt unavailable
-        logger.warning("Could not persist language setting to QSettings")
-
-
 def init_language() -> str:
-    """Activate the persisted (or system) language. Call once at startup."""
-    return set_language(stored_language_setting())
+    """Activate the configured (or system) language. The GUI uses
+    ``diablos.gui.language_settings.init_language``, which also honours the
+    user's saved choice and the OS locale as Qt reports it."""
+    return set_language(config_language_setting())
+
+
+def __getattr__(name):
+    """The saved-preference helpers moved to ``diablos.gui.language_settings``."""
+    if name in ("stored_language_setting", "store_language_setting"):
+        from diablos.gui import language_settings
+
+        return getattr(language_settings, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 # --- translation ------------------------------------------------------------

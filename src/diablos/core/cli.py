@@ -41,12 +41,6 @@ import sys
 import numpy as np
 
 
-# Strong process-lifetime reference to the opt-in QApplication (see
-# _maybe_headless_qapp). Without it the Python wrapper can be collected while
-# Qt objects still exist, and PyQt crashes tearing them down at shutdown.
-_QAPP = None
-
-
 def configure_headless_process():
     """Select headless Qt/matplotlib backends. For process entry points only.
 
@@ -61,23 +55,14 @@ def configure_headless_process():
 
 
 def _maybe_headless_qapp():
-    """Create an offscreen QApplication only when ``DIABLOS_HEADLESS_QAPP=1``.
+    """The ``DIABLOS_HEADLESS_QAPP=1`` opt-in QApplication (see diablos.runtime).
 
-    The engine builds no Qt object that needs one (it uses diablos.core.qt_types, and
-    QFont/QPixmap are created only by the GUI), so by default none is made;
-    before 2026-11-21 every headless DSim was built under one. The opt-in is
-    for third-party user blocks that construct a QPixmap/QFont/QWidget
-    outside ``draw_icon``, which Qt refuses (and aborts on) without an
-    application.
+    The engine builds no Qt object that needs one, so by default none is
+    made; before 2026-11-21 every headless DSim was built under one.
     """
-    global _QAPP
-    if os.environ.get("DIABLOS_HEADLESS_QAPP") != "1":
-        return None
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    from PyQt6.QtWidgets import QApplication
+    from diablos.runtime import ensure_headless_qapp
 
-    _QAPP = QApplication.instance() or QApplication(["diablos-run"])
-    return _QAPP
+    return ensure_headless_qapp()
 
 
 def _file_sim_params(filepath):

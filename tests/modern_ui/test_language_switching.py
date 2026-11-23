@@ -3,6 +3,7 @@
 import pytest
 
 from diablos.core import i18n
+from diablos.gui import language_settings
 from diablos.gui.main_window import ModernDiaBloSWindow
 
 
@@ -106,7 +107,9 @@ class TestRetranslation:
 
     def test_set_language_persists_and_retranslates(self, window, monkeypatch):
         stored = {}
-        monkeypatch.setattr(i18n, "store_language_setting", lambda code: stored.update(code=code))
+        monkeypatch.setattr(
+            language_settings, "store_language_setting", lambda code: stored.update(code=code)
+        )
 
         window.set_language("es")
 

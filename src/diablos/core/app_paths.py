@@ -40,13 +40,6 @@ import sys
 #: Kept as a constant so nothing has to spell the literal ``"saves"`` again.
 SAVES_DIR_NAME = "saves"
 
-# QSettings org/app for UI preferences. Single source of truth shared by every
-# call site (main_window.py first-run flag, modern_palette.py collapsed flags).
-# KEEP these values — they name the existing on-disk store; changing them would
-# orphan already-written settings.
-SETTINGS_ORG = "DiaBloS"
-SETTINGS_APP = "DiaBloS"
-
 
 # src/diablos/core/app_paths.py: the package directory is one level up and,
 # in a source checkout, the repository root three levels above that.
@@ -202,20 +195,11 @@ def writable_dir_or_saves(preferred: str) -> str:
         return os.path.expanduser("~")
 
 
-def ui_settings():
-    """Return the shared ``QSettings`` store for UI preferences.
+def __getattr__(name):
+    """``ui_settings`` / ``SETTINGS_ORG`` / ``SETTINGS_APP`` moved to
+    :mod:`diablos.gui.settings` (the preference store is GUI state)."""
+    if name in ("ui_settings", "SETTINGS_ORG", "SETTINGS_APP"):
+        from diablos.gui import settings
 
-    Single accessor for the ``SETTINGS_ORG``/``SETTINGS_APP`` pair so every UI
-    call site reads and writes the same store. ``QSettings`` is imported lazily
-    to keep this module free of a Qt import at module scope.
-
-    ``DIABLOS_SETTINGS_INI`` (a file path) swaps the native store -- the
-    registry on Windows -- for a private INI file. ``tests/conftest.py`` sets it
-    so the suite neither reads nor overwrites the developer's real preferences.
-    """
-    from PyQt6.QtCore import QSettings
-
-    ini = os.environ.get("DIABLOS_SETTINGS_INI")
-    if ini:
-        return QSettings(ini, QSettings.Format.IniFormat)
-    return QSettings(SETTINGS_ORG, SETTINGS_APP)
+        return getattr(settings, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

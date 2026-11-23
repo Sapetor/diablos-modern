@@ -13,6 +13,7 @@ from PyQt6.QtTest import QTest
 from PyQt6.QtWidgets import QApplication
 
 from diablos.core import i18n
+from diablos.gui import language_settings
 from diablos.gui.main_window import ModernDiaBloSWindow
 
 
@@ -307,7 +308,9 @@ class TestPreferencesDialog:
         self, window, dialog, monkeypatch
     ):
         calls = []
-        monkeypatch.setattr(i18n, "store_language_setting", lambda code: calls.append(code))
+        monkeypatch.setattr(
+            language_settings, "store_language_setting", lambda code: calls.append(code)
+        )
         codes = [dialog.language_combo.itemData(i) for i in range(dialog.language_combo.count())]
         target = next(c for c in codes if c not in ("system", dialog.language_combo.currentData()))
         dialog.language_combo.setCurrentIndex(dialog.language_combo.findData(target))
@@ -324,7 +327,7 @@ class TestPreferencesDialog:
         """It used to rewrite config/default_config.json, which in a source
         checkout is the bundled default (how 125% leaked into the repo)."""
         from diablos.core.app_paths import user_data_path
-        from diablos.core.ui_scale import stored_ui_scale
+        from diablos.gui.ui_scale import stored_ui_scale
 
         monkeypatch.setenv("DIABLOS_SETTINGS_INI", str(tmp_path / "s.ini"))
         cfg = user_data_path("config/default_config.json")
