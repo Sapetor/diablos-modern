@@ -192,7 +192,7 @@ class SimulationDialog(QDialog):
         # --- Workflow ---------------------------------------------------
         # Pressing Play runs straight away with the settings above; this box
         # brings back the old behaviour of asking first. It is an application
-        # preference (QSettings), not diagram data -- see src/diablos/core/sim_prefs.py.
+        # preference (QSettings), not diagram data -- see src/diablos/gui/sim_prefs.py.
         self.ask_before_run_checkbox = QCheckBox(tr("Ask before every run"))
         self.ask_before_run_checkbox.setChecked(bool(ask_before_run))
         self.ask_before_run_checkbox.setToolTip(
@@ -265,3 +265,36 @@ class SimulationDialog(QDialog):
             "zero_crossing": self.zero_crossing_checkbox.isChecked(),
             "ask_before_run": self.ask_before_run_checkbox.isChecked(),
         }
+
+
+def ask_simulation_settings(dsim, parent=None, accept_label=None):
+    """Run the Simulation-settings dialog for ``dsim``: ``(accepted, values)``.
+
+    The main window attaches this as ``dsim.settings_dialog`` (with itself as
+    the default parent); the engine calls it from ``open_simulation_dialog``.
+    ``values`` is None when the dialog was accepted but its values could not
+    be read (it validates before accepting, so this is belt-and-braces).
+    """
+    from PyQt6.QtWidgets import QDialog
+
+    dialog = SimulationDialog(
+        dsim.sim_time,
+        dsim.sim_dt,
+        dsim.plot_trange,
+        parent=parent,
+        solver_method=dsim.solver_method,
+        rtol=dsim.rtol,
+        atol=dsim.atol,
+        zero_crossing=dsim.zero_crossing,
+        real_time=dsim.real_time,
+        dynamic_plot=dsim.dynamic_plot,
+        ask_before_run=dsim.ask_before_run,
+        accept_label=accept_label,
+    )
+    if dialog.exec() != QDialog.DialogCode.Accepted:
+        return False, None
+    try:
+        return True, dialog.get_values()
+    except (ValueError, TypeError):
+        logger.warning("Invalid simulation settings. Keeping the current values.")
+        return True, None

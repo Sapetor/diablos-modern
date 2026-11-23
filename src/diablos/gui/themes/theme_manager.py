@@ -799,3 +799,14 @@ class ThemeManager(QObject):
 
 
 theme_manager = ThemeManager()
+
+
+def category_color(category):
+    """Block fill colour for ``category`` in the current theme and palette.
+
+    The main window passes this to ``DSim(category_color=...)``; the engine
+    has no theme of its own.
+    """
+    from diablos.core.theming.categories import category_theme_key
+
+    return theme_manager.get_color(category_theme_key(category))

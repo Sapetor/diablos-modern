@@ -77,50 +77,44 @@ class TestFileServiceHasNoWidgetImport:
 
         import diablos.core.services.file_service as fs
 
-        source = pathlib.Path(fs.__file__).read_text(encoding="utf-8")
-        # QtCore.QRect stays (a block's coords *is* a QRect); QtWidgets must not
-        # be imported at module scope.
-        assert "from PyQt6.QtWidgets import" not in source.split("def __getattr__")[0]
+        import ast
 
-    def test_qfiledialog_is_still_reachable_for_back_compat(self):
-        """Existing tests monkeypatch diablos.core.services.file_service.QFileDialog."""
-        from PyQt6.QtWidgets import QFileDialog
+        tree = ast.parse(pathlib.Path(fs.__file__).read_text(encoding="utf-8"))
+        imported = {
+            (n.module or "") if isinstance(n, ast.ImportFrom) else a.name
+            for n in ast.walk(tree)
+            if isinstance(n, (ast.Import, ast.ImportFrom))
+            for a in n.names
+        }
+        # Choosing a path is the GUI's job (choose_save_path/choose_open_path).
+        assert not {m for m in imported if m.startswith(("PyQt6", "diablos.gui"))}
 
-        import diablos.core.services.file_service as fs
-
-        assert fs.QFileDialog is QFileDialog
-
-    def test_unknown_attribute_still_raises(self):
-        import diablos.core.services.file_service as fs
-
-        with pytest.raises(AttributeError):
-            fs.NoSuchThing
+    def test_without_a_chooser_nothing_prompts(self, file_service):
+        """A headless FileService has no file chooser: save()/load() without
+        a path report "not saved" / "nothing loaded" instead of prompting."""
+        assert file_service.choose_save_path is None
+        assert file_service.save() == 1
+        assert file_service.load() is None
 
     def test_save_with_filepath_never_touches_the_dialog_module(
         self, file_service, tmp_path, monkeypatch
     ):
-        import diablos.core.services.file_service as fs
 
-        monkeypatch.setattr(
-            fs, "prompt_save_path", lambda *a, **k: pytest.fail("dialog was opened")
-        )
+        file_service.choose_save_path = lambda *a, **k: pytest.fail("dialog was opened")
         target = tmp_path / "direct.diablos"
         assert file_service.save(filepath=str(target)) == 0
         assert target.exists()
 
     def test_load_prompts_only_without_a_filepath(self, file_service, tmp_path, monkeypatch):
-        import diablos.core.services.file_service as fs
 
         target = tmp_path / "roundtrip.diablos"
         file_service.save(filepath=str(target))
 
-        monkeypatch.setattr(
-            fs, "prompt_open_path", lambda *a, **k: pytest.fail("dialog was opened")
-        )
+        file_service.choose_open_path = lambda *a, **k: pytest.fail("dialog was opened")
         assert file_service.load(str(target)) is not None
 
         # With no path it does prompt; a cancel comes back as "".
-        monkeypatch.setattr(fs, "prompt_open_path", lambda *a, **k: "")
+        file_service.choose_open_path = lambda *a, **k: ""
         assert file_service.load() is None
 
 

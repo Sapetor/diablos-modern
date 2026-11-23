@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import QApplication
 from diablos.gui.renderers.block_renderer import (
     BlockRenderer,
     block_label_layout,
+    block_name_font,
 )
 from diablos.gui.themes.theme_manager import theme_manager, ThemeType
 
@@ -37,7 +38,7 @@ class TestBlockNameLabel:
         QApplication.processEvents()
         blk = _find(window, "load disturbance")
         rect, text = block_label_layout(blk)
-        adv = QFontMetrics(blk.font).horizontalAdvance(text)
+        adv = QFontMetrics(block_name_font(blk)).horizontalAdvance(text)
         assert text == blk.username
         assert rect.width() >= adv
         # centred on the block

@@ -10,27 +10,12 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from diablos.core.qt_types import QRect
 
 from diablos.core.atomic_io import atomic_write_json  # noqa: F401 - re-exported
-from diablos.gui.services.file_dialogs import prompt_open_path, prompt_save_path
 
 logger = logging.getLogger(__name__)
 
-# QtCore.QRect stays: a block's ``coords`` *is* a QRect, so reconstructing a
-# block from JSON needs it. QtWidgets does not: choosing a path is a UI concern
-# and lives in src/diablos/gui/services/file_dialogs.py, which imports QFileDialog lazily.
-
-
-def __getattr__(name):
-    """Lazy re-export of ``QFileDialog`` for backward compatibility.
-
-    The dialogs moved to :mod:`diablos.gui.services.file_dialogs`, but callers (and
-    tests) that patch ``diablos.core.services.file_service.QFileDialog`` keep working:
-    the attribute resolves to the single QFileDialog class both modules share.
-    """
-    if name == "QFileDialog":
-        from PyQt6.QtWidgets import QFileDialog
-
-        return QFileDialog
-    raise AttributeError("module {!r} has no attribute {!r}".format(__name__, name))
+# Choosing a file is a UI concern: the GUI sets FileService.choose_save_path /
+# choose_open_path (diablos.gui.services.file_dialogs). Without them -- a
+# headless engine -- save()/load() need an explicit path.
 
 
 class FileService:
@@ -53,6 +38,10 @@ class FileService:
             model: SimulationModel instance containing blocks and lines
         """
         self.model = model
+        # File choosers, set by the GUI: ``choose_save_path(suggested_name)``
+        # and ``choose_open_path()`` return a path, or "" when cancelled.
+        self.choose_save_path: Optional[Callable[[str], str]] = None
+        self.choose_open_path: Optional[Callable[[], str]] = None
         # Default new saves to the canonical .diablos extension. Older files
         # used .dat; load still accepts those for backward compatibility.
         self.filename: str = "data.diablos"
@@ -244,7 +233,10 @@ class FileService:
                 file = filepath
             else:
                 # .diablos is the canonical/default filter; .dat kept for back-compat.
-                file = prompt_save_path(self.filename)
+                if self.choose_save_path is None:
+                    logger.warning("save() needs a filepath: no file chooser (headless)")
+                    return 1
+                file = self.choose_save_path(self.filename)
 
             if not file:
                 return 1
@@ -307,7 +299,10 @@ class FileService:
         if filepath is None:
             # Show .diablos files (the format every example uses) by default,
             # while still accepting legacy .dat/.json files for back-compat.
-            filepath = prompt_open_path()
+            if self.choose_open_path is None:
+                logger.warning("load() needs a filepath: no file chooser (headless)")
+                return None
+            filepath = self.choose_open_path()
 
             if not filepath:
                 return None

@@ -69,7 +69,14 @@ class ModernDiaBloSWindow(QMainWindow):
         # workspace, so legacy/user-block code calling WorkspaceManager()
         # keeps seeing the window's variables. Variables survive New/Open
         # (they belong to the window session, as before).
-        self.dsim = DSim(workspace=WorkspaceManager())
+        from diablos.gui.themes.theme_manager import category_color
+
+        self.dsim = DSim(workspace=WorkspaceManager(), category_color=category_color)
+        # The engine has no plot windows of its own; give this DSim the GUI's.
+        from diablos.gui.plotting.scope_plotter import ScopePlotter
+
+        self.dsim.scope_plotter = ScopePlotter(self.dsim)
+        self._attach_engine_ui(self.dsim)
 
         # Performance monitoring
         self.perf_helper = PerformanceHelper()
@@ -531,6 +538,24 @@ class ModernDiaBloSWindow(QMainWindow):
     def toggle_minimap(self):
         """Toggle visibility of the minimap dock."""
         self.view_actions_manager.toggle_minimap()
+
+    def _attach_engine_ui(self, dsim):
+        """Give the engine its GUI hooks: the settings dialog, the file
+        choosers and the application preference it reads (the engine itself
+        has no Qt)."""
+        from diablos.gui import sim_prefs
+        from diablos.gui.widgets.simulation_dialogs import ask_simulation_settings
+
+        def settings_dialog(dsim_, parent=None, accept_label=None):
+            return ask_simulation_settings(dsim_, parent or self, accept_label)
+
+        dsim.settings_dialog = settings_dialog
+        from diablos.gui.services.file_dialogs import prompt_open_path, prompt_save_path
+
+        dsim.file_service.choose_save_path = prompt_save_path
+        dsim.file_service.choose_open_path = prompt_open_path
+        dsim.ask_before_run = sim_prefs.ask_before_run()
+        dsim.on_ask_before_run_changed = sim_prefs.set_ask_before_run
 
     def _set_scaling(self, factor):
         """Store the UI scale for the next launch (see src/diablos/core/ui_scale.py)."""

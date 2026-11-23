@@ -24,8 +24,11 @@ from PyQt6.QtCore import QPoint
 @pytest.fixture
 def dsim(qapp):
     from diablos.core.lib import DSim
+    from diablos.gui.plotting.scope_plotter import ScopePlotter
 
-    return DSim()
+    d = DSim()
+    d.scope_plotter = ScopePlotter(d)  # as the main window does
+    return d
 
 
 @pytest.mark.unit

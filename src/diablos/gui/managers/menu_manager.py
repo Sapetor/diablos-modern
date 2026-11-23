@@ -707,8 +707,17 @@ class MenuManager:
             self.canvas.update()
 
     def _edit_ports(self, block):
+        from diablos.gui.widgets.simulation_dialogs import PortDialog
+
+        current = block.editable_ports()
+        if not current:
+            return
+        dialog = PortDialog(block.name, current)
+        if not dialog.exec():
+            return  # cancelled: no undo step, diagram unchanged
+        values = dialog.get_values()
         self.canvas._push_undo("Edit Ports")
-        block.change_port_numbers()
+        block.change_port_numbers(values)
         self.canvas.update()
         self.canvas.dsim.dirty = True
 

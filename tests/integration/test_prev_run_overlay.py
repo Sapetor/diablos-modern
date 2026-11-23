@@ -26,7 +26,10 @@ def _build_sine_scope():
     """Wire Sine -> Scope on a real DSim (both blocks are compilable)."""
     from diablos.core.lib import DSim
 
+    from diablos.gui.plotting.scope_plotter import ScopePlotter
+
     dsim = DSim()
+    dsim.scope_plotter = ScopePlotter(dsim)  # as the main window does
     menu_by_fn = {b.fn_name: b for b in dsim.menu_blocks}
     sine = dsim.add_block(menu_by_fn["sine"], QPoint(100, 100))
     scope = dsim.add_block(menu_by_fn["scope"], QPoint(300, 100))

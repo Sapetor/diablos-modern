@@ -15,7 +15,7 @@ Only one preference lives here today:
 
 The store is the shared one from :func:`diablos.core.app_paths.ui_settings`, imported at
 module scope (not inside the functions) so tests can monkeypatch
-``diablos.core.sim_prefs.ui_settings`` the same way the block-palette tests do.
+``diablos.gui.sim_prefs.ui_settings`` the same way the block-palette tests do.
 """
 
 import logging

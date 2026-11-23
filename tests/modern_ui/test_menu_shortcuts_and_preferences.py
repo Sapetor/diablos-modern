@@ -345,7 +345,7 @@ class TestPreferencesDialog:
     ):
         from PyQt6.QtCore import QSettings
 
-        from diablos.core import sim_prefs
+        from diablos.gui import sim_prefs
 
         store = QSettings(str(tmp_path / "prefs.ini"), QSettings.Format.IniFormat)
         monkeypatch.setattr(sim_prefs, "ui_settings", lambda: store)

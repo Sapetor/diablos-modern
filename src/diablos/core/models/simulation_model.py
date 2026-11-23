@@ -32,8 +32,12 @@ class SimulationModel:
         dirty: Flag indicating if diagram has unsaved changes
     """
 
-    def __init__(self) -> None:
+    def __init__(self, category_color=None) -> None:
         """Initialize the simulation model with empty state."""
+        # ``category -> colour`` for block fills; the GUI passes its theme's
+        # lookup. Without one (headless) every block is a neutral grey: colours
+        # are cosmetic, and a loaded diagram re-derives them on load.
+        self._category_color = category_color
         logger.debug("Initializing SimulationModel")
 
         # Color palette for blocks
@@ -79,19 +83,9 @@ class SimulationModel:
 
     def _get_category_color(self, category: str) -> QColor:
         """Theme-aware fill colour for a block category."""
-        from diablos.core.theming.categories import category_theme_key
-
-        from diablos.core import qt_types
-
-        if not qt_types.HAS_QT:
-            # Running on the pure-Python stand-ins (no PyQt6, or
-            # DIABLOS_PURE_TYPES=1): the theme manager's colours are real Qt
-            # objects, which must not mix with the stand-ins. Colours are
-            # cosmetic, and a loaded diagram re-derives them from the palette.
+        if self._category_color is None:
             return QColor(128, 128, 128)
-        from diablos.gui.themes.theme_manager import theme_manager
-
-        return theme_manager.get_color(category_theme_key(category))
+        return self._category_color(category)
 
     def load_all_blocks(
         self, diagram_path: Optional[str] = None, reload_user: bool = False

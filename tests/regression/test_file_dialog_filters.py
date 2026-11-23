@@ -13,6 +13,16 @@ compatibility), and new saves default to '.diablos'.
 
 import pytest
 
+from diablos.gui.services.file_dialogs import prompt_open_path, prompt_save_path
+
+
+@pytest.fixture
+def file_service(file_service):
+    """The GUI attaches the real file choosers to its FileService."""
+    file_service.choose_save_path = prompt_save_path
+    file_service.choose_open_path = prompt_open_path
+    return file_service
+
 
 @pytest.mark.regression
 class TestFileDialogFilters:
@@ -31,9 +41,7 @@ class TestFileDialogFilters:
             # Simulate the user cancelling so load() returns early.
             return ("", "")
 
-        monkeypatch.setattr(
-            "diablos.core.services.file_service.QFileDialog.getOpenFileName", fake_open
-        )
+        monkeypatch.setattr("PyQt6.QtWidgets.QFileDialog.getOpenFileName", fake_open)
 
         result = file_service.load()  # no filepath -> opens dialog
         assert result is None  # cancelled
@@ -50,9 +58,7 @@ class TestFileDialogFilters:
             # Simulate the user cancelling so save() returns early (code 1).
             return ("", "")
 
-        monkeypatch.setattr(
-            "diablos.core.services.file_service.QFileDialog.getSaveFileName", fake_save
-        )
+        monkeypatch.setattr("PyQt6.QtWidgets.QFileDialog.getSaveFileName", fake_save)
 
         rc = file_service.save()  # not autosave, no filepath -> opens dialog
         assert rc == 1  # cancelled
@@ -72,9 +78,7 @@ class TestFileDialogFilters:
             saved_paths.append(filename)
             return True
 
-        monkeypatch.setattr(
-            "diablos.core.services.file_service.QFileDialog.getSaveFileName", fake_save
-        )
+        monkeypatch.setattr("PyQt6.QtWidgets.QFileDialog.getSaveFileName", fake_save)
         monkeypatch.setattr(file_service, "save_to_file", fake_save_to_file)
 
         rc = file_service.save()
@@ -93,9 +97,7 @@ class TestFileDialogFilters:
             saved_paths.append(filename)
             return True
 
-        monkeypatch.setattr(
-            "diablos.core.services.file_service.QFileDialog.getSaveFileName", fake_save
-        )
+        monkeypatch.setattr("PyQt6.QtWidgets.QFileDialog.getSaveFileName", fake_save)
         monkeypatch.setattr(file_service, "save_to_file", fake_save_to_file)
 
         rc = file_service.save()

@@ -3,7 +3,7 @@ Plotting module for DiaBloS.
 Contains SignalPlot and other plotting utilities.
 
 ``SignalPlot`` (pyqtgraph, PyQt6) is imported on first use so the engine,
-which imports ``diablos.core.plotting.scope_plotter``, does not require PyQt6.
+which imports ``diablos.gui.plotting.scope_plotter``, does not require PyQt6.
 """
 
 __all__ = ["SignalPlot"]

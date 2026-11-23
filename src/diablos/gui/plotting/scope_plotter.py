@@ -3,6 +3,7 @@ import logging
 import numpy as np
 
 from diablos.gui.plotting.field_scope_mixin import _FieldScopeRenderMixin
+from diablos.core.plotting import scope_traces
 from diablos.core.plotting.run_compare import snapshot_params
 from diablos.gui.plotting.pyqtgraph_scope_mixin import _PyQtGraphScopeMixin
 
@@ -381,138 +382,20 @@ class ScopePlotter(_FieldScopeRenderMixin, _PyQtGraphScopeMixin):
         plt.tight_layout()
         plt.show()
 
+    # Trace collection is engine data (diablos.core.plotting.scope_traces);
+    # these delegates keep the plotter's own and its callers' names working.
     def _is_discrete_upstream(self, block_name, visited=None):
-        """
-        Determine if a block (or any of its ancestors) is discrete-time/ZOH.
-        """
-        if visited is None:
-            visited = set()
-
-        if block_name in visited:
-            return False
-        visited.add(block_name)
-
-        # Lookup the block in the model
-        block = None
-        try:
-            block = self.dsim.model.get_block_by_name(block_name)
-        except Exception:
-            # Fallback in case model is not available for some reason
-            block = next((b for b in self.dsim.blocks_list if b.name == block_name), None)
-
-        if block is None:
-            return False
-
-        discrete_blocks = {"DiscreteTranFn", "DiscreteStateSpace", "ZeroOrderHold"}
-        continuous_blocks = {"Integrator", "TranFn", "StateSpace", "Derivative"}
-
-        if block.block_fn in discrete_blocks:
-            return True
-        if block.block_fn in continuous_blocks:
-            return False
-
-        for conn in self._input_connections(block.name):
-            src_block = (
-                conn.get("srcblock") if isinstance(conn, dict) else getattr(conn, "srcblock", None)
-            )
-            if src_block and self._is_discrete_upstream(src_block, visited):
-                return True
-        return False
+        return scope_traces.is_discrete_upstream(self.dsim, block_name, visited)
 
     def _input_connections(self, block_name):
-        """Incoming connections of ``block_name`` from the engine's active graph.
-
-        The engine is the owner of the connection query; a dsim without one
-        (plotting a diagram that was never run) has no upstream to inspect.
-        """
-        engine = getattr(self.dsim, "engine", None)
-        if engine is None:
-            return []
-        inputs, _ = engine.get_neighbors(block_name)
-        return inputs
+        return scope_traces.input_connections(self.dsim, block_name)
 
     def _scope_step_modes(self):
-        """
-        Build a list of step-mode flags (one per Scope block) for plotting.
-        """
-        modes = []
-        # Use active blocks from engine if available
-        source_blocks = (
-            self.dsim.engine.active_blocks_list
-            if hasattr(self.dsim, "engine") and self.dsim.engine.active_blocks_list
-            else self.dsim.blocks_list
-        )
-
-        for block in source_blocks:
-            if block.block_fn == "Scope":
-                inputs = self._input_connections(block.name)
-                if not inputs:
-                    modes.append(False)
-                    continue
-                step_mode = any(
-                    self._is_discrete_upstream(
-                        conn.get("srcblock")
-                        if isinstance(conn, dict)
-                        else getattr(conn, "srcblock", None)
-                    )
-                    for conn in inputs
-                    if (
-                        conn.get("srcblock")
-                        if isinstance(conn, dict)
-                        else getattr(conn, "srcblock", None)
-                    )
-                )
-                modes.append(step_mode)
-        return modes
+        return scope_traces.scope_step_modes(self.dsim)
 
     def get_scope_traces(self):
-        """
-        Collect scope data as a flat list of traces for the waveform inspector.
-        Returns (timeline, traces) where traces is a list of dicts:
-        {'name': str, 'y': np.ndarray, 'step': bool}
-        """
-        if (
-            not hasattr(self.dsim, "timeline")
-            or self.dsim.timeline is None
-            or len(self.dsim.timeline) == 0
-        ):
-            return None, []
-
-        step_modes = self._scope_step_modes()
-        traces = []
-        step_idx = 0
-
-        source_blocks = (
-            self.dsim.engine.active_blocks_list
-            if hasattr(self.dsim, "engine") and self.dsim.engine.active_blocks_list
-            else self.dsim.blocks_list
-        )
-        for block in source_blocks:
-            if block.block_fn != "Scope":
-                continue
-            labels = block.exec_params.get("vec_labels", block.params.get("vec_labels"))
-            vec = block.exec_params.get("vector", block.params.get("vector"))
-            if vec is None:
-                continue
-            arr = np.array(vec)
-            step_flag = step_modes[step_idx] if step_idx < len(step_modes) else False
-            step_idx += 1
-
-            if arr.ndim == 1:
-                name = labels if isinstance(labels, str) else block.name
-                traces.append({"name": name, "y": arr, "step": step_flag})
-            elif arr.ndim == 2:
-                # Multiple channels
-                for i in range(arr.shape[1]):
-                    if isinstance(labels, (list, tuple)) and i < len(labels):
-                        name = labels[i]
-                    else:
-                        name = f"{block.name}[{i}]"
-                    traces.append({"name": name, "y": arr[:, i], "step": step_flag})
-            else:
-                continue
-
-        return self.dsim.timeline, traces
+        """``(timeline, traces)``; see ``scope_traces.get_scope_traces``."""
+        return scope_traces.get_scope_traces(self.dsim)
 
     def _print_verification_summary(self, source_blocks):
         """

@@ -1,5 +1,5 @@
 """
-Tests for ScopePlotter's previous-run stash (src/diablos/core/plotting/scope_plotter.py).
+Tests for ScopePlotter's previous-run stash (src/diablos/gui/plotting/scope_plotter.py).
 
 Two successive pyqtPlotScope calls with fresh timelines must thread the first
 run's flattened scope data into the second SignalPlot as ``previous_run``,
@@ -16,7 +16,7 @@ import types
 import numpy as np
 import pytest
 
-from diablos.core.plotting.scope_plotter import ScopePlotter
+from diablos.gui.plotting.scope_plotter import ScopePlotter
 
 
 class _StubScopeBlock:
@@ -163,6 +163,7 @@ class TestScopePlotterPrevRun:
         from diablos.core.lib import DSim
 
         dsim = DSim()
+        dsim.scope_plotter = ScopePlotter(dsim)  # the main window attaches one
         dsim.scope_plotter._prev_run = {"sig": 1}
         dsim.scope_plotter._current_run = {"sig": 2}
 
@@ -176,6 +177,7 @@ class TestScopePlotterPrevRun:
         from diablos.core.lib import DSim
 
         dsim = DSim()
+        dsim.scope_plotter = ScopePlotter(dsim)  # the main window attaches one
         dsim.scope_plotter._prev_run = {"sig": 1}
         dsim.scope_plotter._current_run = {"sig": 2}
 

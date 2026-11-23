@@ -17,7 +17,7 @@ Solid block fills         ``window._toggle_solid_fills(bool)`` (same file)
 UI scale                  ``window._set_scaling(factor)`` (config + restart note)
 Language                  ``window.set_language(code)`` (QSettings ``ui/language``)
 Default routing           ``window._set_default_routing_mode(mode)``
-Ask before every run      ``diablos.core.sim_prefs`` (QSettings ``simulation/ask_before_run``)
+Ask before every run      ``diablos.gui.sim_prefs`` (QSettings ``simulation/ask_before_run``)
 ========================  =====================================================
 
 Changes apply immediately, as the menu entries did; the dialog just has Close.
@@ -198,7 +198,7 @@ class PreferencesDialog(QDialog):
 
     def _build_simulation(self):
         page, form, _outer = self._page()
-        from diablos.core import sim_prefs
+        from diablos.gui import sim_prefs
 
         self.ask_before_run_check = QCheckBox(tr("Ask for simulation settings before every run"))
         self.ask_before_run_check.setChecked(sim_prefs.ask_before_run())
@@ -215,7 +215,7 @@ class PreferencesDialog(QDialog):
 
     def _on_ask_before_run(self, checked):
         # Same two writes diablos.core.lib.DSim.apply_settings performs.
-        from diablos.core import sim_prefs
+        from diablos.gui import sim_prefs
 
         dsim = getattr(self.window_ref, "dsim", None)
         if dsim is not None:

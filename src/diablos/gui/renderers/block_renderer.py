@@ -22,7 +22,6 @@ from diablos.gui.renderers.sample_time_colors import rate_color
 from diablos.gui.themes.theme_manager import (
     theme_manager,
     get_ui_font,
-    font_key,
     font_metrics,
     text_width as measure_text,
     TYPE,
@@ -364,7 +363,7 @@ def block_label_layout(block):
     sides). Names wider than the cap are elided with an ellipsis. Exposed so
     repaint / export code can reuse the exact geometry the painter uses.
     """
-    font = _cached_name_font(block.font)
+    font = block_name_font(block)
     metrics = font_metrics(font)
     full = block.username or ""
     max_width = max(NAME_LABEL_MIN_MAX_WIDTH, NAME_LABEL_MAX_WIDTH_FACTOR * block.width)
@@ -374,19 +373,20 @@ def block_label_layout(block):
     return QRect(left, block.top + block.height + 2, width, 28), text
 
 
-def _cached_name_font(font: QFont) -> QFont:
-    """Memoized normal-weight copy of a block's persistent label font.
+def block_name_font(block) -> QFont:
+    """The (memoized) font for a block's name label, from ``block.font_size``.
 
-    The renderer must never mutate ``block.font`` (it is shared model state),
-    so it used to copy it every frame just to force Normal weight. The copy is
-    a pure function of the source font's attributes, so it is memoized.
+    The font is GUI state, so the renderer owns it; the block only carries
+    its point size. (DBlock used to hold a QFont, which made the engine
+    depend on Qt.)
     """
-    key = font_key(font)
-    cached = _NAME_FONT_CACHE.get(key)
+    size = getattr(block, "font_size", 11)
+    cached = _NAME_FONT_CACHE.get(size)
     if cached is None:
-        cached = QFont(font)
+        cached = QFont()
+        cached.setPointSize(size)
         cached.setWeight(QFont.Weight.Normal)
-        _cache_put(_NAME_FONT_CACHE, key, cached)
+        _cache_put(_NAME_FONT_CACHE, size, cached)
     return cached
 
 
@@ -547,9 +547,9 @@ class BlockRenderer:
             text_color = theme_manager.get_color("text_primary")
             painter.setPen(text_color)
             # Never mutate the model's QFont; this renderer is stateless and
-            # block.font is persistent shared state. The normal-weight copy is
+            # The label font comes from block.font_size. The normal-weight font is
             # memoized rather than rebuilt for every block on every frame.
-            painter.setFont(_cached_name_font(block.font))
+            painter.setFont(block_name_font(block))
             text_rect, label = block_label_layout(block)
             painter.drawText(
                 text_rect, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop, label

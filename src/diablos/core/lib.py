@@ -6,14 +6,12 @@ import time
 from typing import Dict, Any, Optional
 from diablos.core.workspace import Workspace
 from diablos.core.i18n import tr
-from diablos.core.sim_prefs import ask_before_run as _stored_ask_before_run, set_ask_before_run
 import logging
 
 
 # Import block size configuration
 
 # Import extracted classes
-from diablos.core.plotting.scope_plotter import ScopePlotter
 from diablos.core.managers.subsystem_manager import SubsystemManager
 
 logger = logging.getLogger(__name__)
@@ -46,19 +44,6 @@ def _progress_bar(**kwargs):
     return tqdm(**kwargs)
 
 
-def _gui_running() -> bool:
-    """True when a Qt application exists, i.e. a dialog can be shown.
-
-    A headless script (no PyQt6, or no QApplication) has nobody to ask, so
-    ``execution_init`` must not open the settings dialog there.
-    """
-    try:
-        from PyQt6.QtCore import QCoreApplication
-    except ImportError:
-        return False
-    return QCoreApplication.instance() is not None
-
-
 class DSim:
     """
     Class that manages the simulation interface and main functions.
@@ -82,7 +67,7 @@ class DSim:
 
     """
 
-    def __init__(self, workspace: Optional[Workspace] = None):
+    def __init__(self, workspace: Optional[Workspace] = None, category_color=None):
         """Build an empty diagram.
 
         ``workspace`` holds the diagram's workspace variables. Each DSim owns
@@ -90,6 +75,9 @@ class DSim:
         diagrams in one process never share variables; the GUI passes the
         process-level default ``WorkspaceManager()`` so legacy code calling
         ``WorkspaceManager()`` still sees the window's variables.
+
+        ``category_color`` (``category -> colour``) colours the blocks; the GUI
+        passes its theme's lookup, a headless DSim draws nothing and uses grey.
         """
         logger.debug("Initializing DSim with MVC architecture")
 
@@ -100,7 +88,7 @@ class DSim:
         from diablos.core.services.run_history_service import RunHistoryService
         from diablos.core.diagram_validator import DiagramValidator
 
-        self.model = SimulationModel()
+        self.model = SimulationModel(category_color=category_color)
         self.engine = SimulationEngine(
             self.model, workspace=workspace if workspace is not None else Workspace()
         )
@@ -140,10 +128,18 @@ class DSim:
         self.execution_pause = self.engine.execution_pause
         self.real_time = self.engine.real_time
         self.dynamic_plot = False
-        # Application preference (QSettings, not diagram data): when True,
-        # Play re-opens the Simulation-settings dialog before every run. Read
-        # once here; the settings dialog keeps the two in step.
-        self.ask_before_run = _stored_ask_before_run()
+        # The Simulation-settings dialog is GUI: the main window attaches a
+        # callable ``(dsim, parent, accept_label) -> (accepted, values)``
+        # (diablos.gui.widgets.simulation_dialogs.ask_simulation_settings).
+        # Without one (headless) nobody is asked and runs use the stored
+        # settings.
+        self.settings_dialog = None
+        # Application preference, not diagram data: when True, Play re-opens
+        # the settings dialog before every run. The GUI loads it from its
+        # preference store and sets ``on_ask_before_run_changed`` to write
+        # changes back.
+        self.ask_before_run = False
+        self.on_ask_before_run_changed = None
         # False until the user has seen the Simulation-settings dialog for the
         # current document: the first Play of a new or opened diagram shows it
         # (once), later Plays run straight away. Reset per document in
@@ -165,7 +161,10 @@ class DSim:
         self.filename = self.file_service.filename
 
         # Execution tracking (timeline, global_computed_list are now properties)
-        self.scope_plotter = ScopePlotter(self)
+        # Plot windows are GUI: the main window attaches a ScopePlotter
+        # (diablos.gui.plotting.scope_plotter). A headless DSim has none, and
+        # the plotting entry points below do nothing.
+        self.scope_plotter = None
         self.outs = []
         self.plotty = None
 
@@ -500,7 +499,8 @@ class DSim:
         # data held for the "Previous run" overlay (see clear_all).
         while self.navigation_stack:
             self.exit_subsystem()
-        self.scope_plotter.reset_held_runs()
+        if self.scope_plotter is not None:
+            self.scope_plotter.reset_held_runs()
         self.file_service.commit_loaded_data(blocks, lines)
 
         # Sync simulation parameters back to DSim
@@ -561,14 +561,17 @@ class DSim:
         clone.dynamic_plot = False
         return clone
 
-    def open(self) -> Optional[Dict]:
+    def open(self, filepath: Optional[str] = None) -> Optional[Dict]:
         """
         Load diagram from file. Delegates to FileService.
+
+        ``filepath`` opens that file; without one the GUI's file chooser asks
+        (a headless DSim has none and returns None).
 
         Returns:
             modern_ui_data dict if present in file, None otherwise
         """
-        data = self.file_service.load()
+        data = self.file_service.load(filepath)
 
         if data is None:
             return None
@@ -590,7 +593,8 @@ class DSim:
         # Drop the scope data held for the "Previous run" overlay: it belongs
         # to the diagram being discarded, and overlaying it onto the next
         # diagram would silently mix unrelated signals.
-        self.scope_plotter.reset_held_runs()
+        if self.scope_plotter is not None:
+            self.scope_plotter.reset_held_runs()
         # Update references
         self.blocks_list = self.model.blocks_list
         self.line_list = self.model.line_list
@@ -659,35 +663,14 @@ class DSim:
         the same dialog serves both the Simulation > Simulation Settings...
         action and the opt-in "ask before every run" path.
         """
-        # GUI-only: imported here so the engine imports without PyQt6.
-        from PyQt6.QtWidgets import QDialog
-
-        from diablos.gui.widgets.simulation_dialogs import SimulationDialog
-
-        dialog = SimulationDialog(
-            self.sim_time,
-            self.sim_dt,
-            self.plot_trange,
-            parent=parent,
-            solver_method=self.solver_method,
-            rtol=self.rtol,
-            atol=self.atol,
-            zero_crossing=self.zero_crossing,
-            real_time=self.real_time,
-            dynamic_plot=self.dynamic_plot,
-            ask_before_run=self.ask_before_run,
-            accept_label=accept_label,
-        )
-        if dialog.exec() != QDialog.DialogCode.Accepted:
+        if self.settings_dialog is None:
+            logger.debug("No settings dialog attached (headless); nothing to ask")
+            return None
+        accepted, values = self.settings_dialog(self, parent, accept_label)
+        if not accepted:
             return None
         self.settings_reviewed = True
-        try:
-            return dialog.get_values()
-        except (ValueError, TypeError):
-            # The dialog validates its numeric fields before accepting, so this
-            # is belt-and-braces: keep the current settings rather than raise.
-            logger.warning("Invalid simulation settings. Keeping the current values.")
-            return None
+        return values
 
     def apply_sim_settings(self, values) -> bool:
         """Apply a ``SimulationDialog`` result dict onto this DSim.
@@ -714,7 +697,8 @@ class DSim:
             ask = bool(values["ask_before_run"])
             if ask != self.ask_before_run:
                 self.ask_before_run = ask
-                set_ask_before_run(ask)
+                if self.on_ask_before_run_changed is not None:
+                    self.on_ask_before_run_changed(ask)
 
         return diagram_changed
 
@@ -841,7 +825,7 @@ class DSim:
             # opt-in "ask before every run" preference, on every run; otherwise
             # the stored duration is used as-is.
             if ask is None:
-                ask = _gui_running() and (
+                ask = self.settings_dialog is not None and (
                     bool(getattr(self, "ask_before_run", False))
                     or not getattr(self, "settings_reviewed", True)
                 )
@@ -2014,7 +1998,9 @@ class DSim:
 
     def _record_run_history(self):
         """Record the current run data for future inspection."""
-        timeline, traces = self.scope_plotter.get_scope_traces()
+        from diablos.core.plotting.scope_traces import get_scope_traces
+
+        timeline, traces = get_scope_traces(self)
         if timeline is None or len(timeline) == 0:
             return
 
@@ -2043,20 +2029,23 @@ class DSim:
     def pyqtPlotScope(self):
         """
         :purpose: Plots the data saved in Scope blocks using pyqtgraph.
-        Delegates to ScopePlotter.
+        Delegates to the attached ScopePlotter (none when headless).
         """
-        self.scope_plotter.pyqtPlotScope()
+        if self.scope_plotter is not None:
+            self.scope_plotter.pyqtPlotScope()
 
     def plot_again(self):
         """
         :purpose: Re-plots the scope data and handling other plots.
-        Delegates to ScopePlotter.
+        Delegates to the attached ScopePlotter (none when headless).
         """
-        self.scope_plotter.plot_again()
+        if self.scope_plotter is not None:
+            self.scope_plotter.plot_again()
 
     def dynamic_pyqtPlotScope(self, step):
         """
         :purpose: Plots the data saved in Scope blocks dynamically with pyqtgraph.
-        Delegates to ScopePlotter.
+        Delegates to the attached ScopePlotter (none when headless).
         """
-        self.scope_plotter.dynamic_pyqtPlotScope(step)
+        if self.scope_plotter is not None:
+            self.scope_plotter.dynamic_pyqtPlotScope(step)

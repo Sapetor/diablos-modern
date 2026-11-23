@@ -603,50 +603,44 @@ class DBlock:
             return current
         return parsed
 
-    def change_port_numbers(self):
-        logger.debug(f"Changing port numbers for block: {self.name}")
-        from diablos.gui.widgets.simulation_dialogs import (
-            PortDialog,
-        )  # GUI-only; keeps the engine Qt-free
+    def editable_ports(self) -> Dict[str, int]:
+        """The port counts the user may edit (per ``io_edit``), current values.
 
+        ``{}`` when the block's ports are fixed. The GUI shows these in its
+        port dialog and hands the result to :meth:`change_port_numbers`.
+        """
         if self.io_edit == "both":
-            # Inputs and outputs can be edited
-            dialog = PortDialog(self.name, {"inputs": self.in_ports, "outputs": self.out_ports})
-            if dialog.exec():
-                new_io = dialog.get_values()
-                self.in_ports = self._parse_port_count(new_io["inputs"], self.in_ports)
-                self.out_ports = self._parse_port_count(new_io["outputs"], self.out_ports)
-                logger.debug(
-                    f"Changed input ports to {self.in_ports} and output ports to {self.out_ports}"
-                )
+            return {"inputs": self.in_ports, "outputs": self.out_ports}
+        if self.io_edit == "input":
+            return {"inputs": self.in_ports}
+        if self.io_edit == "output":
+            return {"outputs": self.out_ports}
+        return {}
 
-        elif self.io_edit == "input":
-            # Only inputs can be edited
-            dialog = PortDialog(self.name, {"inputs": self.in_ports})
-            if dialog.exec():
-                new_io = dialog.get_values()
-                self.in_ports = self._parse_port_count(new_io["inputs"], self.in_ports)
-                logger.debug(f"Changed input ports to {self.in_ports}")
+    def change_port_numbers(self, values) -> bool:
+        """Apply edited port counts ``{"inputs": n, "outputs": m}``.
 
-        elif self.io_edit == "output":
-            # Only outputs can be edited
-            dialog = PortDialog(self.name, {"outputs": self.out_ports})
-            if dialog.exec():
-                new_io = dialog.get_values()
-                self.out_ports = self._parse_port_count(new_io["outputs"], self.out_ports)
-                logger.debug(f"Changed output ports to {self.out_ports}")
-
-        else:
+        Only the counts :meth:`editable_ports` allows are applied; an invalid
+        or negative value keeps the current count. Returns False when the
+        block's ports cannot be edited. (The dialog used to be opened from
+        here, which made the engine depend on Qt; the GUI runs it now.)
+        """
+        allowed = self.editable_ports()
+        if not allowed:
             logger.debug(f"Port number change not allowed for block: {self.name}")
-            return
+            return False
+        if "inputs" in allowed and "inputs" in values:
+            self.in_ports = self._parse_port_count(values["inputs"], self.in_ports)
+        if "outputs" in allowed and "outputs" in values:
+            self.out_ports = self._parse_port_count(values["outputs"], self.out_ports)
 
         self.update_Block()
 
         # To maintain the data in the parameters for the functions
         self.params["_inputs_"] = self.in_ports
         self.params["_outputs_"] = self.out_ports
-
-        logger.debug(f"Port numbers updated for block: {self.name}")
+        logger.debug(f"Port numbers of {self.name}: in={self.in_ports} out={self.out_ports}")
+        return True
 
     def saving_params(self):
         ed_dict = {}
@@ -743,26 +737,6 @@ class DBlock:
         self._refresh_tranfn_btype()
 
         logger.debug(f"Final parameters for {self.name}: {self.params}")
-
-    @property
-    def font(self):
-        """The block-name font (a ``QFont``), created on first use.
-
-        Building a QFont needs a running QGuiApplication, which a headless
-        engine run does not have, so only the GUI (the renderer) creates it.
-        """
-        font = self.__dict__.get("_font")
-        if font is None:
-            from PyQt6.QtGui import QFont
-
-            font = QFont()
-            font.setPointSize(self.font_size)
-            self._font = font
-        return font
-
-    @font.setter
-    def font(self, value):
-        self._font = value
 
     def __deepcopy__(self, memo):
         """

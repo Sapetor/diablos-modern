@@ -27,7 +27,7 @@ from PyQt6.QtCore import QPoint
 from PyQt6.QtWidgets import QDialog
 
 import diablos.gui.widgets.simulation_dialogs as lib_dialogs
-import diablos.core.lib as lib_lib
+from diablos.gui.widgets.simulation_dialogs import ask_simulation_settings
 from diablos.gui.widgets.simulation_dialogs import SimulationDialog
 
 pytestmark = [pytest.mark.regression, pytest.mark.qt]
@@ -77,6 +77,9 @@ def dsim(qapp, tmp_path, monkeypatch):
 
     monkeypatch.chdir(tmp_path)
     sim = DSim()
+    # The engine asks through the dialog the GUI attaches (the main window
+    # does this in _attach_engine_ui); a bare DSim has none.
+    sim.settings_dialog = ask_simulation_settings
     monkeypatch.setattr(sim, "save", lambda *a, **k: 0)
     _build_diagram(sim)
     # Past the first run: the once-per-document dialog has its own tests.
@@ -95,7 +98,7 @@ class TestAskBeforeRunPreference:
     def test_defaults_to_off(self, monkeypatch):
         from PyQt6.QtCore import QSettings
 
-        import diablos.core.sim_prefs as sim_prefs
+        import diablos.gui.sim_prefs as sim_prefs
 
         store = QSettings("DiaBloS-test", "sim-prefs-default")
         store.clear()
@@ -106,7 +109,7 @@ class TestAskBeforeRunPreference:
     def test_round_trips_through_qsettings(self, monkeypatch, flag):
         from PyQt6.QtCore import QSettings
 
-        import diablos.core.sim_prefs as sim_prefs
+        import diablos.gui.sim_prefs as sim_prefs
 
         store = QSettings("DiaBloS-test", "sim-prefs-roundtrip")
         store.clear()
@@ -116,7 +119,7 @@ class TestAskBeforeRunPreference:
 
     def test_a_stored_false_reads_back_as_false(self, monkeypatch):
         """The INI backend hands booleans back as the string "false"."""
-        import diablos.core.sim_prefs as sim_prefs
+        import diablos.gui.sim_prefs as sim_prefs
 
         monkeypatch.setattr(
             sim_prefs, "ui_settings", lambda: type("S", (), {"value": lambda s, k, d: "false"})()
@@ -230,7 +233,7 @@ class TestApplySimSettings:
 
     def test_the_ask_flag_is_persisted_not_dirtying(self, dsim, monkeypatch):
         written = {}
-        monkeypatch.setattr(lib_lib, "set_ask_before_run", lambda v: written.__setitem__("v", v))
+        dsim.on_ask_before_run_changed = lambda v: written.__setitem__("v", v)
         dsim.ask_before_run = False
         assert dsim.apply_sim_settings({"ask_before_run": True}) is False
         assert dsim.ask_before_run is True
@@ -345,7 +348,7 @@ class TestSimulationSettingsAction:
     ):
         dsim = armed_window.dsim
         written = {}
-        monkeypatch.setattr(lib_lib, "set_ask_before_run", lambda v: written.__setitem__("v", v))
+        dsim.on_ask_before_run_changed = lambda v: written.__setitem__("v", v)
         _spy(
             monkeypatch,
             result=QDialog.DialogCode.Accepted,
@@ -433,3 +436,21 @@ class TestFirstPlayFromTheWindow:
         assert errors == []
         assert armed_window.dsim.execution_initialized is False
         assert armed_window.status_message.text() == "Simulation cancelled"
+
+
+@pytest.mark.unit
+def test_a_dsim_without_a_dialog_never_asks_even_with_a_qapplication(qapp, tmp_path, monkeypatch):
+    """Whether to prompt used to depend on a QApplication existing; a script
+    running inside a Qt process (or a test) then got a modal dialog. It now
+    depends only on the GUI having attached its dialog to this DSim."""
+    from diablos.core.lib import DSim
+
+    monkeypatch.chdir(tmp_path)
+    sim = DSim()
+    monkeypatch.setattr(sim, "save", lambda *a, **k: 0)
+    _build_diagram(sim)
+    seen = _spy(monkeypatch, result=QDialog.DialogCode.Accepted)
+    assert sim.settings_reviewed is False  # a first run...
+    assert sim.execution_init() is True  # ...that runs without asking
+    assert seen == []
+    sim.execution_initialized = False
