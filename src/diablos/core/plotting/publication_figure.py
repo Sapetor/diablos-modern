@@ -10,6 +10,8 @@ never import Qt or modern_ui.
 import numpy as np
 from matplotlib.figure import Figure
 
+from diablos.core.i18n import tr
+
 _FONT_FAMILY = "serif"
 
 
@@ -53,7 +55,7 @@ def build_publication_figure(t, traces, options=None):
         else:
             ax.plot(t[:n], y[:n], label=name, linewidth=1.5)
 
-    ax.set_xlabel("Time (s)", fontfamily=_FONT_FAMILY)
+    ax.set_xlabel(tr("Time (s)"), fontfamily=_FONT_FAMILY)
     title = options.get("title")
     if title:
         ax.set_title(title, fontfamily=_FONT_FAMILY)

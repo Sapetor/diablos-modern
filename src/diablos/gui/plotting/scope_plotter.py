@@ -2,6 +2,7 @@ import logging
 
 import numpy as np
 
+from diablos.core.i18n import tr
 from diablos.gui.plotting.field_scope_mixin import _FieldScopeRenderMixin
 from diablos.core.plotting import scope_traces
 from diablos.core.plotting.run_compare import snapshot_params
@@ -373,8 +374,8 @@ class ScopePlotter(_FieldScopeRenderMixin, _PyQtGraphScopeMixin):
         fig, ax = plt.subplots(figsize=(10, 6))
         self._register_figure(fig)
         ax.plot(freqs, magnitude, "b-", linewidth=1)
-        ax.set_xlabel("Frequency (Hz)")
-        ax.set_ylabel("Magnitude (dB)" if params.get("log_scale", False) else "Magnitude")
+        ax.set_xlabel(tr("Frequency (Hz)"))
+        ax.set_ylabel(tr("Magnitude (dB)") if params.get("log_scale", False) else tr("Magnitude"))
         ax.set_title(f"{title} ({block.name})")
         ax.grid(True, alpha=0.3)
         ax.set_xlim([0, fs / 2])

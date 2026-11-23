@@ -3,6 +3,7 @@ import numpy as np
 import scipy.signal as signal
 from PyQt6.QtCore import Qt
 import pyqtgraph as pg
+from diablos.core.i18n import tr, tr_noop
 from .base_analyzer import BaseAnalyzer
 from .error_reporting import ErrorReportingMixin
 
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 class BodeAnalyzer(ErrorReportingMixin, BaseAnalyzer):
     """Analyzer for generating Bode Magnitude and Phase plots."""
 
-    error_title = "Bode Error"
+    error_title = tr_noop("Bode Error")
 
     def analyze(self, source_block, canvas, phase_only=False):
         """Generate Bode plot (Magnitude or Phase)."""
@@ -24,7 +25,7 @@ class BodeAnalyzer(ErrorReportingMixin, BaseAnalyzer):
         model, sys_block = self._find_connected_transfer_function(source_block, canvas)
 
         if not model:
-            self._report_no_model("a Bode plot")
+            self._report_no_model(tr("a Bode plot"))
             return None
 
         try:
@@ -51,10 +52,10 @@ class BodeAnalyzer(ErrorReportingMixin, BaseAnalyzer):
             plot_window = QWidget()
 
             if phase_only:
-                title = f"Bode Phase Plot: {sys_block.name}"
+                title = tr("Bode Phase Plot: {name}", name=sys_block.name)
                 plot_widget = self._setup_plot_widget(plot_window, title)
-                plot_widget.setLabel("left", "Phase", units="deg", color="#000000")
-                plot_widget.setLabel("bottom", "Frequency", units="rad/s", color="#000000")
+                plot_widget.setLabel("left", tr("Phase"), units="deg", color="#000000")
+                plot_widget.setLabel("bottom", tr("Frequency"), units="rad/s", color="#000000")
                 plot_widget.setLogMode(x=True, y=False)
 
                 # Filter out negative/zero freq if any (log mode safety)
@@ -71,15 +72,17 @@ class BodeAnalyzer(ErrorReportingMixin, BaseAnalyzer):
                     plot_widget.addLine(
                         x=np.log10(pcw), pen=pg.mkPen("g", width=1, style=Qt.PenStyle.DashLine)
                     )
-                    pm_text = pg.TextItem(f"PM = {pm:.1f} deg @ {pcw:.3g} rad/s", color="g")
+                    pm_text = pg.TextItem(
+                        tr("PM = {pm:.1f} deg @ {w:.3g} rad/s", pm=pm, w=pcw), color="g"
+                    )
                     pm_text.setPos(np.log10(pcw), -180)
                     plot_widget.addItem(pm_text)
 
             else:  # Magnitude
-                title = f"Bode Magnitude Plot: {sys_block.name}"
+                title = tr("Bode Magnitude Plot: {name}", name=sys_block.name)
                 plot_widget = self._setup_plot_widget(plot_window, title)
-                plot_widget.setLabel("left", "Magnitude", units="dB", color="#000000")
-                plot_widget.setLabel("bottom", "Frequency", units="rad/s", color="#000000")
+                plot_widget.setLabel("left", tr("Magnitude"), units="dB", color="#000000")
+                plot_widget.setLabel("bottom", tr("Frequency"), units="rad/s", color="#000000")
                 plot_widget.setLogMode(x=True, y=False)
 
                 valid = w > 0
@@ -95,7 +98,9 @@ class BodeAnalyzer(ErrorReportingMixin, BaseAnalyzer):
                     plot_widget.addLine(
                         x=np.log10(gcw), pen=pg.mkPen("r", width=1, style=Qt.PenStyle.DashLine)
                     )
-                    gm_text = pg.TextItem(f"GM = {gm:.1f} dB @ {gcw:.3g} rad/s", color="r")
+                    gm_text = pg.TextItem(
+                        tr("GM = {gm:.1f} dB @ {w:.3g} rad/s", gm=gm, w=gcw), color="r"
+                    )
                     gm_text.setPos(np.log10(gcw), 0)
                     plot_widget.addItem(gm_text)
 

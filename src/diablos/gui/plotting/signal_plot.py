@@ -27,6 +27,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from diablos.core.i18n import tr
 from diablos.core.plotting.run_compare import param_changes
 from diablos.gui.themes.theme_manager import theme_manager, ThemeType
 
@@ -99,15 +100,15 @@ class SignalPlot(QWidget):
 
         # Toolbar
         toolbar_layout = QHBoxLayout()
-        toolbar_layout.addWidget(QLabel("Columns:"))
+        toolbar_layout.addWidget(QLabel(tr("Columns:")))
         self.columns_spin = QSpinBox()
         self.columns_spin.setRange(1, max(1, n))
         self.columns_spin.setValue(self._columns)
         toolbar_layout.addWidget(self.columns_spin)
-        self.auto_btn = QPushButton("Auto")
+        self.auto_btn = QPushButton(tr("Auto"))
         toolbar_layout.addWidget(self.auto_btn)
         toolbar_layout.addStretch()
-        toolbar_layout.addWidget(QLabel("Min height:"))
+        toolbar_layout.addWidget(QLabel(tr("Min height:")))
         self.min_height_spin = QSpinBox()
         self.min_height_spin.setRange(80, 500)
         self.min_height_spin.setSingleStep(20)
@@ -149,38 +150,42 @@ class SignalPlot(QWidget):
         main_layout.addSpacing(10)
 
         bottom_layout = QHBoxLayout()
-        self.prev_run_checkbox = QCheckBox("Previous run")
-        self.prev_run_checkbox.setToolTip("Overlay the previous run's traces (dimmed, dashed)")
+        self.prev_run_checkbox = QCheckBox(tr("Previous run"))
+        self.prev_run_checkbox.setToolTip(tr("Overlay the previous run's traces (dimmed, dashed)"))
         self.prev_run_checkbox.setChecked(False)
         self.prev_run_checkbox.setEnabled(any(c is not None for c in self.prev_curves))
         self.prev_run_checkbox.toggled.connect(self._on_prev_run_toggled)
         bottom_layout.addWidget(self.prev_run_checkbox)
 
-        self.ref_checkbox = QCheckBox("Reference")
-        self.ref_checkbox.setToolTip("Overlay the kept reference run (dotted)")
+        self.ref_checkbox = QCheckBox(tr("Reference"))
+        self.ref_checkbox.setToolTip(tr("Overlay the kept reference run (dotted)"))
         has_ref = any(c is not None for c in self.ref_curves)
         self.ref_checkbox.setEnabled(has_ref)
         self.ref_checkbox.setChecked(has_ref)
         self.ref_checkbox.toggled.connect(self._on_ref_toggled)
         bottom_layout.addWidget(self.ref_checkbox)
 
-        self.keep_ref_button = QPushButton("Keep as reference")
+        self.keep_ref_button = QPushButton(tr("Keep as reference"))
         self.keep_ref_button.setToolTip(
-            "Keep this run as the reference: later runs (for example with changed "
-            "parameters) overlay it and list what changed"
+            tr(
+                "Keep this run as the reference: later runs (for example with changed "
+                "parameters) overlay it and list what changed"
+            )
         )
         self.keep_ref_button.setEnabled(keep_reference is not None)
         self.keep_ref_button.clicked.connect(self._on_keep_reference)
         bottom_layout.addWidget(self.keep_ref_button)
         bottom_layout.addStretch()
 
-        self.export_button = QPushButton("Export to CSV...")
-        self.export_button.setToolTip("Export plot data to CSV file")
+        self.export_button = QPushButton(tr("Export to CSV..."))
+        self.export_button.setToolTip(tr("Export plot data to CSV file"))
         self.export_button.clicked.connect(self.export_to_csv)
         bottom_layout.addWidget(self.export_button)
 
-        self.export_figure_button = QPushButton("Export Figure...")
-        self.export_figure_button.setToolTip("Export a publication-quality figure (PDF/PNG/SVG)")
+        self.export_figure_button = QPushButton(tr("Export Figure..."))
+        self.export_figure_button.setToolTip(
+            tr("Export a publication-quality figure (PDF/PNG/SVG)")
+        )
         self.export_figure_button.clicked.connect(self.export_figure)
         bottom_layout.addWidget(self.export_figure_button)
         main_layout.addLayout(bottom_layout)
@@ -242,7 +247,7 @@ class SignalPlot(QWidget):
         return palette[index % len(palette)]
 
     def _configure_plot_axes(self, plot_widget):
-        plot_widget.setLabel("bottom", "Time")
+        plot_widget.setLabel("bottom", tr("Time"))
         plot_widget.getAxis("bottom").setStyle(tickTextOffset=10)
         plot_widget.getAxis("bottom").enableAutoSIPrefix(False)
         plot_widget.setMinimumHeight(self._min_plot_height)
@@ -411,10 +416,10 @@ class SignalPlot(QWidget):
             return ""
         changes = param_changes(ref_params, self._current_params)
         if not changes:
-            return "Reference: same parameters as this run"
+            return tr("Reference: same parameters as this run")
         shown = changes[:6]
-        more = f" (+{len(changes) - len(shown)} more)" if len(changes) > len(shown) else ""
-        return "Changed since reference: " + "; ".join(shown) + more
+        more = tr(" (+{n} more)", n=len(changes) - len(shown)) if len(changes) > len(shown) else ""
+        return tr("Changed since reference: ") + "; ".join(shown) + more
 
     def _on_ref_toggled(self, checked):
         for curve in self.ref_curves:
@@ -426,7 +431,7 @@ class SignalPlot(QWidget):
             return
         kept = self._keep_reference()
         if kept is not None:
-            self.keep_ref_button.setText("Kept as reference")
+            self.keep_ref_button.setText(tr("Kept as reference"))
             self.keep_ref_button.setEnabled(False)
 
     def _on_prev_run_toggled(self, checked):
@@ -483,7 +488,7 @@ class SignalPlot(QWidget):
     def _require_export_data(self):
         """Return True when there is run data to export; warn otherwise."""
         if self.timeline is None or self.data_vectors is None:
-            QMessageBox.warning(self, "No Data", "No plot data available to export.")
+            QMessageBox.warning(self, tr("No Data"), tr("No plot data available to export."))
             return False
         return True
 
@@ -497,7 +502,7 @@ class SignalPlot(QWidget):
         QTimer.singleShot's context-object overload.)
         """
         original_text = button.text()
-        button.setText(f"✓ Exported to {os.path.basename(filepath)}")
+        button.setText(tr("✓ Exported to {name}", name=os.path.basename(filepath)))
         button.setEnabled(False)
 
         timer = QTimer(button)
@@ -518,10 +523,10 @@ class SignalPlot(QWidget):
 
         # Create scope selection dialog
         dialog = QDialog(self)
-        dialog.setWindowTitle("Select Scopes to Export")
+        dialog.setWindowTitle(tr("Select Scopes to Export"))
         dialog_layout = QVBoxLayout()
 
-        instruction_label = QLabel("Select which scope blocks to include in the CSV export:")
+        instruction_label = QLabel(tr("Select which scope blocks to include in the CSV export:"))
         dialog_layout.addWidget(instruction_label)
 
         # Create checkboxes for each scope
@@ -530,9 +535,14 @@ class SignalPlot(QWidget):
             if isinstance(label, str):
                 scope_name = label
             elif isinstance(label, list):
-                scope_name = f"Scope {i} ({', '.join(label[:3])}{'...' if len(label) > 3 else ''})"
+                scope_name = tr(
+                    "Scope {i} ({names}{more})",
+                    i=i,
+                    names=", ".join(label[:3]),
+                    more="..." if len(label) > 3 else "",
+                )
             else:
-                scope_name = f"Scope {i}"
+                scope_name = tr("Scope {i}", i=i)
 
             checkbox = QWidget()
             checkbox_layout = QHBoxLayout()
@@ -548,10 +558,10 @@ class SignalPlot(QWidget):
 
         # Buttons
         button_layout = QHBoxLayout()
-        select_all_btn = QPushButton("Select All")
-        deselect_all_btn = QPushButton("Deselect All")
-        ok_btn = QPushButton("Export")
-        cancel_btn = QPushButton("Cancel")
+        select_all_btn = QPushButton(tr("Select All"))
+        deselect_all_btn = QPushButton(tr("Deselect All"))
+        ok_btn = QPushButton(tr("Export"))
+        cancel_btn = QPushButton(tr("Cancel"))
 
         select_all_btn.clicked.connect(lambda: [cb.setChecked(True) for cb in checkboxes])
         deselect_all_btn.clicked.connect(lambda: [cb.setChecked(False) for cb in checkboxes])
@@ -574,7 +584,9 @@ class SignalPlot(QWidget):
         selected_indices = [i for i, cb in enumerate(checkboxes) if cb.isChecked()]
 
         if not selected_indices:
-            QMessageBox.warning(self, "No Selection", "Please select at least one scope to export.")
+            QMessageBox.warning(
+                self, tr("No Selection"), tr("Please select at least one scope to export.")
+            )
             return
 
         # Get save file path
@@ -582,7 +594,10 @@ class SignalPlot(QWidget):
         default_filename = f"plot_data_{timestamp}.csv"
 
         filepath, _ = QFileDialog.getSaveFileName(
-            self, "Export Plot Data to CSV", default_filename, "CSV Files (*.csv);;All Files (*)"
+            self,
+            tr("Export Plot Data to CSV"),
+            default_filename,
+            tr("CSV Files (*.csv);;All Files (*)"),
         )
 
         if not filepath:
@@ -615,7 +630,9 @@ class SignalPlot(QWidget):
             self._flash_export_success(self.export_button, filepath)
 
         except Exception as e:
-            QMessageBox.critical(self, "Export Failed", f"Failed to export data:\n{str(e)}")
+            QMessageBox.critical(
+                self, tr("Export Failed"), tr("Failed to export data:\n{error}", error=str(e))
+            )
             logger.error(f"Failed to export plot data: {e}")
 
     _FIGURE_FILTERS = [
@@ -651,7 +668,8 @@ class SignalPlot(QWidget):
                 # column instead of emitting one interleaved 2-D trace.
                 parts = [part.strip() for part in str(label).split(",")]
                 names = [
-                    parts[i] if i < len(parts) else f"Signal {i}" for i in range(vector.shape[1])
+                    parts[i] if i < len(parts) else tr("Signal {i}", i=i)
+                    for i in range(vector.shape[1])
                 ]
             else:
                 traces.append({"name": label, "y": vector.ravel(), "step": step})
@@ -671,7 +689,7 @@ class SignalPlot(QWidget):
 
         filepath, selected = QFileDialog.getSaveFileName(
             self,
-            "Export Publication Figure",
+            tr("Export Publication Figure"),
             default_filename,
             ";;".join(f for f, _ in self._FIGURE_FILTERS),
         )
@@ -699,5 +717,7 @@ class SignalPlot(QWidget):
             self._flash_export_success(self.export_figure_button, filepath)
 
         except Exception as e:
-            QMessageBox.critical(self, "Export Failed", f"Failed to export figure:\n{str(e)}")
+            QMessageBox.critical(
+                self, tr("Export Failed"), tr("Failed to export figure:\n{error}", error=str(e))
+            )
             logger.error(f"Failed to export figure: {e}")

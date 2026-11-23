@@ -765,12 +765,16 @@ class DSim:
                 ):  # Check explicitly or reload_external_data handles it
                     missing_file_flag = block.reload_external_data()
                     if missing_file_flag == 1:
-                        msg = f"Missing external file for block: {block.name}"
+                        msg = tr("Missing external file for block: {name}", name=block.name)
                         logger.error(msg)
                         self.error_msg = msg
                         return False
             except Exception as e:
-                msg = f"Error reloading external data for block {block.name}: {str(e)}"
+                msg = tr(
+                    "Error reloading external data for block {name}: {error}",
+                    name=block.name,
+                    error=str(e),
+                )
                 logger.error(msg)
                 self.error_msg = msg
                 return False
@@ -891,7 +895,7 @@ class DSim:
             logger.debug("Execution initialization complete")
         except Exception as e:
             logger.exception("Error during execution initialization")
-            self.error_msg = f"Error during execution initialization: {e}"
+            self.error_msg = tr("Error during execution initialization: {error}", error=e)
             return False
 
         logger.debug("*****EXECUTION START*****")
@@ -1233,7 +1237,7 @@ class DSim:
 
             logger.error(f"Error during execution loop: {str(e)}")
             logger.error(f"Traceback: {traceback.format_exc()}")
-            self.execution_failed(f"Error during execution loop: {e}")
+            self.execution_failed(tr("Error during execution loop: {error}", error=e))
 
     def _advance_clock(self, interactive) -> bool:
         """Advance ``time_step`` for this call.
@@ -1278,11 +1282,13 @@ class DSim:
             self.engine.error_block = getattr(block, "name", "") or ""
         if not isinstance(out_value, dict):
             self.execution_failed(
-                "Block returned None" if out_value is None else f"Block returned {out_value!r}"
+                tr("Block returned None")
+                if out_value is None
+                else tr("Block returned {value!r}", value=out_value)
             )
             return True
         if out_value.get("E"):
-            self.execution_failed(out_value.get("error", "Unknown error"))
+            self.execution_failed(out_value.get("error", tr("Unknown error")))
             return True
         return False
 
@@ -1346,7 +1352,9 @@ class DSim:
 
             except Exception as e:
                 logger.error(f"Error executing block {block.name}: {str(e)}")
-                self.execution_failed(f"Error executing block {block.name}: {e}")
+                self.execution_failed(
+                    tr("Error executing block {name}: {error}", name=block.name, error=e)
+                )
                 return None
         return pre_update_outputs
 
@@ -1440,7 +1448,10 @@ class DSim:
                 stuck = [loop.names for loop in loops if loop.is_pending()]
                 if stuck:
                     self.execution_failed(
-                        f"Algebraic loop {stuck[0]} did not receive all of its inputs"
+                        tr(
+                            "Algebraic loop {loop} did not receive all of its inputs",
+                            loop=stuck[0],
+                        )
                     )
                     return False
                 return True

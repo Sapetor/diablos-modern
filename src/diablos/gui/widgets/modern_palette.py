@@ -294,7 +294,9 @@ class CompactBlockRow(QFrame):
             block_cls = getattr(self.menu_block, "block_class", None)
             inst = block_cls() if block_cls else None
             if inst and hasattr(inst, "doc"):
-                doc_lines.append(str(inst.doc))
+                # Translated like the Properties panel does: block docs are
+                # harvested into the catalogs by scripts/extract_strings.py.
+                doc_lines.append(tr(str(inst.doc)))
             if is_user_menu_block(self.menu_block):
                 source = user_menu_block_source(self.menu_block)
                 doc_lines.append(tr("User block: {file}", file=os.path.basename(source) or "?"))

@@ -9,6 +9,8 @@ import logging
 import numpy as np
 from pathlib import Path
 
+from diablos.core.i18n import tr
+
 logger = logging.getLogger(__name__)
 
 
@@ -141,7 +143,7 @@ class AnimationExporter:
         ax.set_xlabel("x")
         ax.set_ylabel("y")
         ax.grid(True, alpha=0.3)
-        title_text = ax.set_title(f"{title}  t={self.time_data[0]:.3f}s")
+        title_text = ax.set_title(tr("{title}  t={t:.3f}s", title=title, t=self.time_data[0]))
 
         cmap = plt.get_cmap("tab10")
         colors = [cmap(i % 10) for i in range(n_agents)]
@@ -178,7 +180,7 @@ class AnimationExporter:
                     trail_lines[i].set_data(
                         positions[start : frame + 1, i, 0], positions[start : frame + 1, i, 1]
                     )
-            title_text.set_text(f"{title}  t={self.time_data[frame]:.3f}s")
+            title_text.set_text(tr("{title}  t={t:.3f}s", title=title, t=self.time_data[frame]))
             return [scatter, title_text, *trail_lines, *labels]
 
         anim = FuncAnimation(
@@ -224,13 +226,13 @@ class AnimationExporter:
         # Labels
         ax.set_xlabel("X")
         ax.set_ylabel("Y")
-        title_text = ax.set_title(f"{title} at t={self.time_data[0]:.3f}")
+        title_text = ax.set_title(tr("{title} at t={t:.3f}", title=title, t=self.time_data[0]))
 
         plt.tight_layout()
 
         def update(frame):
             im.set_data(self.field_data[frame])
-            title_text.set_text(f"{title} at t={self.time_data[frame]:.3f}")
+            title_text.set_text(tr("{title} at t={t:.3f}", title=title, t=self.time_data[frame]))
             return [im, title_text]
 
         anim = FuncAnimation(
@@ -268,16 +270,16 @@ class AnimationExporter:
 
         ax.set_xlim(0, L)
         ax.set_ylim(y_min, y_max)
-        ax.set_xlabel("Position x")
-        ax.set_ylabel("Field Value")
+        ax.set_xlabel(tr("Position x"))
+        ax.set_ylabel(tr("Field Value"))
         ax.grid(True, alpha=0.3)
-        title_text = ax.set_title(f"{title} at t={self.time_data[0]:.3f}")
+        title_text = ax.set_title(tr("{title} at t={t:.3f}", title=title, t=self.time_data[0]))
 
         plt.tight_layout()
 
         def update(frame):
             line.set_ydata(self.field_data[frame])
-            title_text.set_text(f"{title} at t={self.time_data[frame]:.3f}")
+            title_text.set_text(tr("{title} at t={t:.3f}", title=title, t=self.time_data[frame]))
             return [line, title_text]
 
         anim = FuncAnimation(

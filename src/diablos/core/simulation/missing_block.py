@@ -24,6 +24,7 @@ import functools
 from typing import Any, Dict, Iterable, List, Optional
 
 from diablos.blocks.base_block import BaseBlock
+from diablos.core.i18n import tr
 from diablos.core.simulation.block import DBlock
 
 __all__ = [
@@ -46,13 +47,12 @@ def _port_count(value: Any) -> int:
 
 def missing_block_error(block: Any) -> str:
     """The error a run reports for the placeholder ``block``."""
-    return (
-        "Block '{}' is of type '{}', which is not available: its module is not "
+    return tr(
+        "Block '{name}' is of type '{type}', which is not available: its module is not "
         "installed, or the project's blocks/ folder is not trusted. The diagram "
-        "cannot run until that block type is loaded.".format(
-            getattr(block, "username", "") or getattr(block, "name", "?"),
-            getattr(block, "missing_block_type", "?"),
-        )
+        "cannot run until that block type is loaded.",
+        name=getattr(block, "username", "") or getattr(block, "name", "?"),
+        type=getattr(block, "missing_block_type", "?"),
     )
 
 

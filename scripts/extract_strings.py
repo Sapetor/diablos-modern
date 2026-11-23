@@ -206,8 +206,9 @@ def extract_block_display_names(path: str) -> Set[str]:
     tree = _parse(path)
     if tree is None:
         return set()
-    if REPO_ROOT not in sys.path:
-        sys.path.insert(0, os.path.join(REPO_ROOT, "src"))
+    src = os.path.join(REPO_ROOT, "src")
+    if src not in sys.path:
+        sys.path.insert(0, src)
     from diablos.blocks.base_block import prettify_block_name
 
     names: Set[str] = set()

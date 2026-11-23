@@ -9,6 +9,7 @@ from typing import List, Dict, Tuple, Any, Optional, Union
 import numpy as np
 from diablos.core.simulation.block import DBlock
 from diablos.core.simulation.connection import DLine
+from diablos.core.i18n import tr
 from diablos.core.workspace import Workspace
 from diablos.core.engine.system_compiler import SystemCompiler
 from diablos.core.engine.flattener import Flattener
@@ -202,7 +203,7 @@ class SimulationEngine:
             # Integrity Check on the Active (Flattened) System
             _te1 = _time.time()
             if not self.check_diagram_integrity():
-                self.error_msg = "Diagram integrity check failed (connections)."
+                self.error_msg = tr("Diagram integrity check failed (connections).")
                 logger.error(self.error_msg)
                 return False
             logger.debug(f"[ENGINE TIMING] integrity check: {_time.time() - _te1:.3f}s")
@@ -373,7 +374,7 @@ class SimulationEngine:
                     # known. The output_only value is kept only to break a
                     # loop through it if Loop 2 stalls.
                     if isinstance(out_value, dict) and out_value.get("E"):
-                        self.error_msg = out_value.get("error", "Unknown error")
+                        self.error_msg = out_value.get("error", tr("Unknown error"))
                         self.error_block = block.name
                         logger.error(self.error_msg)
                         return False
@@ -385,7 +386,7 @@ class SimulationEngine:
 
             # Check for errors in output
             if out_value and isinstance(out_value, dict) and "E" in out_value and out_value["E"]:
-                self.error_msg = out_value.get("error", "Unknown error")
+                self.error_msg = out_value.get("error", tr("Unknown error"))
                 self.error_block = block.name
                 logger.error(self.error_msg)
                 return False
@@ -481,7 +482,7 @@ class SimulationEngine:
                     if isinstance(out_value, dict) and (
                         out_value.get("E") or out_value.get("error")
                     ):
-                        self.error_msg = out_value.get("error", "Block returned error")
+                        self.error_msg = out_value.get("error", tr("Block returned error"))
                         self.error_block = block.name
                         logger.error(f"Block {block.name} error: {self.error_msg}")
                         return False
@@ -537,7 +538,9 @@ class SimulationEngine:
 
                 is_algebraic, cycle_nodes = self.detect_algebraic_loops(uncomputed_blocks)
                 if is_algebraic:
-                    self.error_msg = f"Algebraic loop detected involving blocks: {cycle_nodes}"
+                    self.error_msg = tr(
+                        "Algebraic loop detected involving blocks: {blocks}", blocks=cycle_nodes
+                    )
                     logger.error(self.error_msg)
                     return False
                 else:
@@ -549,9 +552,9 @@ class SimulationEngine:
                         b.name for b in uncomputed_blocks if b.name not in self.memory_blocks
                     ]
                     if stalled_non_memory:
-                        self.error_msg = (
-                            f"Hierarchy resolution stalled with uncomputed "
-                            f"non-memory blocks: {stalled_non_memory}"
+                        self.error_msg = tr(
+                            "Hierarchy resolution stalled with uncomputed non-memory blocks: {blocks}",
+                            blocks=stalled_non_memory,
                         )
                         logger.error(self.error_msg)
                         return False
@@ -586,7 +589,7 @@ class SimulationEngine:
                 if out_value is False:
                     return False
                 if isinstance(out_value, dict) and out_value.get("E"):
-                    self.error_msg = out_value.get("error", "State advance failed")
+                    self.error_msg = out_value.get("error", tr("State advance failed"))
                     logger.error(f"Loop 3 state advance failed for {block.name}: {self.error_msg}")
                     return False
                 self.sync_integrator_output(block)
@@ -795,7 +798,7 @@ class SimulationEngine:
             # raise TypeError and hid the block's message behind
             # "argument of type 'bool' is not iterable".
             logger.error(f"Error executing block {block.name}: {e}", exc_info=True)
-            self.error_msg = f"Block '{block.name}' failed: {e}"
+            self.error_msg = tr("Block '{name}' failed: {error}", name=block.name, error=e)
             return {"E": True, "error": self.error_msg}
 
     def _active_line_source(self):
@@ -962,7 +965,9 @@ class SimulationEngine:
             solved = True
         if waiting and not solved:
             # Nothing else can progress at a stall, so these never get inputs.
-            self.error_msg = f"Algebraic loop {waiting[0]} did not receive all of its inputs"
+            self.error_msg = tr(
+                "Algebraic loop {loop} did not receive all of its inputs", loop=waiting[0]
+            )
             self.error_block = waiting[0][0]
             logger.error(self.error_msg)
             return None

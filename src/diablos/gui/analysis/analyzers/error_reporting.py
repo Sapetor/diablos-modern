@@ -12,6 +12,8 @@ right behaviour for a headless run.
 
 import logging
 
+from diablos.core.i18n import tr, tr_noop
+
 logger = logging.getLogger(__name__)
 
 
@@ -39,7 +41,7 @@ class ErrorReportingMixin:
     """
 
     #: Window/dialog title used when a caller does not pass one.
-    error_title = "Analysis Error"
+    error_title = tr_noop("Analysis Error")
 
     def __init__(self, parent=None, error_cb=None):
         super().__init__(parent)
@@ -47,7 +49,7 @@ class ErrorReportingMixin:
 
     def _show_error(self, message, title=None):
         """Report a user-facing failure through the injected callback."""
-        return report_error(self.error_cb, title or self.error_title, message)
+        return report_error(self.error_cb, tr(title or self.error_title), message)
 
     def _report_no_model(self, what):
         """Report "no LTI model" using :attr:`last_error` when it is known.
@@ -59,11 +61,12 @@ class ErrorReportingMixin:
         """
         reason = getattr(self, "last_error", None)
         if reason:
-            message = "Cannot generate {}:\n{}".format(what, reason)
+            message = tr("Cannot generate {what}:\n{reason}", what=what, reason=reason)
         else:
-            message = (
-                "Cannot generate {}:\nno linear (transfer-function) model could be "
-                "extracted from the connected blocks.".format(what)
+            message = tr(
+                "Cannot generate {what}:\nno linear (transfer-function) model could be "
+                "extracted from the connected blocks.",
+                what=what,
             )
         logger.warning("No valid linear system found for %s", what)
         return self._show_error(message)

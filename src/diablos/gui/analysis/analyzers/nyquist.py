@@ -4,6 +4,7 @@ import scipy.signal as signal
 from PyQt6.QtCore import Qt
 import pyqtgraph as pg
 from .base_analyzer import BaseAnalyzer
+from diablos.core.i18n import tr, tr_noop
 from .error_reporting import ErrorReportingMixin
 
 logger = logging.getLogger(__name__)
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 class NyquistAnalyzer(ErrorReportingMixin, BaseAnalyzer):
     """Analyzer for generating Nyquist plots."""
 
-    error_title = "Nyquist Error"
+    error_title = tr_noop("Nyquist Error")
 
     def analyze(self, source_block, canvas):
         """Generate Nyquist plot."""
@@ -22,7 +23,7 @@ class NyquistAnalyzer(ErrorReportingMixin, BaseAnalyzer):
         model, sys_block = self._find_connected_transfer_function(source_block, canvas)
 
         if not model:
-            self._report_no_model("a Nyquist plot")
+            self._report_no_model(tr("a Nyquist plot"))
             return None
 
         try:
@@ -55,15 +56,15 @@ class NyquistAnalyzer(ErrorReportingMixin, BaseAnalyzer):
             from PyQt6.QtWidgets import QWidget
 
             plot_window = QWidget()
-            t = f"Nyquist Plot: {sys_block.name}"
+            t = tr("Nyquist Plot: {name}", name=sys_block.name)
             plot_widget = self._setup_plot_widget(plot_window, t)
 
-            plot_widget.setLabel("left", "Imaginary", color="#000000")
-            plot_widget.setLabel("bottom", "Real", color="#000000")
+            plot_widget.setLabel("left", tr("Imaginary"), color="#000000")
+            plot_widget.setLabel("bottom", tr("Real"), color="#000000")
             plot_widget.setAspectLocked(True)
 
             # Plot curve
-            plot_widget.plot(real, imag, pen=pg.mkPen("b", width=2), name="System")
+            plot_widget.plot(real, imag, pen=pg.mkPen("b", width=2), name=tr("System"))
             # Mirror for full Nyquist
             plot_widget.plot(real, -imag, pen=pg.mkPen("b", width=2, style=Qt.PenStyle.DashLine))
 
@@ -77,7 +78,7 @@ class NyquistAnalyzer(ErrorReportingMixin, BaseAnalyzer):
             pm = margins.get("phase_margin_deg")
             ann_lines = []
             if gm is not None and np.isfinite(gm):
-                ann_lines.append(f"GM = {gm:.1f} dB")
+                ann_lines.append(tr("GM = {gm:.1f} dB", gm=gm))
                 gm_lin = 10.0 ** (-gm / 20.0)  # |G| at -180 deg crossing
                 plot_widget.plot(
                     [-gm_lin],
@@ -88,7 +89,7 @@ class NyquistAnalyzer(ErrorReportingMixin, BaseAnalyzer):
                     symbolBrush=None,
                 )
             if pm is not None and np.isfinite(pm):
-                ann_lines.append(f"PM = {pm:.1f} deg")
+                ann_lines.append(tr("PM = {pm:.1f} deg", pm=pm))
             if ann_lines:
                 margin_text = pg.TextItem("\n".join(ann_lines), color="r")
                 margin_text.setPos(-1, 0)

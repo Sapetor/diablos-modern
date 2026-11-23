@@ -3,6 +3,7 @@ import numpy as np
 import scipy.signal as signal
 from PyQt6.QtWidgets import QVBoxLayout
 import pyqtgraph as pg
+from diablos.core.i18n import tr
 from diablos.core.safe_eval import safe_literal
 
 logger = logging.getLogger(__name__)
@@ -215,7 +216,7 @@ class BaseAnalyzer:
 
         sub_blocks = getattr(block, "sub_blocks", None)
         if not sub_blocks:
-            return self._unsupported(f"subsystem '{name}' has no contents to analyze")
+            return self._unsupported(tr("subsystem '{name}' has no contents to analyze", name=name))
 
         from diablos.core.engine.flattener import Flattener
 
@@ -225,10 +226,14 @@ class BaseAnalyzer:
             ws = getattr(workspace, "variables", None)
             flat_blocks, flat_lines = Flattener().flatten([block], [], workspace=ws)
         except Exception as exc:
-            return self._unsupported(f"subsystem '{name}' could not be flattened: {exc}")
+            return self._unsupported(
+                tr("subsystem '{name}' could not be flattened: {error}", name=name, error=exc)
+            )
 
         if not flat_blocks:
-            return self._unsupported(f"subsystem '{name}' contains no primitive blocks")
+            return self._unsupported(
+                tr("subsystem '{name}' contains no primitive blocks", name=name)
+            )
 
         by_name = {b.name: b for b in flat_blocks}
         incoming = {}
@@ -240,9 +245,13 @@ class BaseAnalyzer:
         sinks = [b for b in flat_blocks if b.name not in has_outgoing]
         if len(sinks) != 1:
             return self._unsupported(
-                f"subsystem '{name}' does not reduce to a single signal path "
-                f"({len(sinks)} outputs); flatten it or replace it with an "
-                f"equivalent transfer function to analyze it"
+                tr(
+                    "subsystem '{name}' does not reduce to a single signal path "
+                    "({count} outputs); flatten it or replace it with an "
+                    "equivalent transfer function to analyze it",
+                    name=name,
+                    count=len(sinks),
+                )
             )
 
         # Walk the chain backwards from the single sink to the input.
@@ -252,17 +261,25 @@ class BaseAnalyzer:
         while current is not None:
             if current.name in seen:
                 return self._unsupported(
-                    f"subsystem '{name}' contains a feedback loop; only a series "
-                    f"chain can be composed into one transfer function"
+                    tr(
+                        "subsystem '{name}' contains a feedback loop; only a series "
+                        "chain can be composed into one transfer function",
+                        name=name,
+                    )
                 )
             seen.add(current.name)
             chain.append(current)
             feeds = incoming.get(current.name, [])
             if len(feeds) > 1:
                 return self._unsupported(
-                    f"block '{current.name}' inside subsystem '{name}' combines "
-                    f"{len(feeds)} signals; only a series chain can be composed "
-                    f"into one transfer function"
+                    tr(
+                        "block '{block}' inside subsystem '{name}' combines "
+                        "{count} signals; only a series chain can be composed "
+                        "into one transfer function",
+                        block=current.name,
+                        name=name,
+                        count=len(feeds),
+                    )
                 )
             current = by_name.get(feeds[0].srcblock) if feeds else None
         chain.reverse()
@@ -274,13 +291,24 @@ class BaseAnalyzer:
             model = self._subsystem_member_model(member, canvas, visited)
             if model is None:
                 return self._unsupported(
-                    f"block '{member.name}' ({getattr(member, 'block_fn', '?')}) "
-                    f"inside subsystem '{name}' has no linear model"
+                    tr(
+                        "block '{block}' ({fn}) inside subsystem '{name}' has no linear model",
+                        block=member.name,
+                        fn=getattr(member, "block_fn", "?"),
+                        name=name,
+                    )
                 )
             m_num, m_den, m_dt = model
             m_dt = float(m_dt or 0.0)
             if m_dt > 0 and dt > 0 and abs(m_dt - dt) > 1e-12:
-                return self._unsupported(f"subsystem '{name}' mixes sample rates ({dt} and {m_dt})")
+                return self._unsupported(
+                    tr(
+                        "subsystem '{name}' mixes sample rates ({dt} and {m_dt})",
+                        name=name,
+                        dt=dt,
+                        m_dt=m_dt,
+                    )
+                )
             dt = m_dt if m_dt > 0 else dt
             num = np.convolve(num, np.atleast_1d(np.asarray(m_num, dtype=float)).flatten())
             den = np.convolve(den, np.atleast_1d(np.asarray(m_den, dtype=float)).flatten())

@@ -275,7 +275,7 @@ class RenderingManager:
 
                     # Include block documentation excerpt if available
                     if block.doc:
-                        doc_lines = block.doc.split("\n")
+                        doc_lines = tr(block.doc).split("\n")
                         short_doc = (
                             doc_lines[0][:60] + "..." if len(doc_lines[0]) > 60 else doc_lines[0]
                         )

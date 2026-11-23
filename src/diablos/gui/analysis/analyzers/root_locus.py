@@ -3,6 +3,7 @@ import numpy as np
 from PyQt6.QtCore import Qt
 import pyqtgraph as pg
 from .base_analyzer import BaseAnalyzer
+from diablos.core.i18n import tr, tr_noop
 from .error_reporting import ErrorReportingMixin
 
 logger = logging.getLogger(__name__)
@@ -11,7 +12,7 @@ logger = logging.getLogger(__name__)
 class RootLocusAnalyzer(ErrorReportingMixin, BaseAnalyzer):
     """Analyzer for generating Root Locus plots."""
 
-    error_title = "Root Locus Error"
+    error_title = tr_noop("Root Locus Error")
 
     def analyze(self, source_block, canvas):
         """Generate Root Locus plot."""
@@ -21,7 +22,7 @@ class RootLocusAnalyzer(ErrorReportingMixin, BaseAnalyzer):
         model, sys_block = self._find_connected_transfer_function(source_block, canvas)
 
         if not model:
-            self._report_no_model("a Root Locus plot")
+            self._report_no_model(tr("a Root Locus plot"))
             return None
 
         try:
@@ -96,12 +97,12 @@ class RootLocusAnalyzer(ErrorReportingMixin, BaseAnalyzer):
             from PyQt6.QtWidgets import QWidget
 
             plot_window = QWidget()
-            t = f"Root Locus: {sys_block.name}"
+            t = tr("Root Locus: {name}", name=sys_block.name)
             plot_widget = self._setup_plot_widget(plot_window, t)
 
-            plot_widget.setLabel("left", "Imaginary Axis", units="rad/s", color="#000000")
-            plot_widget.setLabel("bottom", "Real Axis", units="1/s", color="#000000")
-            plot_widget.setTitle(f"Root Locus Plot: {sys_block.name}")
+            plot_widget.setLabel("left", tr("Imaginary Axis"), units="rad/s", color="#000000")
+            plot_widget.setLabel("bottom", tr("Real Axis"), units="1/s", color="#000000")
+            plot_widget.setTitle(tr("Root Locus Plot: {name}", name=sys_block.name))
 
             colors = [
                 (100, 149, 237),
@@ -151,5 +152,5 @@ class RootLocusAnalyzer(ErrorReportingMixin, BaseAnalyzer):
 
         except (ValueError, AttributeError, TypeError, np.linalg.LinAlgError) as e:
             logger.exception("Error calculating Root Locus")
-            self._show_error(f"Failed to compute Root Locus:\n{e}")
+            self._show_error(tr("Failed to compute Root Locus:\n{error}", error=e))
             return None

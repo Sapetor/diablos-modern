@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Tuple
 
 import numpy as np
 
+from diablos.core.i18n import tr
 from diablos.core.engine.block_names import canonical_fn
 from diablos.core.engine.block_params import runtime_params
 from diablos.core.engine.compile_cache import workspace_fingerprint
@@ -1062,7 +1063,9 @@ def run_compiled_simulation(
         # Surface the exception type/message so callers and the UI can tell
         # an internal bug (KeyError, shape mismatch, ...) apart from a
         # solver failure, instead of only seeing a generic False.
-        engine.error_msg = f"Compiled simulation failed: {type(e).__name__}: {e}"
+        engine.error_msg = tr(
+            "Compiled simulation failed: {kind}: {error}", kind=type(e).__name__, error=e
+        )
         engine.last_solver_diagnostics = {
             "success": False,
             "failure_stage": "exception",

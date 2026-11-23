@@ -4,6 +4,7 @@ import os
 import re
 from PyQt6.QtWidgets import QFileDialog, QMessageBox
 
+from diablos.core.i18n import tr
 from diablos.core.atomic_io import atomic_write_json
 
 logger = logging.getLogger(__name__)
@@ -232,9 +233,9 @@ class DiagramService:
             # Use styled Qt dialog (fixes macOS native dialog click issues)
             dialog = _create_styled_file_dialog(
                 self.main_window,
-                "Save Diagram",
+                tr("Save Diagram"),
                 self.save_directory(),
-                "DiaBloS Files (*.diablos);;All Files (*)",
+                tr("DiaBloS Files (*.diablos);;All Files (*)"),
                 save=True,
             )
             try:
@@ -278,7 +279,9 @@ class DiagramService:
 
         except Exception as e:
             logger.error(f"Failed to save diagram: {e}")
-            self._report_error("Save Error", f"Could not save diagram:\n{str(e)}")
+            self._report_error(
+                tr("Save Error"), tr("Could not save diagram:\n{error}", error=str(e))
+            )
             return False
 
     def choose_open_file(self):
@@ -293,9 +296,9 @@ class DiagramService:
         # Use styled Qt dialog (fixes macOS native dialog click issues)
         dialog = _create_styled_file_dialog(
             self.main_window,
-            "Open Diagram",
+            tr("Open Diagram"),
             self.last_directory,
-            "DiaBloS Files (*.diablos *.dbs *.json *.dat);;All Files (*)",
+            tr("DiaBloS Files (*.diablos *.dbs *.json *.dat);;All Files (*)"),
             save=False,
         )
         try:
@@ -356,7 +359,9 @@ class DiagramService:
 
         except Exception as e:
             logger.error(f"Failed to load diagram: {e}")
-            self._report_error("Load Error", f"Could not load diagram:\n{str(e)}")
+            self._report_error(
+                tr("Load Error"), tr("Could not load diagram:\n{error}", error=str(e))
+            )
             return None
 
     def new_diagram(self):

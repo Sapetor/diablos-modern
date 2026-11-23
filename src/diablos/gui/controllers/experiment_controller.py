@@ -73,7 +73,9 @@ class ExperimentController:
         except Exception as e:  # noqa: BLE001 - surfaced to the user below
             logger.exception("Could not create an isolated copy of the diagram")
             QMessageBox.critical(
-                window, title, f"Could not prepare an isolated copy of the diagram:\n{e}"
+                window,
+                title,
+                tr("Could not prepare an isolated copy of the diagram:\n{error}", error=e),
             )
             return None
 
@@ -269,7 +271,7 @@ class ExperimentController:
         # on the GUI thread; disarm it for the duration of the experiment.
         window.tuning_controller.deactivate()
 
-        run_dsim = self._isolated_dsim("Monte Carlo")
+        run_dsim = self._isolated_dsim(tr("Monte Carlo"))
         if run_dsim is None:
             progress.close()
             return
@@ -380,7 +382,7 @@ class ExperimentController:
         # See run_monte_carlo: the tuning debounce must not fire mid-experiment.
         window.tuning_controller.deactivate()
 
-        run_dsim = self._isolated_dsim("Parameter Sweep")
+        run_dsim = self._isolated_dsim(tr("Parameter Sweep"))
         if run_dsim is None:
             progress.close()
             return

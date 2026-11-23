@@ -1262,7 +1262,7 @@ class ModernCanvas(QWidget):
         if category:
             kind = f"{kind} ({tr(category)})"
         lines.append(html.escape(kind))
-        doc = (getattr(block, "doc", "") or "").strip().splitlines()
+        doc = tr((getattr(block, "doc", "") or "").strip()).strip().splitlines()
         if doc:
             first = doc[0].strip()
             if len(first) > 100:

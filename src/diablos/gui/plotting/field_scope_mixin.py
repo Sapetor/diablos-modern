@@ -15,6 +15,7 @@ import logging
 
 import numpy as np
 
+from diablos.core.i18n import tr
 from diablos.core.plotting.animation_exporter import AnimationExporter
 
 logger = logging.getLogger(__name__)
@@ -180,11 +181,11 @@ class _FieldScopeRenderMixin:
 
         # Add colorbar
         cbar = plt.colorbar(im, ax=ax)
-        cbar.set_label("Field Value")
+        cbar.set_label(tr("Field Value"))
 
         # Labels and title
-        ax.set_xlabel("Position (x)")
-        ax.set_ylabel("Time (t)")
+        ax.set_xlabel(tr("Position (x)"))
+        ax.set_ylabel(tr("Time (t)"))
         ax.set_title(f"{title} ({block.name})")
 
         plt.tight_layout()
@@ -229,10 +230,12 @@ class _FieldScopeRenderMixin:
 
         ax.set_xlim(0, L)
         ax.set_ylim(y_min, y_max)
-        ax.set_xlabel("Position x")
-        ax.set_ylabel("Field Value")
+        ax.set_xlabel(tr("Position x"))
+        ax.set_ylabel(tr("Field Value"))
         ax.grid(True, alpha=0.3)
-        title_text = ax.set_title(f"{title} at t={initial_time:.3f}s ({block.name})")
+        title_text = ax.set_title(
+            tr("{title} at t={t:.3f}s ({name})", title=title, t=initial_time, name=block.name)
+        )
 
         # Add time slider
         ax_slider = plt.axes([0.2, 0.02, 0.6, 0.03])
@@ -244,7 +247,9 @@ class _FieldScopeRenderMixin:
             frame_idx = int(time_slider.val)
             line.set_ydata(field_data[frame_idx])
             t = time_data[frame_idx] if time_data is not None else frame_idx
-            title_text.set_text(f"{title} at t={t:.3f}s ({block.name})")
+            title_text.set_text(
+                tr("{title} at t={t:.3f}s ({name})", title=title, t=t, name=block.name)
+            )
             fig.canvas.draw_idle()
 
         time_slider.on_changed(update)
@@ -362,12 +367,14 @@ class _FieldScopeRenderMixin:
 
         # Add colorbar
         cbar = plt.colorbar(im, ax=ax)
-        cbar.set_label("Field Value")
+        cbar.set_label(tr("Field Value"))
 
         # Labels and title
         ax.set_xlabel("X")
         ax.set_ylabel("Y")
-        title_text = ax.set_title(f"{title} at t={initial_time:.3f} ({block.name})")
+        title_text = ax.set_title(
+            tr("{title} at t={t:.3f} ({name})", title=title, t=initial_time, name=block.name)
+        )
 
         # Add time slider
         ax_slider = plt.axes([0.2, 0.02, 0.6, 0.03])
@@ -379,7 +386,9 @@ class _FieldScopeRenderMixin:
             frame_idx = int(time_slider.val)
             im.set_data(field_data[frame_idx])
             t = time_data[frame_idx] if time_data is not None else frame_idx
-            title_text.set_text(f"{title} at t={t:.3f} ({block.name})")
+            title_text.set_text(
+                tr("{title} at t={t:.3f} ({name})", title=title, t=t, name=block.name)
+            )
             fig.canvas.draw_idle()
 
         time_slider.on_changed(update)
@@ -473,7 +482,9 @@ class _FieldScopeRenderMixin:
         ax.set_xlabel("x")
         ax.set_ylabel("y")
         ax.grid(True, alpha=0.3)
-        title_text = ax.set_title(f"{title}  t={time_data[0]:.3f}s ({block.name})")
+        title_text = ax.set_title(
+            tr("{title}  t={t:.3f}s ({name})", title=title, t=time_data[0], name=block.name)
+        )
 
         cmap = plt.get_cmap("tab10")
         colors = [cmap(i % 10) for i in range(n_agents)]
@@ -520,7 +531,9 @@ class _FieldScopeRenderMixin:
                     trail_lines[i].set_data(
                         positions[start : frame + 1, i, 0], positions[start : frame + 1, i, 1]
                     )
-            title_text.set_text(f"{title}  t={time_data[frame]:.3f}s ({block.name})")
+            title_text.set_text(
+                tr("{title}  t={t:.3f}s ({name})", title=title, t=time_data[frame], name=block.name)
+            )
             fig.canvas.draw_idle()
 
         time_slider.on_changed(update)

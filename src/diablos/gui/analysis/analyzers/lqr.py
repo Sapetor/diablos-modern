@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
+from diablos.core.i18n import tr, tr_noop
 from .base_analyzer import BaseAnalyzer
 from .error_reporting import ErrorReportingMixin
 
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 class LQRAnalyzer(ErrorReportingMixin, BaseAnalyzer):
     """Analyzer that solves the continuous LQR problem and displays results."""
 
-    error_title = "LQR Error"
+    error_title = tr_noop("LQR Error")
 
     def analyze(self, source_block, canvas, **kwargs):
         """Compute LQR gain from block parameters A, B, Q, R.
@@ -50,23 +51,27 @@ class LQRAnalyzer(ErrorReportingMixin, BaseAnalyzer):
             R = self._resolve_matrix(params.get("R", "[[1]]"), canvas)
         except Exception as e:
             logger.error(f"Failed to parse LQR matrices: {e}")
-            self._show_error(f"Failed to parse matrices:\n{e}")
+            self._show_error(tr("Failed to parse matrices:\n{error}", error=e))
             return None
 
         # Validate dimensions
         n = A.shape[0]
         if A.shape != (n, n):
-            self._show_error(f"A must be square (got {A.shape})")
+            self._show_error(tr("A must be square (got {shape})", shape=A.shape))
             return None
         if B.shape[0] != n:
-            self._show_error(f"B must have {n} rows to match A (got {B.shape})")
+            self._show_error(
+                tr("B must have {n} rows to match A (got {shape})", n=n, shape=B.shape)
+            )
             return None
         m = B.shape[1]
         if Q.shape != (n, n):
-            self._show_error(f"Q must be {n}×{n} to match A (got {Q.shape})")
+            self._show_error(tr("Q must be {n}×{n} to match A (got {shape})", n=n, shape=Q.shape))
             return None
         if R.shape != (m, m):
-            self._show_error(f"R must be {m}×{m} to match B columns (got {R.shape})")
+            self._show_error(
+                tr("R must be {m}×{m} to match B columns (got {shape})", m=m, shape=R.shape)
+            )
             return None
 
         # Solve CARE: A'P + PA - PBR⁻¹B'P + Q = 0
@@ -77,10 +82,10 @@ class LQRAnalyzer(ErrorReportingMixin, BaseAnalyzer):
             eig_cl = np.linalg.eigvals(A_cl)
             eig_ol = np.linalg.eigvals(A)
         except np.linalg.LinAlgError as e:
-            self._show_error(f"LQR computation failed:\n{e}")
+            self._show_error(tr("LQR computation failed:\n{error}", error=e))
             return None
         except Exception as e:
-            self._show_error(f"Unexpected error:\n{e}")
+            self._show_error(tr("Unexpected error:\n{error}", error=e))
             return None
 
         # Check stability. Use a small negative tolerance so an eigenvalue
@@ -175,7 +180,7 @@ class LQRResultDialog(QDialog):
         super().__init__(parent)
         self.K = K
         self.P = P
-        self.setWindowTitle(f"LQR Result: {block_name}")
+        self.setWindowTitle(tr("LQR Result: {name}", name=block_name))
         self.setMinimumWidth(500)
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
         self._build_ui(K, P, A, B, Q, R, eig_cl, eig_ol, stable, plant_source)
@@ -186,12 +191,12 @@ class LQRResultDialog(QDialog):
 
         # Plant source info
         if plant_source:
-            src_label = QLabel(f"Plant: A, B from '{plant_source}'")
+            src_label = QLabel(tr("Plant: A, B from '{source}'", source=plant_source))
             src_label.setStyleSheet("color: #336699; font-style: italic;")
             layout.addWidget(src_label)
 
         # Gain K — the main result
-        k_group = QGroupBox("Optimal Gain K  (u = −Kx)")
+        k_group = QGroupBox(tr("Optimal Gain K  (u = −Kx)"))
         k_layout = QVBoxLayout(k_group)
         k_text = QTextEdit()
         k_text.setFont(mono)
@@ -201,11 +206,11 @@ class LQRResultDialog(QDialog):
         k_layout.addWidget(k_text)
 
         btn_row = QHBoxLayout()
-        copy_k_btn = QPushButton("Copy K (Python list)")
+        copy_k_btn = QPushButton(tr("Copy K (Python list)"))
         copy_k_btn.clicked.connect(lambda: self._copy_to_clipboard(self._to_python_list(K)))
         btn_row.addWidget(copy_k_btn)
 
-        copy_k_flat = QPushButton("Copy K (flat)")
+        copy_k_flat = QPushButton(tr("Copy K (flat)"))
         copy_k_flat.clicked.connect(lambda: self._copy_to_clipboard(self._format_matrix(K)))
         btn_row.addWidget(copy_k_flat)
         btn_row.addStretch()
@@ -213,21 +218,23 @@ class LQRResultDialog(QDialog):
         layout.addWidget(k_group)
 
         # Eigenvalues
-        eig_group = QGroupBox("Closed-Loop Eigenvalues of (A − BK)")
+        eig_group = QGroupBox(tr("Closed-Loop Eigenvalues of (A − BK)"))
         eig_layout = QVBoxLayout(eig_group)
         eig_text = QLabel(self._format_eigenvalues(eig_cl))
         eig_text.setFont(mono)
         eig_text.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         eig_layout.addWidget(eig_text)
 
-        status = QLabel("✓ Stable" if stable else "✗ UNSTABLE")
+        status = QLabel(tr("✓ Stable") if stable else tr("✗ UNSTABLE"))
         status.setStyleSheet(
             "color: green; font-weight: bold;" if stable else "color: red; font-weight: bold;"
         )
         eig_layout.addWidget(status)
 
         # Open-loop eigenvalues for comparison
-        ol_label = QLabel(f"Open-loop eigenvalues: {self._format_eigenvalues(eig_ol)}")
+        ol_label = QLabel(
+            tr("Open-loop eigenvalues: {values}", values=self._format_eigenvalues(eig_ol))
+        )
         ol_label.setFont(QFont("Menlo, Consolas, monospace", 10))
         ol_label.setStyleSheet("color: gray;")
         ol_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
@@ -235,7 +242,7 @@ class LQRResultDialog(QDialog):
         layout.addWidget(eig_group)
 
         # Cost matrix P
-        p_group = QGroupBox("Riccati Solution P")
+        p_group = QGroupBox(tr("Riccati Solution P"))
         p_layout = QVBoxLayout(p_group)
         p_text = QTextEdit()
         p_text.setFont(mono)
@@ -244,13 +251,13 @@ class LQRResultDialog(QDialog):
         p_text.setMaximumHeight(80 + 20 * P.shape[0])
         p_layout.addWidget(p_text)
 
-        copy_p_btn = QPushButton("Copy P (Python list)")
+        copy_p_btn = QPushButton(tr("Copy P (Python list)"))
         copy_p_btn.clicked.connect(lambda: self._copy_to_clipboard(self._to_python_list(P)))
         p_layout.addWidget(copy_p_btn)
         layout.addWidget(p_group)
 
         # Close button
-        close_btn = QPushButton("Close")
+        close_btn = QPushButton(tr("Close"))
         close_btn.clicked.connect(self.close)
         layout.addWidget(close_btn)
 
