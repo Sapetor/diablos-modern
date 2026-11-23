@@ -10,19 +10,19 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from diablos.core.qt_types import QRect
 
 from diablos.core.atomic_io import atomic_write_json  # noqa: F401 - re-exported
-from diablos.core.services.file_dialogs import prompt_open_path, prompt_save_path
+from diablos.gui.services.file_dialogs import prompt_open_path, prompt_save_path
 
 logger = logging.getLogger(__name__)
 
 # QtCore.QRect stays: a block's ``coords`` *is* a QRect, so reconstructing a
 # block from JSON needs it. QtWidgets does not: choosing a path is a UI concern
-# and lives in src/diablos/core/services/file_dialogs.py, which imports QFileDialog lazily.
+# and lives in src/diablos/gui/services/file_dialogs.py, which imports QFileDialog lazily.
 
 
 def __getattr__(name):
     """Lazy re-export of ``QFileDialog`` for backward compatibility.
 
-    The dialogs moved to :mod:`diablos.core.services.file_dialogs`, but callers (and
+    The dialogs moved to :mod:`diablos.gui.services.file_dialogs`, but callers (and
     tests) that patch ``diablos.core.services.file_service.QFileDialog`` keep working:
     the attribute resolves to the single QFileDialog class both modules share.
     """

@@ -103,7 +103,7 @@ class TestSaveFromInsideASubsystem:
     def test_diagram_service_route_writes_the_root(self, dsim, tmp_path):
         from types import SimpleNamespace
 
-        from diablos.core.services.diagram_service import DiagramService
+        from diablos.gui.services.diagram_service import DiagramService
 
         window = SimpleNamespace(
             dsim=dsim,

@@ -112,7 +112,7 @@ def test_core_save_also_tracks_saved_state(document, tmp_path, writer):
 
 
 def test_failed_save_does_not_move_saved_state(document, tmp_path, monkeypatch):
-    import diablos.core.services.diagram_service as module
+    import diablos.gui.services.diagram_service as module
 
     add(document)
     save(document, tmp_path)
@@ -198,7 +198,7 @@ def test_replacing_document_from_subsystem_returns_to_root(document, tmp_path, r
 def test_cancelled_save_does_not_move_saved_state(document, tmp_path, monkeypatch):
     from unittest.mock import MagicMock
     from PyQt6.QtWidgets import QFileDialog
-    import diablos.core.services.diagram_service as module
+    import diablos.gui.services.diagram_service as module
 
     add(document)
     save(document, tmp_path)

@@ -1,10 +1,10 @@
 import logging
 
 # Import modular analyzers
-from diablos.core.analysis.analyzers.bode import BodeAnalyzer
-from diablos.core.analysis.analyzers.nyquist import NyquistAnalyzer
-from diablos.core.analysis.analyzers.root_locus import RootLocusAnalyzer
-from diablos.core.analysis.analyzers.lqr import LQRAnalyzer
+from diablos.gui.analysis.analyzers.bode import BodeAnalyzer
+from diablos.gui.analysis.analyzers.nyquist import NyquistAnalyzer
+from diablos.gui.analysis.analyzers.root_locus import RootLocusAnalyzer
+from diablos.gui.analysis.analyzers.lqr import LQRAnalyzer
 
 logger = logging.getLogger(__name__)
 

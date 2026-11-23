@@ -364,7 +364,7 @@ class AnalysisController:
         (None, None).
         """
         from scipy import signal
-        from diablos.core.analysis.analyzers.base_analyzer import BaseAnalyzer
+        from diablos.gui.analysis.analyzers.base_analyzer import BaseAnalyzer
 
         try:
             w = BaseAnalyzer._auto_frequency_range(num, den)

@@ -89,7 +89,7 @@ class SimulationModel:
             # objects, which must not mix with the stand-ins. Colours are
             # cosmetic, and a loaded diagram re-derives them from the palette.
             return QColor(128, 128, 128)
-        from diablos.core.theming.theme_manager import theme_manager
+        from diablos.gui.themes.theme_manager import theme_manager
 
         return theme_manager.get_color(category_theme_key(category))
 

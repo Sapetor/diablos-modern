@@ -9,6 +9,10 @@ Subpackages:
 Scripts use :mod:`diablos.api` (``from diablos.api import load``).
 """
 
+from diablos.compat import install_moved_module_aliases as _install_moved_aliases
+
+_install_moved_aliases()
+
 
 def __getattr__(name):
     if name == "__version__":

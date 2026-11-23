@@ -137,7 +137,7 @@ class _PyQtGraphScopeMixin:
             previous_run = self._stash_run(t_arr, flat_labels, flat_vectors, flat_step_modes)
 
             # Use step mode for discrete/ZOH signals to keep values constant between samples
-            from diablos.core.plotting.signal_plot import SignalPlot
+            from diablos.gui.plotting.signal_plot import SignalPlot
 
             self.plotty = SignalPlot(
                 self.dsim.sim_dt,
@@ -194,7 +194,7 @@ class _PyQtGraphScopeMixin:
                 self._close_plotty()
 
                 step_modes = self._scope_step_modes()
-                from diablos.core.plotting.signal_plot import SignalPlot
+                from diablos.gui.plotting.signal_plot import SignalPlot
 
                 self.plotty = SignalPlot(
                     self.dsim.sim_dt, labels_list, self.dsim.plot_trange, step_mode=step_modes

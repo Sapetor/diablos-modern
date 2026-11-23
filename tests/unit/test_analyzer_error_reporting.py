@@ -2,7 +2,7 @@
 
 Two audit findings are covered:
 
-1. ``src/diablos/core/analysis/analyzers/lqr.py`` and ``root_locus.py`` built a
+1. ``src/diablos/gui/analysis/analyzers/lqr.py`` and ``root_locus.py`` built a
    ``QMessageBox`` themselves. ``lib/`` is the engine layer -- it must stay
    headless-safe and must not import the widget toolkit -- so the GUI now
    injects a ``(title, message) -> None`` sink (``ControlSystemAnalyzer(
@@ -19,11 +19,11 @@ import types
 
 import pytest
 
-from diablos.core.analysis.analyzers.bode import BodeAnalyzer
-from diablos.core.analysis.analyzers.error_reporting import report_error
-from diablos.core.analysis.analyzers.lqr import LQRAnalyzer
-from diablos.core.analysis.analyzers.nyquist import NyquistAnalyzer
-from diablos.core.analysis.analyzers.root_locus import RootLocusAnalyzer
+from diablos.gui.analysis.analyzers.bode import BodeAnalyzer
+from diablos.gui.analysis.analyzers.error_reporting import report_error
+from diablos.gui.analysis.analyzers.lqr import LQRAnalyzer
+from diablos.gui.analysis.analyzers.nyquist import NyquistAnalyzer
+from diablos.gui.analysis.analyzers.root_locus import RootLocusAnalyzer
 
 ANALYZERS = (BodeAnalyzer, NyquistAnalyzer, RootLocusAnalyzer, LQRAnalyzer)
 
@@ -146,7 +146,7 @@ class TestLastErrorReachesTheUser:
 @pytest.mark.unit
 class TestFacadeForwardsTheCallback:
     def test_control_system_analyzer_passes_error_cb_to_each_analyzer(self):
-        from diablos.core.analysis.control_system_analyzer import ControlSystemAnalyzer
+        from diablos.gui.analysis.control_system_analyzer import ControlSystemAnalyzer
 
         recorder = Recorder()
         facade = ControlSystemAnalyzer(canvas=None, parent=None, error_cb=recorder)
@@ -154,7 +154,7 @@ class TestFacadeForwardsTheCallback:
             assert getattr(facade, name).error_cb is recorder
 
     def test_error_cb_is_optional(self):
-        from diablos.core.analysis.control_system_analyzer import ControlSystemAnalyzer
+        from diablos.gui.analysis.control_system_analyzer import ControlSystemAnalyzer
 
         facade = ControlSystemAnalyzer(canvas=None)
         assert facade.bode_analyzer.error_cb is None

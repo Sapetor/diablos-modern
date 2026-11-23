@@ -26,9 +26,9 @@ import pytest
 from PyQt6.QtCore import QPoint
 from PyQt6.QtWidgets import QDialog
 
-import diablos.core.dialogs as lib_dialogs
+import diablos.gui.widgets.simulation_dialogs as lib_dialogs
 import diablos.core.lib as lib_lib
-from diablos.core.dialogs import SimulationDialog
+from diablos.gui.widgets.simulation_dialogs import SimulationDialog
 
 pytestmark = [pytest.mark.regression, pytest.mark.qt]
 
@@ -39,7 +39,7 @@ pytestmark = [pytest.mark.regression, pytest.mark.qt]
 
 
 def _spy(monkeypatch, result=QDialog.DialogCode.Rejected, mutate=None):
-    """Replace ``diablos.core.dialogs.SimulationDialog`` with a recording subclass.
+    """Replace ``diablos.gui.widgets.simulation_dialogs.SimulationDialog`` with a recording subclass.
 
     Returns the list its instances are appended to. ``mutate`` (if given) is
     called with the dialog just before ``exec`` returns ``result``, so a test

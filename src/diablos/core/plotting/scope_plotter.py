@@ -2,9 +2,9 @@ import logging
 
 import numpy as np
 
-from diablos.core.plotting.field_scope_mixin import _FieldScopeRenderMixin
+from diablos.gui.plotting.field_scope_mixin import _FieldScopeRenderMixin
 from diablos.core.plotting.run_compare import snapshot_params
-from diablos.core.plotting.pyqtgraph_scope_mixin import _PyQtGraphScopeMixin
+from diablos.gui.plotting.pyqtgraph_scope_mixin import _PyQtGraphScopeMixin
 
 logger = logging.getLogger(__name__)
 

@@ -463,7 +463,7 @@ class TestAutoSolverMethod:
         assert diag["fallback_reason"] is None  # not a degraded fallback
 
     def test_auto_is_offered_in_the_simulation_dialog(self, qapp):
-        from diablos.core.dialogs import SimulationDialog
+        from diablos.gui.widgets.simulation_dialogs import SimulationDialog
 
         assert AUTO_SOLVER_METHOD in SimulationDialog.SOLVER_METHODS
         # Index 0 is also the fallback for an unrecognised stored method.
@@ -486,7 +486,7 @@ class TestAutoSolverMethod:
         assert file_service.apply_loaded_data(data)["solver_method"] == AUTO_SOLVER_METHOD
 
     def test_auto_round_trips_through_the_dialog(self, qapp):
-        from diablos.core.dialogs import SimulationDialog
+        from diablos.gui.widgets.simulation_dialogs import SimulationDialog
 
         dialog = SimulationDialog(
             sim_time=1.0,

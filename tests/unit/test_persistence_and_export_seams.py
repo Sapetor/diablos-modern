@@ -6,8 +6,8 @@
   accepted one; ``DSim.save`` now forwards it.
 * ``src/diablos/core/services/file_service.py`` imported ``QFileDialog`` at module level,
   putting the widget toolkit in the persistence layer. The "ask the user for a
-  path" half moved to ``src/diablos/core/services/file_dialogs.py`` (lazy Qt import).
-* ``src/diablos/core/plotting/field_scope_mixin.py`` imported ``modern_ui`` (an inverted
+  path" half moved to ``src/diablos/gui/services/file_dialogs.py`` (lazy Qt import).
+* ``src/diablos/gui/plotting/field_scope_mixin.py`` imported ``modern_ui`` (an inverted
   dependency). The GUI now injects the dialog factory; the lazy import is only
   the fallback.
 * ``src/diablos/core/export/python_codegen.py`` silently kept unresolved workspace variables
@@ -37,7 +37,7 @@ class TestDsimSaveAcceptsFilepath:
         dsim.add_block(menu["step"], QPoint(100, 100))
 
         # A dialog here would mean the filepath was ignored.
-        import diablos.core.services.file_dialogs as file_dialogs
+        import diablos.gui.services.file_dialogs as file_dialogs
 
         def fail(*args, **kwargs):
             raise AssertionError("save(filepath=...) must not open a file dialog")
@@ -132,7 +132,7 @@ class TestFileServiceHasNoWidgetImport:
 @pytest.mark.unit
 class TestFieldScopeDialogInjection:
     def test_injected_factory_is_used_instead_of_importing_modern_ui(self, qapp, monkeypatch):
-        from diablos.core.plotting import field_scope_mixin as fsm
+        from diablos.gui.plotting import field_scope_mixin as fsm
 
         calls = []
 
@@ -155,7 +155,7 @@ class TestFieldScopeDialogInjection:
         assert calls == ["fieldscope1"]
 
     def test_module_level_registration_also_works(self, qapp, monkeypatch):
-        from diablos.core.plotting import field_scope_mixin as fsm
+        from diablos.gui.plotting import field_scope_mixin as fsm
 
         calls = []
         monkeypatch.setattr(
@@ -173,7 +173,7 @@ class TestFieldScopeDialogInjection:
         assert calls == ["fieldscope2"]
 
     def test_falls_back_to_the_lazy_import_when_nothing_is_injected(self, qapp, monkeypatch):
-        from diablos.core.plotting import field_scope_mixin as fsm
+        from diablos.gui.plotting import field_scope_mixin as fsm
 
         calls = []
         monkeypatch.setattr(fsm, "_default_animation_dialog", lambda e, n: calls.append(n))

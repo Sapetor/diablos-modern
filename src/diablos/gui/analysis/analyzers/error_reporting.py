@@ -33,7 +33,7 @@ def report_error(error_cb, title, message):
 class ErrorReportingMixin:
     """Adds an injectable ``error_cb`` and a ``_show_error`` helper.
 
-    Mixed in ahead of :class:`~diablos.core.analysis.analyzers.base_analyzer.BaseAnalyzer`
+    Mixed in ahead of :class:`~diablos.gui.analysis.analyzers.base_analyzer.BaseAnalyzer`
     so subclasses keep the ``(parent)`` constructor they always had while gaining
     the optional ``error_cb``.
     """

@@ -28,7 +28,7 @@ from PyQt6.QtWidgets import (
 )
 
 from diablos.core.plotting.run_compare import param_changes
-from diablos.core.theming.theme_manager import theme_manager, ThemeType
+from diablos.gui.themes.theme_manager import theme_manager, ThemeType
 
 logger = logging.getLogger(__name__)
 

@@ -11,7 +11,7 @@ __all__ = ["SignalPlot"]
 
 def __getattr__(name):
     if name == "SignalPlot":
-        from diablos.core.plotting.signal_plot import SignalPlot
+        from diablos.gui.plotting.signal_plot import SignalPlot
 
         return SignalPlot
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

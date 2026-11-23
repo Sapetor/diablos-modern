@@ -284,7 +284,7 @@ guidance, examples gallery test, block API / user blocks, docs site.
   README test count and release/CLI/codegen mentions refreshed; CHANGELOG
   cut over to `[1.0.0]`.
 - [x] **Hygiene** - `QFont.setFamilies` guarded behind `hasattr` in
-  `src/diablos/core/theming/theme_manager.py` (it needs Qt >= 5.13; the `QFont(family)`
+  `src/diablos/gui/themes/theme_manager.py` (it needs Qt >= 5.13; the `QFont(family)`
   constructor is the fallback); the dead one-shot codemod
   `tools/integrate_variable_editor.py` deleted.
 
@@ -297,7 +297,7 @@ guidance, examples gallery test, block API / user blocks, docs site.
 
 **Research & Data**
 - [x] **Data Import block** — `src/diablos/blocks/from_file.py` (`FromFile`, category Sources) replays a recorded CSV/NPZ/MAT/TXT time-series as a driving signal, interpolated (`linear`/`zoh`/`nearest`) onto the sim grid with `hold`/`loop` end behavior; parsed data cached in `params`. Shared reader: `src/diablos/core/services/timeseries_loader.py` (`load_timeseries`, `allow_pickle=False`), also used by `src/diablos/blocks/optimization/data_fit.py`. Companions: `src/diablos/blocks/lookup_table.py` (1-D/2-D static maps). Tests: `tests/unit/test_from_file.py` (13), `test_timeseries_loader.py` (10), `test_lookup_table.py` (16).
-- [x] **Linearization tool** — `src/diablos/core/analysis/linearizer.py` computes A/B/C/D by finite differences over the compiled ODE RHS; `src/diablos/gui/controllers/analysis_controller.py` assembles the result dict (poles/zeros, Bode, margins, step/impulse, controllability/observability). UI: Analysis > **Linearize & Analyze...** (`src/diablos/gui/widgets/linearize_dialog.py` → `linearization_result_window.py`, 5 tabs + Python/MATLAB/.mat/.npz export via `src/diablos/core/analysis/linearization_export.py`) and Analysis > **Find Operating Point (Trim)...** (`operating_point_window.py`). The BodeMag/BodePhase/Nyquist/RootLocus/LQR blocks remain the per-block path (`src/diablos/core/analysis/analyzers/`).
+- [x] **Linearization tool** — `src/diablos/core/analysis/linearizer.py` computes A/B/C/D by finite differences over the compiled ODE RHS; `src/diablos/gui/controllers/analysis_controller.py` assembles the result dict (poles/zeros, Bode, margins, step/impulse, controllability/observability). UI: Analysis > **Linearize & Analyze...** (`src/diablos/gui/widgets/linearize_dialog.py` → `linearization_result_window.py`, 5 tabs + Python/MATLAB/.mat/.npz export via `src/diablos/core/analysis/linearization_export.py`) and Analysis > **Find Operating Point (Trim)...** (`operating_point_window.py`). The BodeMag/BodePhase/Nyquist/RootLocus/LQR blocks remain the per-block path (`src/diablos/gui/analysis/analyzers/`).
 - [x] **Code generation** — File > Export > **Export as Python Script...** (`MainWindow.export_python_script`) and the `export-python` CLI subcommand emit a self-contained numpy+scipy `.py` via `src/diablos/core/export/python_codegen.py`. The script mirrors the compiled solver (one `rhs(t, x)` under `solve_ivp`, same three-group order) and its `--out` CSV/NPZ matches `python -m lib.cli run` column-for-column. Supported set: `SUPPORTED_BLOCK_NAMES` (19 blocks); unsupported blocks, discrete sample times and algebraic loops raise `CodegenUnsupportedError`/`CodegenError` instead of emitting broken code. Tests: `tests/unit/test_python_codegen.py`, `tests/modern_ui/test_export_python_menu.py`.
 
 **UI Polish**
@@ -307,7 +307,7 @@ guidance, examples gallery test, block API / user blocks, docs site.
 
 **From the idea review (parked list), picked for this campaign**
 - [x] **Stiff solver choice in the UI** — already shipped: the Simulation
-  Settings dialog (`src/diablos/core/dialogs.py`, `SOLVER_METHODS`) offers
+  Settings dialog (`src/diablos/gui/widgets/simulation_dialogs.py`, `SOLVER_METHODS`) offers
   RK45/RK23/DOP853/Radau/BDF/LSODA/RK4/Euler/auto with rtol/atol; `auto`
   resolves to LSODA. The headless `run` command reads the file's solver
   settings and accepts `--method/--rtol/--atol`.
@@ -362,7 +362,7 @@ just evidence that these can come off the "parked ideas" backlog:
   FirstOrderHold). Wire tinting followed on 2026-10-10.
 - [x] **Wall-clock real-time pacing** (half of the "Real-time pacing and
   hardware I/O" idea) — `DSim.real_time` / `SimulationEngine.real_time`, a
-  "Run in real-time" checkbox in `src/diablos/core/dialogs.py`, consumed by
+  "Run in real-time" checkbox in `src/diablos/gui/widgets/simulation_dialogs.py`, consumed by
   `src/diablos/gui/controllers/simulation_controller.py`. Hardware I/O (UDP/serial
   blocks) is the only part of that idea still open.
 
@@ -499,7 +499,7 @@ in git history / `tasks/lessons.md` — this is the condensed index:
   collisions).
 - [x] Break the `lib/` ↔ `modern_ui/` import layering via dependency
   inversion — done 2026-07-18: theming moved to
-  `src/diablos/core/theming/theme_manager.py` (stdlib + PyQt only);
+  `src/diablos/gui/themes/theme_manager.py` (stdlib + PyQt only);
   `src/diablos/gui/themes/theme_manager.py` kept as a backward-compat shim.
   `grep modern_ui lib/` is clean except one genuine UI import left
   function-local (`field_scope_mixin.py`).
@@ -658,7 +658,7 @@ in every case, so each fix corrected the interpreter to match.
 | 2026-06-13 | Added **Find Operating Point (Trim)** (Analysis menu): `AnalysisController.find_trim()` solves `f(0,y)=0` on the compiled ODE RHS via `Linearizer.find_operating_point`; `src/diablos/gui/widgets/operating_point_window.py` shows the equilibrium state table with copy-to-clipboard (handles no-states / uncompilable cleanly). Synchronous on the UI thread (mirrors Linearize & Analyze). Tests: `test_operating_point_window.py` (5), `test_analysis_controller.py::TestFindTrim` (3). |
 | 2026-06-13 | Added **Step / Impulse response** to Linearize & Analyze: `AnalysisController._assemble` now computes `step_response`/`impulse_response` (scipy.signal) whenever a SISO transfer function is available; `LinearizationResultWindow` gained **Step** and **Impulse** tabs (show a hint when no I/O is designated). Contract extended in both docstrings + `_empty_result`. Tests: `test_analysis_controller.py::TestStepImpulseResponse` (2), `test_linearization_result_window.py` updated (3→5 tabs). |
 | 2026-06-13 | Added **Parameter Sweep (1-D/2-D)** (Analysis > Parameter Sweep...): sweep one or two block parameters across a grid on the headless re-sim path. New `src/diablos/core/analysis/resim.py` (shared `OUTCOME_METRICS` + `harvest_scope_signals`, extracted from MonteCarlo); `src/diablos/core/analysis/parameter_sweep.py` (`ParameterSweepRunner`, restores params, cancellable, partial-on-cancel); `src/diablos/gui/widgets/parameter_sweep_worker.py` (QThread), `parameter_sweep_dialog.py` (axis/range pickers), `sweep_result_window.py` (1-D response-family overlay + metric-vs-parameter; 2-D outcome-metric heatmap). 1-D yields per-value traces+metrics; 2-D yields a per-run metric grid. Tests: `test_parameter_sweep.py`, `_worker`, `_dialog`, `test_sweep_result_window.py` (21). MonteCarlo refactored onto `resim` (re-exports `OUTCOME_METRICS`; tests still green). |
-| 2026-06-02 | Added solver selection: `SimulationDialog` (src/diablos/core/dialogs.py) now offers a solver dropdown (RK45/RK23/DOP853/Radau/BDF/LSODA adaptive + fixed-step RK4/Euler) and rtol/atol fields. Compiled solver (`simulation_engine.py run_compiled_simulation`) dispatches on `solver_method`; new module fn `integrate_fixed_step` does in-house Euler/RK4; stochastic systems still force Euler; unknown method → RK45. Settings persist in `.diablos` (`solver_method`/`rtol`/`atol` via file_service + lib.py save/serialize/deserialize) and surface read-only in the property editor. Tests: `tests/unit/test_solver_selection.py` (19, incl. end-to-end runs across all solvers). |
+| 2026-06-02 | Added solver selection: `SimulationDialog` (src/diablos/gui/widgets/simulation_dialogs.py) now offers a solver dropdown (RK45/RK23/DOP853/Radau/BDF/LSODA adaptive + fixed-step RK4/Euler) and rtol/atol fields. Compiled solver (`simulation_engine.py run_compiled_simulation`) dispatches on `solver_method`; new module fn `integrate_fixed_step` does in-house Euler/RK4; stochastic systems still force Euler; unknown method → RK45. Settings persist in `.diablos` (`solver_method`/`rtol`/`atol` via file_service + lib.py save/serialize/deserialize) and surface read-only in the property editor. Tests: `tests/unit/test_solver_selection.py` (19, incl. end-to-end runs across all solvers). |
 | 2026-06-02 | Added Logic blocks: `RelationalOperator` (in1 OP in2), `CompareToConstant` (in OP constant), `LogicalOperator` (AND/OR/NAND/NOR/XOR/NOT, variable inputs). Category "Logic"; output 1.0/0.0 element-wise. Tests: `tests/unit/test_logic_blocks.py` (27). |
 | 2026-06-02 | Added Custom Python Function block (`src/diablos/blocks/function.py`, "Function"): expression of inputs `u[i]`/`u1..` and time `t`, variable input ports (`io_editable='input'`), `safe_expr` sandbox, vector output via list expressions. Tests: `tests/unit/test_function_block.py`, integration chains in `test_simulation_execution.py`. |
 | 2026-02-12 | Added TikZ export feature: File > Export > Export as TikZ... with live preview, standalone/snippet modes, configurable options. New files: `src/diablos/core/export/tikz_exporter.py`, `src/diablos/gui/widgets/tikz_export_dialog.py`. |

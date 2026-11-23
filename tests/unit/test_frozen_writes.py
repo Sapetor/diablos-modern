@@ -195,7 +195,7 @@ class TestFrozenModeWrites:
 
     def test_dialog_default_directory_is_writable(self, frozen_app):
         """The Save dialog must not open inside the read-only bundle."""
-        from diablos.core.services.file_dialogs import default_directory
+        from diablos.gui.services.file_dialogs import default_directory
 
         directory = Path(default_directory())
         assert directory.is_dir()
@@ -212,7 +212,7 @@ class TestFrozenModeWrites:
     def test_diagram_service_construction_does_not_mkdir_in_the_cwd(self, frozen_app, qapp):
         """It used to makedirs(os.getcwd() + "/saves") -> '/saves' from Finder."""
         from diablos.core.lib import DSim
-        from diablos.core.services.diagram_service import DiagramService
+        from diablos.gui.services.diagram_service import DiagramService
 
         class _Window:
             def __init__(self):

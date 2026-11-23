@@ -12,7 +12,7 @@ chip and dot use ``key + "_accent"``.
 import pytest
 
 from diablos.core.theming.categories import category_theme_key
-from diablos.core.theming.theme_manager import ThemeType, theme_manager
+from diablos.gui.themes.theme_manager import ThemeType, theme_manager
 from diablos.gui.widgets.modern_palette import _category_accent, _category_chip_colors
 
 # Every category the shipped blocks declare, plus one they don't.

@@ -14,7 +14,7 @@ import numpy as np
 import pytest
 from PyQt6.QtCore import QRect
 
-from diablos.core.analysis.analyzers.base_analyzer import BaseAnalyzer
+from diablos.gui.analysis.analyzers.base_analyzer import BaseAnalyzer
 from diablos.core.simulation.block import DBlock
 from diablos.core.simulation.connection import DLine
 

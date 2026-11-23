@@ -662,7 +662,7 @@ class DSim:
         # GUI-only: imported here so the engine imports without PyQt6.
         from PyQt6.QtWidgets import QDialog
 
-        from diablos.core.dialogs import SimulationDialog
+        from diablos.gui.widgets.simulation_dialogs import SimulationDialog
 
         dialog = SimulationDialog(
             self.sim_time,

@@ -11,7 +11,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from diablos.core.analysis.analyzers.base_analyzer import BaseAnalyzer
+from diablos.gui.analysis.analyzers.base_analyzer import BaseAnalyzer
 from diablos.core.workspace import Workspace
 from tests.unit.test_analyzer_subsystem_model import _io_ports, _primitive, _subsystem
 

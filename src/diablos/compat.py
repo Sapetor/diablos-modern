@@ -163,4 +163,57 @@ def install_legacy_imports():
             + ". Import from 'diablos' instead (e.g. 'from diablos.api import load')."
         )
     _installed = _LegacyFinder()
-    sys.meta_path.append(_installed)
+    # First in line, for the same reason as install_moved_module_aliases().
+    sys.meta_path.insert(0, _installed)
+
+
+# ------------------------------------------------- modules moved out of core
+#: GUI modules that lived in ``diablos.core`` until 2026-11 (stage 3b of the
+#: Qt-free core). Importing an old path returns the module object at the new
+#: one (so a theme signal, a class, a monkeypatched global is the same object
+#: either way), with a DeprecationWarning. Submodules follow their package.
+MOVED_MODULES = {
+    "diablos.core.theming.theme_manager": "diablos.gui.themes.theme_manager",
+    "diablos.core.plotting.signal_plot": "diablos.gui.plotting.signal_plot",
+    "diablos.core.plotting.pyqtgraph_scope_mixin": "diablos.gui.plotting.pyqtgraph_scope_mixin",
+    "diablos.core.plotting.field_scope_mixin": "diablos.gui.plotting.field_scope_mixin",
+    "diablos.core.dialogs": "diablos.gui.widgets.simulation_dialogs",
+    "diablos.core.services.diagram_service": "diablos.gui.services.diagram_service",
+    "diablos.core.services.file_dialogs": "diablos.gui.services.file_dialogs",
+    "diablos.core.analysis.analyzers": "diablos.gui.analysis.analyzers",
+    "diablos.core.analysis.control_system_analyzer": "diablos.gui.analysis.control_system_analyzer",
+}
+
+
+def moved_name(name):
+    """New name for a module moved out of ``diablos.core`` (None if not moved)."""
+    for old, new in MOVED_MODULES.items():
+        if name == old or name.startswith(old + "."):
+            return new + name[len(old) :]
+    return None
+
+
+class _MovedFinder(importlib.abc.MetaPathFinder):
+    """Resolves the old ``diablos.core.*`` paths of moved modules only."""
+
+    def find_spec(self, name, path, target=None):
+        new = moved_name(name)
+        if new is None:
+            return None
+        _deprecated(name, new)
+        spec = importlib.util.find_spec(new)
+        if spec is None:
+            return None
+        return importlib.machinery.ModuleSpec(
+            name, _AliasLoader(new), is_package=spec.submodule_search_locations is not None
+        )
+
+
+def install_moved_module_aliases():
+    """Called by ``import diablos``; touches nothing outside ``diablos.core.*``."""
+    # First in line: for a submodule of an aliased package (e.g. the old
+    # ``...analyzers.bode``) the regular path finder would otherwise find the
+    # file through the package's __path__ and load a second copy under the old
+    # name. This finder answers only for the exact moved names.
+    if not any(isinstance(f, _MovedFinder) for f in sys.meta_path):
+        sys.meta_path.insert(0, _MovedFinder())

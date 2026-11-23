@@ -557,7 +557,7 @@ diagram containing one falls back to the interpreter.
 ## 8. Choosing a solver
 
 The setting is *Simulation settings → Solver Method*
-(`src/diablos/core/dialogs.py::SimulationDialog`), stored as `sim_data.solver_method`.
+(`src/diablos/gui/widgets/simulation_dialogs.py::SimulationDialog`), stored as `sim_data.solver_method`.
 
 | Method | Kind | Use it when |
 | --- | --- | --- |
@@ -756,7 +756,7 @@ the built-in defaults.)
 | Subsystem flattening | `src/diablos/core/engine/flattener.py` |
 | Interpreter loop | `src/diablos/core/lib.py` (`_interpreter_step`) |
 | Sample-time state, held outputs, per-block step | `src/diablos/core/simulation/block.py` |
-| Solver settings dialog | `src/diablos/core/dialogs.py` |
+| Solver settings dialog | `src/diablos/gui/widgets/simulation_dialogs.py` |
 | `.diablos` read/write | `src/diablos/core/services/file_service.py` |
 | Headless runs and export | `src/diablos/core/cli.py` |
 | Solver rows, fallback reason, stiffness rows | `src/diablos/gui/widgets/property_editor.py` |

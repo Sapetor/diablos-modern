@@ -208,7 +208,7 @@ ENGINE_MODULES = [
     "src/diablos/core/services/file_service.py",
     "src/diablos/core/plotting/__init__.py",
     "src/diablos/core/plotting/scope_plotter.py",
-    "src/diablos/core/plotting/pyqtgraph_scope_mixin.py",
+    "src/diablos/gui/plotting/pyqtgraph_scope_mixin.py",
 ]
 
 

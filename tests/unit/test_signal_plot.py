@@ -1,5 +1,5 @@
 """
-Tests for SignalPlot (src/diablos/core/plotting/signal_plot.py).
+Tests for SignalPlot (src/diablos/gui/plotting/signal_plot.py).
 
 Covers step-mode expansion, time-axis alignment, and the "Previous run"
 overlay: dimmed dashed curves built from a held-run dict, hidden until the
@@ -15,7 +15,7 @@ import pytest
 
 from PyQt6.QtCore import Qt, QTimer
 
-from diablos.core.plotting.signal_plot import SignalPlot
+from diablos.gui.plotting.signal_plot import SignalPlot
 
 
 def _previous_run(labels, vectors, step_modes=None, t=None):
@@ -198,7 +198,7 @@ class TestExportFigure:
     @staticmethod
     def _fake_save_dialog(monkeypatch, path, selected_filter="PDF (*.pdf)"):
         monkeypatch.setattr(
-            "diablos.core.plotting.signal_plot.QFileDialog.getSaveFileName",
+            "diablos.gui.plotting.signal_plot.QFileDialog.getSaveFileName",
             staticmethod(lambda *a, **k: (str(path), selected_filter)),
         )
 
@@ -215,7 +215,7 @@ class TestExportFigure:
             raise AssertionError("file dialog must not open without data")
 
         monkeypatch.setattr(
-            "diablos.core.plotting.signal_plot.QFileDialog.getSaveFileName", staticmethod(_fail)
+            "diablos.gui.plotting.signal_plot.QFileDialog.getSaveFileName", staticmethod(_fail)
         )
         plot.export_figure()  # warning box is neutralized by conftest
         plot.close()
@@ -265,7 +265,7 @@ class TestExportFigure:
         self._fake_save_dialog(monkeypatch, path)
         criticals = []
         monkeypatch.setattr(
-            "diablos.core.plotting.signal_plot.QMessageBox.critical",
+            "diablos.gui.plotting.signal_plot.QMessageBox.critical",
             staticmethod(lambda *a, **k: criticals.append(a)),
         )
 

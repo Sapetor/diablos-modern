@@ -177,3 +177,48 @@ def test_script_compat_refuses_to_shadow_a_real_lib_package(tmp_path):
     )
     assert out.returncode == 0, out.stderr[-3000:]
     assert out.stdout.split() == ["refused", "True", "True"]
+
+
+def test_submodules_under_old_names_are_the_same_module_objects():
+    """An aliased package's submodule used to be found again through the
+    package's __path__ and executed a second time under the old name."""
+    out = _script(
+        """
+        import warnings
+        warnings.simplefilter("ignore", DeprecationWarning)
+        import diablos.compat
+        diablos.compat.install_legacy_imports()
+        import lib.engine.flattener, diablos.core.engine.flattener
+        assert lib.engine.flattener is diablos.core.engine.flattener
+        from blocks.base_block import BaseBlock as A
+        from diablos.blocks.base_block import BaseBlock as B
+        assert A is B
+        print("ok")
+        """
+    )
+    assert out.returncode == 0, out.stderr[-3000:]
+
+
+def test_modules_moved_out_of_core_resolve_to_their_new_home():
+    """Stage 3b moved GUI modules from diablos.core to diablos.gui; the old
+    paths stay importable, as the very same module objects."""
+    out = _script(
+        """
+        import warnings
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", DeprecationWarning)
+            import diablos.core.dialogs as old_dialogs
+            from diablos.core.theming.theme_manager import theme_manager as old_theme
+            from diablos.core.analysis.analyzers.bode import BodeAnalyzer as OldBode
+        import diablos.gui.widgets.simulation_dialogs as new_dialogs
+        from diablos.gui.themes.theme_manager import theme_manager as new_theme
+        from diablos.gui.analysis.analyzers.bode import BodeAnalyzer as NewBode
+        assert old_dialogs is new_dialogs and old_theme is new_theme and OldBode is NewBode
+        assert any("diablos.gui.widgets.simulation_dialogs" in str(w.message) for w in caught)
+        from diablos.core.analysis import ControlSystemAnalyzer
+        from diablos.gui.analysis.control_system_analyzer import ControlSystemAnalyzer as C
+        assert ControlSystemAnalyzer is C
+        print("ok")
+        """
+    )
+    assert out.returncode == 0, out.stderr[-3000:]

@@ -110,7 +110,7 @@ def _no_modal_dialogs():
 #
 # Session-scoped AND autouse on purpose: Qt allows one QApplication per process,
 # and destroying it destroys every QObject, including module-level singletons
-# such as ``diablos.core.theming.theme_manager.theme_manager``. A test module that builds
+# such as ``diablos.gui.themes.theme_manager.theme_manager``. A test module that builds
 # its own QApplication in a narrower-scoped fixture (or a bare local variable)
 # lets it be garbage-collected when that scope ends, and every later test that
 # touches a singleton created in between fails with "wrapped C/C++ object ...

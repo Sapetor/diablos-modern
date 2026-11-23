@@ -4,7 +4,7 @@ import time
 from PyQt6.QtWidgets import QMessageBox
 from diablos.core.app_paths import user_data_path
 from diablos.core.i18n import tr
-from diablos.core.services.diagram_service import DiagramService
+from diablos.gui.services.diagram_service import DiagramService
 
 logger = logging.getLogger(__name__)
 

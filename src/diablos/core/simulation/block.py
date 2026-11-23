@@ -605,7 +605,9 @@ class DBlock:
 
     def change_port_numbers(self):
         logger.debug(f"Changing port numbers for block: {self.name}")
-        from diablos.core.dialogs import PortDialog  # GUI-only; keeps the engine Qt-free
+        from diablos.gui.widgets.simulation_dialogs import (
+            PortDialog,
+        )  # GUI-only; keeps the engine Qt-free
 
         if self.io_edit == "both":
             # Inputs and outputs can be edited

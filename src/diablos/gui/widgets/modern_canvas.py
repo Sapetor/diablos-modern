@@ -21,7 +21,7 @@ from diablos.gui.themes.theme_manager import (
     PULSE_INTERVAL_MS,
     PULSE_PHASE_STEP,
 )
-from diablos.core.analysis.control_system_analyzer import ControlSystemAnalyzer
+from diablos.gui.analysis.control_system_analyzer import ControlSystemAnalyzer
 from diablos.gui.renderers.block_renderer import BlockRenderer
 from diablos.gui.renderers.connection_renderer import ConnectionRenderer
 from diablos.gui.renderers.canvas_renderer import CanvasRenderer

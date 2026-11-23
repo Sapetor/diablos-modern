@@ -69,7 +69,7 @@ class MenuBlocks:
         # Lazy imports: circular dependency, and GUI-only
         from PyQt6.QtCore import Qt
 
-        from diablos.core.theming.theme_manager import theme_manager
+        from diablos.gui.themes.theme_manager import theme_manager
 
         self.collision = QRect(40, 80 + 40 * pos, self.side_length[0], self.side_length[1])
         painter.fillRect(self.collision, self.b_color)

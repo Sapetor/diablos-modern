@@ -93,7 +93,7 @@ class TestSimulationDialogSolverFields:
     """The dialog is the only place a user sets these, so its round-trip counts."""
 
     def test_reflects_and_returns_the_solver_settings(self, qapp):
-        from diablos.core.dialogs import SimulationDialog
+        from diablos.gui.widgets.simulation_dialogs import SimulationDialog
 
         dialog = SimulationDialog(
             sim_time=4.0,
@@ -118,7 +118,7 @@ class TestSimulationDialogSolverFields:
             dialog.deleteLater()
 
     def test_every_scipy_method_is_offered(self, qapp):
-        from diablos.core.dialogs import SimulationDialog
+        from diablos.gui.widgets.simulation_dialogs import SimulationDialog
 
         offered = set(SimulationDialog.SOLVER_METHODS)
         assert set(SCIPY_SOLVER_METHODS) <= offered
