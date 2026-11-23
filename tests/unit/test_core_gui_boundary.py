@@ -55,9 +55,9 @@ def _modules():
     return sorted(p for p in CORE.rglob("*.py") if "__pycache__" not in p.parts)
 
 
-@pytest.mark.parametrize("path", _modules(), ids=lambda p: str(p.relative_to(CORE)))
+@pytest.mark.parametrize("path", _modules(), ids=lambda p: p.relative_to(CORE).as_posix())
 def test_core_module_stays_on_its_side_of_the_boundary(path):
-    rel = str(path.relative_to(CORE))
+    rel = path.relative_to(CORE).as_posix()
     tree = ast.parse(path.read_text(encoding="utf-8"))
     problems = []
     for module, line in _imports(tree):
