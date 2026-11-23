@@ -3180,6 +3180,17 @@ semantics otherwise. Anything that needs a <code>QGuiApplication</code> (<code>Q
 <code>lib/</code> must import these types from <code>diablos.core.qt_types</code>, never from PyQt6 at module
 level; <code>tests/regression/test_engine_without_pyqt6.py</code> runs examples with
 PyQt6 made unimportable and compares the traces with a normal run.</p>
+<p>Nothing in <code>diablos.core</code> imports PyQt6, pyqtgraph or <code>diablos.gui</code>
+(<code>tests/unit/test_core_gui_boundary.py</code> checks every module, nested imports
+included); the plot windows, dialogs, analyzer windows, theme manager and
+preference store are GUI code. Where the engine needs one, the main window
+attaches it to its <code>DSim</code>: <code>scope_plotter</code> (absent in a headless run, which
+still records run history through <code>core/plotting/scope_traces.py</code>),
+<code>settings_dialog</code> (whether the first Play asks depends on it, not on a Qt
+application existing), <code>category_color</code> (block fill colours; grey headless),
+the <code>FileService</code> file choosers, and the "ask before every run" preference.
+Experiment workers and analysis clones are plain <code>DSim</code>s, so they carry none
+of these.</p>
 <p>The block library imports no Qt at all: <code>draw_icon</code> returns an <code>IconPath</code>
 (<code>src/diablos/core/icon_path.py</code>), a recorder of <code>QPainterPath</code>-style calls that the block
 renderer replays onto a real <code>QPainterPath</code> (built-in icons are cached per
