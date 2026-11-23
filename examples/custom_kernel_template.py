@@ -22,8 +22,8 @@ Nothing here is required for a normal custom block -- start from
 
 import numpy as np
 
-from blocks.base_block import BaseBlock
-from lib.engine.compiler_kernels import EventSpec, events, kernel, signal_scalar
+from diablos.blocks.base_block import BaseBlock
+from diablos.core.engine.compiler_kernels import EventSpec, events, kernel, signal_scalar
 
 BLOCK_API_VERSION = 1
 
@@ -67,7 +67,7 @@ class SoftClipBlock(BaseBlock):
 # Compiled path
 #
 # The name passed to @kernel is the *canonical* fn-name:
-# ``lib.engine.block_names.canonical_fn(block_name)``, which is essentially
+# ``diablos.core.engine.block_names.canonical_fn(block_name)``, which is essentially
 # ``block_name.title()`` plus a few historical overrides.  "SoftClip" -> in
 # doubt, print canonical_fn("SoftClip") once rather than guessing.
 # --------------------------------------------------------------------------- #

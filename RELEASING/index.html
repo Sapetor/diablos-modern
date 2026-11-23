@@ -2250,7 +2250,7 @@ is written. Everything else reads it back:</p>
 </thead>
 <tbody>
 <tr>
-<td><code>modern_ui/__init__.py</code></td>
+<td><code>src/diablos/gui/__init__.py</code></td>
 <td>Parses <code>pyproject.toml</code> in a checkout; reads the bundled <code>_version.txt</code> in a frozen build</td>
 </tr>
 <tr>
@@ -2377,7 +2377,7 @@ users how to get past the unsigned-binary warnings:</p>
    missed sync shows up.</li>
 <li><strong>Open an example</strong> from <strong>File ▸ Examples</strong> and run it. A packaged build
    resolves resource paths differently from a checkout
-   (<code>lib/app_paths.py</code>), so this catches path bugs a source run never sees.</li>
+   (<code>src/diablos/core/app_paths.py</code>), so this catches path bugs a source run never sees.</li>
 </ol>
 <p>There is no automated Intel-macOS or ARM-Linux artifact. Build those from source
 if you need them — see <a href="../building/">Building &amp; Packaging</a>.</p>

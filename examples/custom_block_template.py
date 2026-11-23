@@ -19,7 +19,7 @@ non-obvious rules live.
 
 import numpy as np
 
-from blocks.base_block import BaseBlock
+from diablos.blocks.base_block import BaseBlock
 
 # Declaring the API revision this module was written against is optional but
 # recommended: DiaBloS refuses to load a module that asks for a newer API than

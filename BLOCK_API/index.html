@@ -2395,11 +2395,11 @@
 
 
 <h1 id="diablos-block-api">DiaBloS Block API<a class="headerlink" href="#diablos-block-api" title="Permanent link">&para;</a></h1>
-<p><strong><code>BLOCK_API_VERSION = 1</code></strong> (<code>blocks/base_block.py</code>)</p>
+<p><strong><code>BLOCK_API_VERSION = 1</code></strong> (<code>src/diablos/blocks/base_block.py</code>)</p>
 <p>This is the reference for writing a block — either a built-in one inside the
 repository, or a <em>user block</em> you drop into a folder without touching DiaBloS
 itself. Everything here is checked mechanically by
-<code>blocks.base_block.validate_block_class</code>, so if your block loads without a
+<code>diablos.blocks.base_block.validate_block_class</code>, so if your block loads without a
 warning it satisfies this document.</p>
 <p>Start from the copy-paste templates:</p>
 <ul>
@@ -2410,8 +2410,12 @@ warning it satisfies this document.</p>
 </ul>
 <hr />
 <h2 id="1-the-minimal-block">1. The minimal block<a class="headerlink" href="#1-the-minimal-block" title="Permanent link">&para;</a></h2>
+<p>Blocks written before November 2026 import <code>blocks.base_block</code> (and
+<code>lib.engine.compiler_kernels</code>); the loader still maps those old names onto
+<code>diablos.blocks</code> / <code>diablos.core</code> for the block file, with a deprecation note
+in the log. New blocks use the names below.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">blocks.base_block</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseBlock</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diablos.blocks.base_block</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseBlock</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="k">class</span><span class="w"> </span><span class="nc">ScaleBlock</span><span class="p">(</span><span class="n">BaseBlock</span><span class="p">):</span>          <span class="c1"># class convention: &lt;BlockName&gt;Block</span>
@@ -2515,7 +2519,7 @@ form is what gives you a tooltip and an appropriate editor.</p>
 </tbody>
 </table>
 <p><strong>The property editor picks its widget from the Python type of the current
-<em>value</em>, not from <code>type</code></strong> (<code>modern_ui/widgets/property_editor.py</code>): <code>bool</code> →
+<em>value</em>, not from <code>type</code></strong> (<code>src/diablos/gui/widgets/property_editor.py</code>): <code>bool</code> →
 check box, a spec with <code>choices</code> → combo box, <code>int</code> → spin box, <code>float</code> →
 slider/spin box, everything else → line edit. So the practical rule is: make
 <code>default</code> the exact Python type you want edited (<code>1.0</code>, not <code>1</code>, for a float
@@ -2579,13 +2583,13 @@ obligation is symmetric: <strong>promote on the way in as well.</strong> A block
 its input with stored state must run the input through <code>np.atleast_1d</code> before
 reading <code>.shape</code> or writing in place — a 0-d value that reaches an in-place
 <code>state += dt * u</code> against 1-D state raises <code>ValueError: non-broadcastable
-output operand</code>, which is exactly how this went wrong in <code>blocks/integrator.py</code>.</p>
+output operand</code>, which is exactly how this went wrong in <code>src/diablos/blocks/integrator.py</code>.</p>
 <h3 id="state-lives-in-params">State lives in <code>params</code><a class="headerlink" href="#state-lives-in-params" title="Permanent link">&para;</a></h3>
 <blockquote>
 <p><strong>Critical rule.</strong> Every value that must persist across time steps goes into
 <code>params</code> (<code>params["_t_old_"] = time</code>), never onto <code>self</code>.</p>
 </blockquote>
-<p>The engine's <code>reset_memblocks()</code> (<code>lib/engine/simulation_engine.py</code>)
+<p>The engine's <code>reset_memblocks()</code> (<code>src/diablos/core/engine/simulation_engine.py</code>)
 re-initialises blocks between runs by setting <code>_init_start_ = True</code> in
 <code>params</code>/<code>exec_params</code> and clearing stale accumulators. It never touches
 instance attributes, so state hidden on <code>self</code> survives a reset invisibly and
@@ -2605,7 +2609,7 @@ there and set the flag to <code>False</code>:</p>
 <a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    <span class="o">...</span>
 </code></pre></div>
 <p>Declare <code>_init_start_</code> in your <code>params</code> spec (or reuse
-<code>blocks/param_templates.py: init_flag_param()</code>).</p>
+<code>src/diablos/blocks/param_templates.py: init_flag_param()</code>).</p>
 <hr />
 <h2 id="6-optional-hooks">6. Optional hooks<a class="headerlink" href="#6-optional-hooks" title="Permanent link">&para;</a></h2>
 <p>All of these have working defaults in <code>BaseBlock</code>; override only what you need.</p>
@@ -2666,7 +2670,7 @@ there and set the flag to <code>False</code>:</p>
 <tr>
 <td><code>draw_icon(block_rect)</code></td>
 <td><code>None</code></td>
-<td>Return a <code>QPainterPath</code> in 0..1 normalized coordinates for the block glyph. See <a href="../SYMBOL_DRAWING_GUIDE/"><code>SYMBOL_DRAWING_GUIDE.md</code></a>.</td>
+<td>Return an <code>IconPath</code> (<code>diablos.core.icon_path</code>; records <code>QPainterPath</code>-style calls, so no Qt import) in 0..1 normalized coordinates for the block glyph. A <code>QPainterPath</code> is still accepted. Return type: <code>IconPath | QPainterPath | None</code>. See <a href="../SYMBOL_DRAWING_GUIDE/"><code>SYMBOL_DRAWING_GUIDE.md</code></a>.</td>
 </tr>
 <tr>
 <td><code>symbolic_execute(inputs, params)</code></td>
@@ -2706,8 +2710,8 @@ there and set the flag to <code>False</code>:</p>
    block to provide a <em>kernel</em>.</li>
 </ol>
 <p>A kernel is registered next to its block family in
-<code>lib/engine/compiler_kernels/</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lib.engine.compiler_kernels</span><span class="w"> </span><span class="kn">import</span> <span class="n">kernel</span>
+<code>src/diablos/core/engine/compiler_kernels/</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diablos.core.engine.compiler_kernels</span><span class="w"> </span><span class="kn">import</span> <span class="n">kernel</span>
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
 <a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="nd">@kernel</span><span class="p">(</span><span class="s2">"Softclip"</span><span class="p">)</span>                      <span class="c1"># the canonical fn-name</span>
 <a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">build_soft_clip</span><span class="p">(</span><span class="n">ctx</span><span class="p">):</span>
@@ -2723,12 +2727,12 @@ there and set the flag to <code>False</code>:</p>
 <p>The builder runs <strong>once per compile</strong> and bakes parameters into a closure that
 runs thousands of times per solve — do all lookups and conversions in the
 builder. The registration name is the <em>canonical</em> form of <code>block_name</code>:
-<code>lib.engine.block_names.canonical_fn(block_name)</code>, essentially <code>str.title()</code>
+<code>diablos.core.engine.block_names.canonical_fn(block_name)</code>, essentially <code>str.title()</code>
 plus a few historical overrides.</p>
 <p>A discontinuous block declares its switching surfaces with <code>@events(...)</code>
 returning <code>EventSpec</code>s, so the solver lands exactly on each corner instead of
 stepping across it:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lib.engine.compiler_kernels</span><span class="w"> </span><span class="kn">import</span> <span class="n">EventSpec</span><span class="p">,</span> <span class="n">events</span><span class="p">,</span> <span class="n">signal_scalar</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diablos.core.engine.compiler_kernels</span><span class="w"> </span><span class="kn">import</span> <span class="n">EventSpec</span><span class="p">,</span> <span class="n">events</span><span class="p">,</span> <span class="n">signal_scalar</span>
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
 <a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="nd">@events</span><span class="p">(</span><span class="s2">"Softclip"</span><span class="p">)</span>
 <a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">events_soft_clip</span><span class="p">(</span><span class="n">ctx</span><span class="p">):</span>
@@ -2746,7 +2750,7 @@ stepping across it:</p>
 a diagram containing a block without a kernel runs on the interpreted path,
 which is slower but produces the same answer.</p>
 <p>For built-in blocks the gate is the allowlist <code>COMPILABLE_BLOCKS</code> in
-<code>lib/engine/system_compiler.py</code>. Some built-ins have a kernel but stay off
+<code>src/diablos/core/engine/system_compiler.py</code>. Some built-ins have a kernel but stay off
 that list on purpose (Impulse, Noise), because the adaptive solver cannot run
 them correctly.</p>
 <p>A <strong>user block</strong> joins the compiled path as soon as its module registers a
@@ -2774,7 +2778,7 @@ built-in kernel whose canonical name it happens to share, and
 <p><code>docs/examples/custom_kernel_template.py</code> is a complete, working example.</p>
 <hr />
 <h2 id="8-localization">8. Localization<a class="headerlink" href="#8-localization" title="Permanent link">&para;</a></h2>
-<p>The UI is translated through <code>lib/i18n.py</code>; blocks participate in two narrow
+<p>The UI is translated through <code>src/diablos/core/i18n.py</code>; blocks participate in two narrow
 ways:</p>
 <ul>
 <li>a block's <code>category</code> name, its <code>display_name</code> and every param <code>doc</code> string are translated <strong>at
@@ -2785,7 +2789,7 @@ ways:</p>
   <code>.diablos</code> format strings. They are persisted and compared against.</li>
 </ul>
 <p>Strings in a <em>user</em> block are not extracted into the shipped catalogs (only
-<code>blocks/</code>, <code>lib/</code>, <code>modern_ui/</code> are scanned), so ship your own text in whatever
+<code>src/diablos/</code> is scanned), so ship your own text in whatever
 language you like — or in English, so it reads consistently.</p>
 <hr />
 <h2 id="9-packaging-and-installation">9. Packaging and installation<a class="headerlink" href="#9-packaging-and-installation" title="Permanent link">&para;</a></h2>
@@ -2855,7 +2859,7 @@ open normally. Analysis copies and experiment worker processes inherit the
 same registrations; an untrusted folder is never loaded by them either.</p>
 <hr />
 <h2 id="10-validating-your-block">10. Validating your block<a class="headerlink" href="#10-validating-your-block" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">blocks.base_block</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_block_class</span><span class="p">,</span> <span class="n">block_contract_errors</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diablos.blocks.base_block</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_block_class</span><span class="p">,</span> <span class="n">block_contract_errors</span>
 <a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">my_module</span><span class="w"> </span><span class="kn">import</span> <span class="n">MyBlock</span>
 <a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
 <a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="n">validate_block_class</span><span class="p">(</span><span class="n">MyBlock</span><span class="p">)</span>          <span class="c1"># raises BlockContractError with details</span>
@@ -2884,7 +2888,7 @@ checkout (violations are logged), and on every user block always (violations
 skip the block).</p>
 <hr />
 <h2 id="11-versioning-policy">11. Versioning policy<a class="headerlink" href="#11-versioning-policy" title="Permanent link">&para;</a></h2>
-<p><code>BLOCK_API_VERSION</code> lives in <code>blocks/base_block.py</code> and is currently <strong>1</strong>.</p>
+<p><code>BLOCK_API_VERSION</code> lives in <code>src/diablos/blocks/base_block.py</code> and is currently <strong>1</strong>.</p>
 <ul>
 <li>It is bumped <strong>only</strong> for a change that breaks an existing third-party block:
   a new required member, a changed <code>execute()</code> signature or return shape, a

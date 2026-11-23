@@ -3219,7 +3219,7 @@ pass an explicit list, which is interpolated or subsampled to the grid.</p>
 decays fastest under diffusion — handy as a stiffness or stability probe.</p>
 <h3 id="seeding-random">Seeding <code>random</code><a class="headerlink" href="#seeding-random" title="Permanent link">&para;</a></h3>
 <p><code>random</code> draws from a <code>seed</code> param that follows the same convention as
-<code>blocks/noise.py</code>: <strong><code>seed = 0</code> means entropy</strong> (a different field every run),
+<code>src/diablos/blocks/noise.py</code>: <strong><code>seed = 0</code> means entropy</strong> (a different field every run),
 and any non-zero value is reproducible. The interpreter and the compiled solver
 build the field through the same helper, so a seeded run matches on both paths.</p>
 <p>The wave blocks build two fields (displacement and velocity) from that one

@@ -2243,7 +2243,7 @@
 (any installed copy also answers <code>DiaBloS self-test</code>).</p>
 <p>Both <code>tools/build.sh</code> and <code>diablos.spec</code> read the version from <code>[project] version</code> in <code>pyproject.toml</code> -- the single source of truth. <code>modern_ui.__version__</code> reads it back at runtime from, in order: <code>_version.txt</code> (written into the bundle by <code>diablos.spec</code>, since a frozen app ships no <code>.dist-info</code>), <code>pyproject.toml</code> itself (dev checkout), installed distribution metadata, then a literal fallback. A frozen build therefore reports the real version rather than a hard-coded one. The DMG is named <code>DiaBloS-&lt;version&gt;-&lt;arch&gt;.dmg</code> and the bundle's <code>CFBundleShortVersionString</code> matches it, so bumping one number in <code>pyproject.toml</code> updates the window title, the About/bundle version, and the installer filename together.</p>
 <blockquote>
-<p><strong>macOS cursor bug — FIXED.</strong> The native macOS style fails to draw the blinking text caret in any QLineEdit that has a stylesheet <code>background-color</code> (QTBUG-109450) — which is every input field in this app. It first bit the PyQt5 5.15 arm64 builds and is not fixed in Qt 6 either. The app therefore switches to the Fusion style on macOS (<code>_maybe_use_fusion_style</code> in <code>modern_ui/styles/qss_styles.py</code>); Fusion is stylesheet-aware and draws the caret itself. arm64 is also ~10x faster to start than the Rosetta x86_64 build, so it is the preferred release.</p>
+<p><strong>macOS cursor bug — FIXED.</strong> The native macOS style fails to draw the blinking text caret in any QLineEdit that has a stylesheet <code>background-color</code> (QTBUG-109450) — which is every input field in this app. It first bit the PyQt5 5.15 arm64 builds and is not fixed in Qt 6 either. The app therefore switches to the Fusion style on macOS (<code>_maybe_use_fusion_style</code> in <code>src/diablos/gui/styles/qss_styles.py</code>); Fusion is stylesheet-aware and draws the caret itself. arm64 is also ~10x faster to start than the Rosetta x86_64 build, so it is the preferred release.</p>
 </blockquote>
 <h2 id="build-venvs">Build Venvs<a class="headerlink" href="#build-venvs" title="Permanent link">&para;</a></h2>
 <p>Two separate venvs are used because PyInstaller bundles the Python interpreter from the active venv:</p>
@@ -2348,18 +2348,18 @@ active, so an arm64 interpreter always yields an arm64 app regardless of flags.<
 </tr>
 <tr>
 <td><code>pyproject.toml</code></td>
-<td><code>[project] version</code> -- single source of truth for the app version (read by the spec, build script, and <code>modern_ui/__init__.py</code>)</td>
+<td><code>[project] version</code> -- single source of truth for the app version (read by the spec, build script, and <code>src/diablos/gui/__init__.py</code>)</td>
 </tr>
 <tr>
 <td><code>tools/sync_block_registry.py</code></td>
 <td>Auto-scans <code>blocks/</code> and updates <code>_BLOCK_MODULES</code> in <code>block_loader.py</code>; <code>--check</code> fails instead of writing (run in CI's lint job)</td>
 </tr>
 <tr>
-<td><code>lib/app_paths.py</code></td>
+<td><code>src/diablos/core/app_paths.py</code></td>
 <td>Path resolver: <code>resource_path()</code> (read-only assets), <code>user_data_path()</code> (writable data)</td>
 </tr>
 <tr>
-<td><code>lib/block_loader.py</code></td>
+<td><code>src/diablos/core/block_loader.py</code></td>
 <td><code>_BLOCK_MODULES</code> static registry for frozen mode</td>
 </tr>
 </tbody>
@@ -2369,14 +2369,14 @@ active, so an arm64 interpreter always yields an arm64 app regardless of flags.<
 <li><strong>Block discovery</strong>: In dev mode, <code>block_loader.py</code> scans <code>blocks/</code> dynamically. In frozen mode, it uses <code>_BLOCK_MODULES</code>. The sync script (<code>tools/sync_block_registry.py</code>) keeps this list up to date -- run automatically by <code>tools/build.sh</code>, and enforced in CI with <code>python tools/sync_block_registry.py --check</code>. The scan skips helper modules that define no block: anything listed in <code>EXCLUDED_MODULES</code>, plus any module whose name starts with <code>_</code> or ends with <code>_base</code>.</li>
 <li><strong>Resource paths</strong>: Read-only assets (icons, default configs, examples) use <code>resource_path()</code> which resolves to <code>sys._MEIPASS</code> when frozen. Writable data (logs, autosave, user configs) use <code>user_data_path()</code> / <code>user_saves_path()</code> / <code>user_logs_path()</code>, which resolve to a per-user directory when frozen (see <a href="#frozen-mode-path-handling">Frozen-Mode Path Handling</a>).</li>
 <li><strong>Excluded packages</strong>: <code>diablos.spec</code> excludes ~40 unused packages (torch, pandas, bokeh, selenium, etc.) to keep the bundle small. Only PyQt6, numpy, scipy, matplotlib, pyqtgraph, Pillow, and tqdm are included. <code>PyQt5</code>, <code>PySide2</code> and <code>PySide6</code> are excluded explicitly: a dev machine often has more than one Qt binding installed, and pyqtgraph/matplotlib probe for all of them at import time, which would otherwise drag a second Qt runtime (~100 MB) into the bundle and let the two fight over the platform plugin at startup.</li>
-<li><strong>Optional SymPy</strong>: the symbolic features (LaTeX/MathML export via <code>lib/export/latex_exporter.py</code>, <code>lib/engine/symbolic_engine.py</code>, and each block's <code>symbolic_execute()</code>) import SymPy lazily and degrade to a warning when it is missing. SymPy is <em>not</em> in <code>requirements.txt</code> (only in <code>requirements-dev.txt</code>, for the tests), so a default build environment produces a bundle where those features are unavailable. <code>diablos.spec</code> no longer hard-excludes it: install it in the build env (<code>pip install sympy</code>, or <code>pip install .[symbolic]</code>) and the spec picks it up automatically via <code>collect_submodules('sympy')</code>. Expect roughly +35-40 MB unpacked. The published releases are currently built <strong>without</strong> SymPy -- symbolic export is a niche feature and the release job installs only <code>requirements.txt</code>; add <code>sympy</code> there if you want it shipped.</li>
+<li><strong>Optional SymPy</strong>: the symbolic features (LaTeX/MathML export via <code>src/diablos/core/export/latex_exporter.py</code>, <code>src/diablos/core/engine/symbolic_engine.py</code>, and each block's <code>symbolic_execute()</code>) import SymPy lazily and degrade to a warning when it is missing. SymPy is <em>not</em> in <code>requirements.txt</code> (only in <code>requirements-dev.txt</code>, for the tests), so a default build environment produces a bundle where those features are unavailable. <code>diablos.spec</code> no longer hard-excludes it: install it in the build env (<code>pip install sympy</code>, or <code>pip install .[symbolic]</code>) and the spec picks it up automatically via <code>collect_submodules('sympy')</code>. Expect roughly +35-40 MB unpacked. The published releases are currently built <strong>without</strong> SymPy -- symbolic export is a niche feature and the release job installs only <code>requirements.txt</code>; add <code>sympy</code> there if you want it shipped.</li>
 <li><strong>macOS activation</strong>: Frozen builds use ObjC runtime calls via ctypes to register as a foreground app (required for Finder/Dock launches).</li>
 <li><strong>Multiprocessing</strong>: <code>multiprocessing.freeze_support()</code> is called at entry point to prevent duplicate process spawning.</li>
 </ul>
 <h2 id="frozen-mode-path-handling">Frozen-Mode Path Handling<a class="headerlink" href="#frozen-mode-path-handling" title="Permanent link">&para;</a></h2>
 <p>In frozen mode both the bundle (<code>sys._MEIPASS</code>) and the working directory are
 read-only -- a macOS <code>.app</code> launched from Finder starts with <code>cwd == "/"</code>. Every
-runtime write must therefore resolve through <code>lib/app_paths.py</code>; a relative
+runtime write must therefore resolve through <code>src/diablos/core/app_paths.py</code>; a relative
 literal such as <code>open("saves/data_AUTOSAVE.dat", "w")</code> fails with
 <code>[Errno 30] Read-only file system</code>.</p>
 <p>The user data directory (<code>user_data_path()</code>) is:</p>
@@ -2552,7 +2552,7 @@ path literal passed to <code>open()</code> / <code>os.makedirs()</code> / <code>
    <code>tools/smoke_test_bundle.sh</code> before uploading it: <code>DiaBloS self-test</code>
    (bundled resources, both solvers against a closed form, a 2-process
    Monte-Carlo ensemble, the main window built offscreen; see
-   <code>lib/self_test.py</code>) and a headless <code>DiaBloS run</code> whose CSV is checked
+   <code>src/diablos/core/self_test.py</code>) and a headless <code>DiaBloS run</code> whose CSV is checked
    against the analytic step response. The JSON report is uploaded as the
    <code>smoke-&lt;os&gt;</code> artifact, pass or fail. It publishes a GitHub release with <code>DiaBloS-&lt;version&gt;-arm64.dmg</code>,
    <code>DiaBloS-&lt;version&gt;-windows-x64.zip</code> and

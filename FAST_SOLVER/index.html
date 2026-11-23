@@ -2692,7 +2692,7 @@ train at every integer).</p>
 drop just its own events while the rest of the diagram keeps theirs.</p>
 <h3 id="adding-events-to-a-new-block">Adding events to a new block<a class="headerlink" href="#adding-events-to-a-new-block" title="Permanent link">&para;</a></h3>
 <p>Declare them next to the kernel that implements the discontinuity, in
-<code>lib/engine/compiler_kernels/</code>:</p>
+<code>src/diablos/core/engine/compiler_kernels/</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nd">@events</span><span class="p">(</span><span class="s2">"MyBlock"</span><span class="p">)</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">def</span><span class="w"> </span><span class="nf">events_myblock</span><span class="p">(</span><span class="n">ctx</span><span class="p">):</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">src</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">input_sources</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
@@ -2798,7 +2798,7 @@ interpreter; the linearizer and the Python exporter refuse a delay. Details:
 <h3 id="algebraic-loops">Algebraic Loops<a class="headerlink" href="#algebraic-loops" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Issue</strong>: A feedback loop without a delay/integrator (e.g., <code>Gain</code> -&gt; <code>Sum</code> -&gt; <code>Gain</code> -&gt; ...).</li>
-<li><strong>Behavior</strong>: Solved, on both paths. The compiler runs each loop as one unit and solves it with Newton (<code>hybr</code>) at every right-hand-side evaluation (<code>lib/engine/compiled_loops.py</code>), so the diagram stays compiled and can be linearized. A loop with no solution fails the compiled run, and the interpreter then reports it ("did not converge").</li>
+<li><strong>Behavior</strong>: Solved, on both paths. The compiler runs each loop as one unit and solves it with Newton (<code>hybr</code>) at every right-hand-side evaluation (<code>src/diablos/core/engine/compiled_loops.py</code>), so the diagram stays compiled and can be linearized. A loop with no solution fails the compiled run, and the interpreter then reports it ("did not converge").</li>
 <li><strong>Cost</strong>: One nonlinear solve per RHS evaluation. If a loop is an artifact of the model rather than physics, an <code>Integrator</code> or a strictly proper <code>TransferFcn</code> in the feedback path removes it.</li>
 </ul>
 <h2 id="performance">Performance<a class="headerlink" href="#performance" title="Permanent link">&para;</a></h2>

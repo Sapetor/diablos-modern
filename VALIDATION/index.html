@@ -2673,7 +2673,7 @@ is currently empty; the three defects it was created for are below.</p>
 <ul>
 <li>
 <p><strong>A single monotone state crossing tripped the chattering guard.</strong>
-  <code>lib/engine/zero_crossing.py</code> restarted each segment at the located root plus
+  <code>src/diablos/core/engine/zero_crossing.py</code> restarted each segment at the located root plus
   a nudge in <em>time</em> and carried the state across unchanged, so a guard written
   on the state (<code>Saturation</code>'s <code>u - max</code>, where <code>u</code> is an integrator output) was
   still exactly zero at the new segment start; scipy's <code>find_active_events</code>
@@ -2695,7 +2695,7 @@ is currently empty; the three defects it was created for are below.</p>
 </li>
 <li>
 <p><strong><code>Integrator</code> crashed under <code>TUSTIN</code> and <code>BWD_EULER</code> on a 0-d input.</strong>
-  <code>blocks/sine.py</code> returns <code>np.array(scalar)</code> (shape <code>()</code>) — so do
+  <code>src/diablos/blocks/sine.py</code> returns <code>np.array(scalar)</code> (shape <code>()</code>) — so do
   <code>WaveGenerator</code>, <code>Noise</code> and <code>Chirp</code> — and the integrator's promotion guard
   only tested <code>isinstance(x, (float, int))</code>, so its shape check rewrote
   <code>params['mem']</code> as a 0-d array while <code>params['mem_list'][0]</code> had been
@@ -2714,7 +2714,7 @@ is currently empty; the three defects it was created for are below.</p>
 </li>
 <li>
 <p><strong>The interpreted PID's derivative branch never saw a step in its input.</strong>
-  <code>blocks/pid.py</code> filtered the finite difference <code>(e[k] - e[k-1])/dt</code> with
+  <code>src/diablos/blocks/pid.py</code> filtered the finite difference <code>(e[k] - e[k-1])/dt</code> with
   <code>_prev_e</code> seeded from the first error sample, so <code>de = 0</code> at <code>t0</code> and the
   filtered derivative's entire response to the reference step was lost — an
   O(1) error that did not shrink with <code>dt</code> (0.2866 / 0.2843 / 0.2834 / 0.2831 at

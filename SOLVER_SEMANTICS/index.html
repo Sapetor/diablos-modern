@@ -2583,12 +2583,12 @@ performance); <a href="../ARCHITECTURE/"><code>ARCHITECTURE.md</code></a> has th
 <hr />
 <h2 id="1-the-two-engines">1. The two engines<a class="headerlink" href="#1-the-two-engines" title="Permanent link">&para;</a></h2>
 <p>Every run goes through exactly one of two engines. The choice is automatic:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>DSim.execution_batch()                                      lib/lib.py
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>DSim.execution_batch()                                      src/diablos/core/lib.py
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  ├─ use_fast_solver (View menu, default True)  and
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  │  engine.check_compilability(blocks_list) == True
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  │     → compiled path      lib/engine/compiled_runner.py
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  │     → compiled path      src/diablos/core/engine/compiled_runner.py
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  └─ otherwise
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        → interpreter path   lib/lib.py::_interpreter_step
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        → interpreter path   src/diablos/core/lib.py::_interpreter_step
 </code></pre></div>
 <table>
 <thead>
@@ -2611,7 +2611,7 @@ performance); <a href="../ARCHITECTURE/"><code>ARCHITECTURE.md</code></a> has th
 </tr>
 <tr>
 <td>Block coverage</td>
-<td>the <code>@kernel</code> registry only (<code>lib/engine/compiler_kernels/</code>)</td>
+<td>the <code>@kernel</code> registry only (<code>src/diablos/core/engine/compiler_kernels/</code>)</td>
 <td>every block</td>
 </tr>
 <tr>
@@ -2621,7 +2621,7 @@ performance); <a href="../ARCHITECTURE/"><code>ARCHITECTURE.md</code></a> has th
 </tr>
 <tr>
 <td>Zero-crossing events</td>
-<td>yes (<code>lib/engine/zero_crossing.py</code>)</td>
+<td>yes (<code>src/diablos/core/engine/zero_crossing.py</code>)</td>
 <td>no</td>
 </tr>
 <tr>
@@ -2650,7 +2650,7 @@ time behaviour is the combination of three independent properties.</p>
 <h3 id="21-does-it-hold-state-across-steps">2.1 Does it hold state across steps?<a class="headerlink" href="#21-does-it-hold-state-across-steps" title="Permanent link">&para;</a></h3>
 <p>A block is a <strong>memory block</strong> when its output at time <em>t</em> depends only on <em>past</em>
 inputs, never on the input arriving this step. The classification is
-<code>lib/engine/memory_blocks.py::is_memory_block</code>:</p>
+<code>src/diablos/core/engine/memory_blocks.py::is_memory_block</code>:</p>
 <ul>
 <li>unconditional, by function name — <code>OUTPUT_ONLY_SAFE_BLOCK_FNS</code>: <code>Integrator</code>,
   <code>StateVariable</code>, <code>TransportDelay</code>, <code>Delay</code>, <code>Adam</code>, <code>Momentum</code>,
@@ -2668,18 +2668,18 @@ with <code>output_only=True</code> before any source has driven them, and edges 
 memory block are removed when looking for algebraic loops, because the loop is
 broken in time.</p>
 <p>Feedthrough is tracked separately as <code>DBlock.b_type</code>. <code>set_block_type()</code>
-(<code>lib/engine/simulation_engine.py</code>) sets it for the parameterised cases:
+(<code>src/diablos/core/engine/simulation_engine.py</code>) sets it for the parameterised cases:
 <code>b_type = 1</code> for a strictly proper <code>TranFn</code>/<code>DiscreteTranFn</code> or a <code>D == 0</code>
 <code>DiscreteStateSpace</code>, <code>b_type = 2</code> when there is direct feedthrough. The
 interpreter uses <code>b_type == 3</code> to mean "sink, do not propagate", and
 <code>b_type == 0</code> (together with a zero <em>required</em> input count) to mean "source".</p>
 <blockquote>
 <p><code>b_type</code> is a legacy per-block field with several producers and is <strong>not</strong> a
-reliable taxonomy on its own — <code>lib/diagram_builder.py</code>, for instance, gives
+reliable taxonomy on its own — <code>src/diablos/core/diagram_builder.py</code>, for instance, gives
 <code>Gain</code> a <code>b_type</code> of 2. Only the three uses above are load-bearing.</p>
 </blockquote>
 <h3 id="22-does-it-run-every-step-or-on-a-rate-of-its-own">2.2 Does it run every step, or on a rate of its own?<a class="headerlink" href="#22-does-it-run-every-step-or-on-a-rate-of-its-own" title="Permanent link">&para;</a></h3>
-<p><code>DBlock.resolve_sample_time()</code> (<code>lib/simulation/block.py</code>) reads
+<p><code>DBlock.resolve_sample_time()</code> (<code>src/diablos/core/simulation/block.py</code>) reads
 <code>params['sampling_time']</code>, falling back to <code>params['sample_time']</code>:</p>
 <table>
 <thead>
@@ -2723,7 +2723,7 @@ continuous plus switching runs compiled, with events.</p>
 <hr />
 <h2 id="3-sample-times-and-multirate">3. Sample times and multirate<a class="headerlink" href="#3-sample-times-and-multirate" title="Permanent link">&para;</a></h2>
 <p>Rates are resolved once per run, in <code>SimulationEngine.propagate_sample_times()</code>
-(<code>lib/engine/simulation_engine.py</code>), after memory-block identification and
+(<code>src/diablos/core/engine/simulation_engine.py</code>), after memory-block identification and
 before any block executes:</p>
 <ol>
 <li><strong>Declare</strong> — every block's <code>effective_sample_time</code> is set from
@@ -2745,7 +2745,7 @@ before any block executes:</p>
    <code>PID</code> integrate or discretise with, so a block gated to <code>Ts</code> advances <code>Ts</code>
    per execution rather than <code>sim_dt</code>.</li>
 </ol>
-<p>During the run (<code>lib/lib.py::_interpreter_step</code>):</p>
+<p>During the run (<code>src/diablos/core/lib.py::_interpreter_step</code>):</p>
 <ul>
 <li><code>DBlock.should_execute(t)</code> is <code>True</code> for a continuous block always, and for a
   discrete block once <code>t &gt;= _next_execution_time - 1e-9</code>.</li>
@@ -2769,7 +2769,7 @@ before any block executes:</p>
 state, because the interpreter runs them only at their instants, discretized
 over <code>dtime = Ts</code>, and holds their output in between. Inside the ODE
 right-hand side each is a source that reads its held output from a per-compile
-holder (<code>lib/engine/compiler_kernels/discrete.py</code>). The sample instants are
+holder (<code>src/diablos/core/engine/compiler_kernels/discrete.py</code>). The sample instants are
 known in advance -- the union of <code>k * Ts</code> over all rates, merged and snapped
 onto the output grid (<code>compiled_runner.sample_schedule</code>) -- so they are
 <em>breakpoints</em> of the segmented solve, not located events:
@@ -2798,7 +2798,7 @@ averages over solver steps, so neither has a held output to compile.</p>
 <h2 id="4-execution-order">4. Execution order<a class="headerlink" href="#4-execution-order" title="Permanent link">&para;</a></h2>
 <h3 id="41-initialization-both-paths">4.1 Initialization (both paths)<a class="headerlink" href="#41-initialization-both-paths" title="Permanent link">&para;</a></h3>
 <p><code>SimulationEngine.initialize_execution()</code> flattens subsystems
-(<code>lib/engine/flattener.py</code>), checks connectivity, resolves parameters, then runs
+(<code>src/diablos/core/engine/flattener.py</code>), checks connectivity, resolves parameters, then runs
 three loops:</p>
 <ul>
 <li><strong>Loop 1 — sources and memory outputs</strong> (<code>_init_execute_sources</code>). A block is
@@ -2866,7 +2866,7 @@ only as an input ordering that it then re-sorts (4.3).</p>
 through strictly-proper memory blocks</strong>, which the compiled path does not have.</p>
 <h3 id="43-compiled-execution-order">4.3 Compiled execution order<a class="headerlink" href="#43-compiled-execution-order" title="Permanent link">&para;</a></h3>
 <p><code>SystemCompiler.compile_system()</code> re-sorts the blocks into three groups
-(<code>lib/engine/system_compiler.py</code>, and <code>tasks/lessons.md</code> for the two bugs that
+(<code>src/diablos/core/engine/system_compiler.py</code>, and <code>tasks/lessons.md</code> for the two bugs that
 produced this design):</p>
 <ol>
 <li><strong>Sources</strong> — <code>Step</code>, <code>Sine</code>, <code>Constant</code>, <code>From</code>, <code>Ramp</code>, <code>Noise</code>,
@@ -2890,7 +2890,7 @@ inputs (<code>compiled_runner.replay_compiled_signals</code> / <code>replay_has_
 <h3 id="44-algebraic-loops">4.4 Algebraic loops<a class="headerlink" href="#44-algebraic-loops" title="Permanent link">&para;</a></h3>
 <p>A cycle of feedthrough blocks with no memory block in it (<code>y = u - k*y</code>) has
 no execution order. It is <strong>solved</strong>, not rejected (since 2026-10-10,
-<code>lib/engine/algebraic_loop.py</code>):</p>
+<code>src/diablos/core/engine/algebraic_loop.py</code>):</p>
 <ul>
 <li>When Loop 2 stalls, the uncomputed non-memory blocks are split into
   strongly connected components (<code>topo.cyclic_components</code>, Tarjan). Each
@@ -2908,7 +2908,7 @@ no execution order. It is <strong>solved</strong>, not rejected (since 2026-10-1
 <li>Errors name the block: a loop through a block with a discrete sample time
   is rejected (its schedule lives on the <code>DBlock</code>, not in params), and a
   loop with no solution reports <code>"did not converge (residual ...)"</code>.</li>
-<li><strong>On the compiled path</strong> (since 2026-10-10, <code>lib/engine/compiled_loops.py</code>)
+<li><strong>On the compiled path</strong> (since 2026-10-10, <code>src/diablos/core/engine/compiled_loops.py</code>)
   the compiler finds the cycles itself, among the middle group's
   feedthrough blocks, and runs each as one unit in the position a single
   block would take (<code>order_units</code>). At every RHS evaluation the unit solves
@@ -2925,7 +2925,7 @@ cycle but blocks still uncomputed. In that case only memory blocks may
 legitimately remain (they run in Loop 3), and any other uncomputed block is a
 hard <code>"Hierarchy resolution stalled with uncomputed non-memory blocks"</code>
 error rather than a block that silently never runs.</p>
-<p>The preflight in <code>lib/diagram_validator.py</code> still reports
+<p>The preflight in <code>src/diablos/core/diagram_validator.py</code> still reports
 <code>"Algebraic loop detected ..."</code>, but as a warning: it no longer blocks
 drawing the wire or starting the run.</p>
 <hr />
@@ -2937,7 +2937,7 @@ accumulated as <code>_timeline_list</code> and the run ends once the last sample
 inside <code>execution_time</code> has been produced, which is deliberately the same grid
 the compiled path writes (<code>arange(0, T + dt, dt)</code> clipped to <code>&lt;= T</code>).</p>
 <p>Per-block integration strategy lives in the <code>Integrator</code>'s <code>method</code> parameter
-(<code>blocks/integrator.py</code>): <code>FWD_EULER</code>, <code>BWD_EULER</code>, <code>TUSTIN</code>, <code>RK4</code>,
+(<code>src/diablos/blocks/integrator.py</code>): <code>FWD_EULER</code>, <code>BWD_EULER</code>, <code>TUSTIN</code>, <code>RK4</code>,
 <code>SOLVE_IVP</code> (the default; a one-step <code>solve_ivp</code> over <code>[t, t+dtime]</code> with a held
 input). <code>"RK45"</code> in a saved file is a legacy spelling of the fixed-step <code>RK4</code>
 and is mapped by <code>resolve_method()</code>.</p>
@@ -2947,7 +2947,7 @@ clock <code>+0, +h/2, +0, +h/2</code> and recording one timeline sample per cycl
 are told to skip the intermediate stages via <code>exec_params['_skip_']</code>.</p>
 <p>PDE blocks self-integrate their field with Forward Euler inside <code>execute()</code>,
 persisting it in <code>params</code>, and reuse the same spatial operators as the compiled
-kernels (<code>lib/engine/pde_ops.py</code>). FTCS stability limits apply.</p>
+kernels (<code>src/diablos/core/engine/pde_ops.py</code>). FTCS stability limits apply.</p>
 <h3 id="52-block-state-_init_start_-and-resets">5.2 Block state, <code>_init_start_</code>, and resets<a class="headerlink" href="#52-block-state-_init_start_-and-resets" title="Permanent link">&para;</a></h3>
 <p>All state that survives a time step must live in <code>params</code> / <code>exec_params</code>, never
 on <code>self</code> (see the Block Contract in <code>CLAUDE.md</code>). The lifecycle:</p>
@@ -2960,9 +2960,9 @@ on <code>self</code> (see the Block Contract in <code>CLAUDE.md</code>). The lif
   <code>dsim.workspace</code>), copies every <code>_</code>-prefixed key across, and
   stamps <code>dtime</code>. It is skipped when <code>exec_params</code> is already current for this
   <code>dtime</code> and the parameter fingerprint is unchanged
-  (<code>lib/engine/compile_cache.py::source_params_fingerprint</code>); on that cache hit
+  (<code>src/diablos/core/engine/compile_cache.py::source_params_fingerprint</code>); on that cache hit
   the narrow set of engine-owned keys is still pushed down
-  (<code>lib/engine/block_params.py::PUSH_DOWN_KEYS</code>).</li>
+  (<code>src/diablos/core/engine/block_params.py::PUSH_DOWN_KEYS</code>).</li>
 <li><code>SimulationEngine.reset_memblocks()</code> ends a run: it sets <code>_init_start_ = True</code>
   in both <code>params</code> and <code>exec_params</code> and deletes the stale accumulators
   <code>_prev</code>, <code>mem</code>, <code>output</code>. It never touches instance attributes — which is
@@ -3029,7 +3029,7 @@ on <code>self</code> (see the Block Contract in <code>CLAUDE.md</code>). The lif
 <p>The allowlist is <code>SystemCompiler.COMPILABLE_BLOCKS</code>, plus
 <code>ZERO_CROSSING_ONLY_BLOCKS</code> (<code>Hysteresis</code>) when detection is on. The per-family
 implementations are the <code>@kernel</code>-decorated builders in
-<code>lib/engine/compiler_kernels/</code>. <a href="../FAST_SOLVER/"><code>FAST_SOLVER.md</code></a> lists the
+<code>src/diablos/core/engine/compiler_kernels/</code>. <a href="../FAST_SOLVER/"><code>FAST_SOLVER.md</code></a> lists the
 supported blocks by family.</p>
 <p>Deliberate exclusions, each with a reason in the code:</p>
 <table>
@@ -3081,7 +3081,7 @@ currently reports 0 for any PID at <code>t = 0</code> (logged in <code>tasks/tod
 <code>tests/regression/test_hybrid_rated_blocks.py</code> pins both against the
 interpreter and against an exact sampled oracle.</p>
 <p><strong><code>TransportDelay</code></strong> compiles by the method of steps
-(<code>lib/engine/compiled_delays.py</code>). The diagram becomes a delay differential
+(<code>src/diablos/core/engine/compiled_delays.py</code>). The diagram becomes a delay differential
 equation, and the RHS at <code>t</code> reads the delay's input at <code>t - tau</code>, so every
 <code>k * tau</code> is a breakpoint of the segmented solve: no segment is longer than
 the shortest delay, <code>t - tau</code> always falls into a finished segment, and each
@@ -3104,7 +3104,7 @@ interpolates linearly between fixed steps, which is first order: on
 <ul>
 <li><strong>Property panel</strong> — with nothing selected, the inspector's <em>Solver</em> section
   shows an <code>interpreter_because</code> row carrying that string
-  (<code>modern_ui/widgets/property_editor.py::_last_run_rows</code>). The row is absent
+  (<code>src/diablos/gui/widgets/property_editor.py::_last_run_rows</code>). The row is absent
   when the diagram compiles.</li>
 <li><strong>Status bar</strong> — <code>"Simulation finished [Standard (Interpreter)]"</code> tells you
   <em>that</em> it fell back; for a compiled run the one-line diagnostics summary is
@@ -3117,7 +3117,7 @@ recorded in the diagnostics <code>failure_stage</code> field: <code>"initialize"
 <code>"compilability"</code>, <code>"solve"</code> or <code>"exception"</code>.</p>
 <h3 id="64-run-diagnostics">6.4 Run diagnostics<a class="headerlink" href="#64-run-diagnostics" title="Permanent link">&para;</a></h3>
 <p>Every compiled run stores a dict on <code>engine.last_solver_diagnostics</code>
-(<code>lib/engine/solver_diagnostics.py::build_diagnostics</code>) with, among others:
+(<code>src/diablos/core/engine/solver_diagnostics.py::build_diagnostics</code>) with, among others:
 <code>success</code>, <code>failure_stage</code>, <code>backend</code>, <code>method_requested</code>, <code>method_used</code>,
 <code>fallback_reason</code>, <code>rtol</code>, <code>atol</code>, <code>dt</code>, <code>n_states</code>, <code>n_blocks</code>, <code>n_lines</code>,
 <code>n_time_points</code>, <code>nfev</code> / <code>njev</code> / <code>nlu</code>, the compile-cache counters, the four
@@ -3143,7 +3143,7 @@ the semantics in brief:</p>
   instant gets its update applied, then integration restarts a nudge
   (<code>1e-11</code> of the span) past the root, with the state advanced across that gap
   by one explicit Euler step of the post-event dynamics
-  (<code>lib/engine/zero_crossing.py::solve_with_events</code>). <em>Both</em> coordinates have to
+  (<code>src/diablos/core/engine/zero_crossing.py::solve_with_events</code>). <em>Both</em> coordinates have to
   move: nudging only <code>t</code> is enough for a guard written on time (a <code>Step</code> edge,
   <code>t - delay</code>) but leaves a guard written on the state — <code>Saturation</code>'s
   <code>u - max</code>, with <code>u</code> an integrator output — exactly zero at the new segment
@@ -3175,14 +3175,14 @@ the semantics in brief:</p>
   diagram keeps theirs (<code>SystemCompiler._collect_event_specs</code>).</li>
 <li><strong>Headless.</strong> <code>python diablos_modern.py run diagram.diablos --no-zero-crossing</code>
   turns detection off for one run; without the flag the file's own setting is
-  used (<code>lib/cli.py</code>).</li>
+  used (<code>src/diablos/core/cli.py</code>).</li>
 </ul>
 <p>Turning detection off also removes <code>Hysteresis</code> from the compilable set, so a
 diagram containing one falls back to the interpreter.</p>
 <hr />
 <h2 id="8-choosing-a-solver">8. Choosing a solver<a class="headerlink" href="#8-choosing-a-solver" title="Permanent link">&para;</a></h2>
 <p>The setting is <em>Simulation settings → Solver Method</em>
-(<code>lib/dialogs.py::SimulationDialog</code>), stored as <code>sim_data.solver_method</code>.</p>
+(<code>src/diablos/core/dialogs.py::SimulationDialog</code>), stored as <code>sim_data.solver_method</code>.</p>
 <table>
 <thead>
 <tr>
@@ -3259,7 +3259,7 @@ usually free accuracy-wise on a well-conditioned model and noticeably faster.</p
 </ul>
 <h3 id="81-the-stiffness-indicator">8.1 The stiffness indicator<a class="headerlink" href="#81-the-stiffness-indicator" title="Permanent link">&para;</a></h3>
 <p>After a compiled run with an <strong>explicit</strong> method (<code>RK45</code>, <code>RK23</code>, <code>DOP853</code>),
-<code>lib/engine/solver_diagnostics.py::estimate_stiffness</code> decides whether an
+<code>src/diablos/core/engine/solver_diagnostics.py::estimate_stiffness</code> decides whether an
 implicit solver would have been the better tool. It measures two things, and
 both gates must fire:</p>
 <ul>
@@ -3343,7 +3343,7 @@ the heuristic stays quiet on the marginal cases by design.</p>
 <li>a <strong>non-modal</strong> status-bar line at the end of the run —
   <em>"This diagram looks stiff — RK45 took 54 solver steps per output sample. Try
   the LSODA solver in Simulation settings."</em>
-  (<code>modern_ui/controllers/simulation_controller.py::_report_stiffness</code>, emitted
+  (<code>src/diablos/gui/controllers/simulation_controller.py::_report_stiffness</code>, emitted
   on the same <code>status_changed</code> channel the run already reports through), and two
   rows in the property panel's <em>Solver</em> section (<code>stiffness</code>,
   <code>stiffness_detail</code>).</li>
@@ -3352,7 +3352,7 @@ the heuristic stays quiet on the marginal cases by design.</p>
 is the user's call.</p>
 <hr />
 <h2 id="9-what-is-saved">9. What is saved<a class="headerlink" href="#9-what-is-saved" title="Permanent link">&para;</a></h2>
-<p><code>FileService.serialize()</code> writes <code>sim_data</code> (<code>lib/services/file_service.py</code>):</p>
+<p><code>FileService.serialize()</code> writes <code>sim_data</code> (<code>src/diablos/core/services/file_service.py</code>):</p>
 <table>
 <thead>
 <tr>
@@ -3400,7 +3400,7 @@ into the engine via <code>update_sim_params()</code>.</p>
 the block: <code>sampling_time</code> / <code>sample_time</code> (section 3), the <code>Integrator</code>'s
 <code>method</code> (section 5.1), <code>zero_crossing</code> (<code>"auto"</code> / <code>"off"</code>, section 7), and
 <code>init_conds</code>.</p>
-<p><strong>Headless runs honour all of it.</strong> <code>lib/cli.py::run_diagram</code> pushes the file's
+<p><strong>Headless runs honour all of it.</strong> <code>src/diablos/core/cli.py::run_diagram</code> pushes the file's
 <code>solver_method</code>, <code>rtol</code>, <code>atol</code> and <code>zero_crossing</code> onto the DSim before running;
 <code>--method</code>, <code>--rtol</code>, <code>--atol</code> and <code>--no-zero-crossing</code> override individually,
 and <code>--solver compiled|interpreter</code> picks the engine. (Before this, the CLI read
@@ -3411,7 +3411,7 @@ the built-in defaults.)</p>
 <ul>
 <li><strong><code>RateLimiter</code> is an approximation when compiled.</strong> The kernel is a stiff
   first-order chase <code>dy = clip((u − y)·K, falling, rising)</code> with <code>K = 1000</code>, not
-  an exact per-step slew clamp (<code>lib/engine/compiler_kernels/state.py</code>). It also
+  an exact per-step slew clamp (<code>src/diablos/core/engine/compiler_kernels/state.py</code>). It also
   deliberately contributes <strong>no</strong> zero-crossing events: while slew-limited the
   chase pins its error right at the clip bound, so a guard on it grazes zero
   repeatedly and trips the chattering guard within milliseconds. Turn the fast
@@ -3445,7 +3445,7 @@ the built-in defaults.)</p>
 <li><strong>Algebraic loops cost one nonlinear solve per RHS evaluation</strong> on the
   compiled path (and in an exported script). Loops through discrete-rate
   blocks are rejected on both paths.</li>
-<li><strong><code>blocks/external.py</code> is a stub</strong> and returns an error dict on both paths.</li>
+<li><strong><code>src/diablos/blocks/external.py</code> is a stub</strong> and returns an error dict on both paths.</li>
 </ul>
 <hr />
 <h2 id="11-file-map">11. File map<a class="headerlink" href="#11-file-map" title="Permanent link">&para;</a></h2>
@@ -3459,67 +3459,67 @@ the built-in defaults.)</p>
 <tbody>
 <tr>
 <td>Engine, init loops, sample-time propagation, diagnostics wrappers</td>
-<td><code>lib/engine/simulation_engine.py</code></td>
+<td><code>src/diablos/core/engine/simulation_engine.py</code></td>
 </tr>
 <tr>
 <td>Compiled run: solve, replay, <code>auto</code> resolution, stiffness call</td>
-<td><code>lib/engine/compiled_runner.py</code></td>
+<td><code>src/diablos/core/engine/compiled_runner.py</code></td>
 </tr>
 <tr>
 <td>Diagram → ODE, allowlist, three-group order, event collection</td>
-<td><code>lib/engine/system_compiler.py</code></td>
+<td><code>src/diablos/core/engine/system_compiler.py</code></td>
 </tr>
 <tr>
 <td>Per-block compiled kernels and their event declarations</td>
-<td><code>lib/engine/compiler_kernels/</code></td>
+<td><code>src/diablos/core/engine/compiler_kernels/</code></td>
 </tr>
 <tr>
 <td>Event solve, restart, chattering guard</td>
-<td><code>lib/engine/zero_crossing.py</code></td>
+<td><code>src/diablos/core/engine/zero_crossing.py</code></td>
 </tr>
 <tr>
 <td>Compiled transport delays (method of steps)</td>
-<td><code>lib/engine/compiled_delays.py</code></td>
+<td><code>src/diablos/core/engine/compiled_delays.py</code></td>
 </tr>
 <tr>
 <td>Diagnostics dict, log line, stiffness heuristic</td>
-<td><code>lib/engine/solver_diagnostics.py</code></td>
+<td><code>src/diablos/core/engine/solver_diagnostics.py</code></td>
 </tr>
 <tr>
 <td>Memory-block taxonomy</td>
-<td><code>lib/engine/memory_blocks.py</code></td>
+<td><code>src/diablos/core/engine/memory_blocks.py</code></td>
 </tr>
 <tr>
 <td>Subsystem flattening</td>
-<td><code>lib/engine/flattener.py</code></td>
+<td><code>src/diablos/core/engine/flattener.py</code></td>
 </tr>
 <tr>
 <td>Interpreter loop</td>
-<td><code>lib/lib.py</code> (<code>_interpreter_step</code>)</td>
+<td><code>src/diablos/core/lib.py</code> (<code>_interpreter_step</code>)</td>
 </tr>
 <tr>
 <td>Sample-time state, held outputs, per-block step</td>
-<td><code>lib/simulation/block.py</code></td>
+<td><code>src/diablos/core/simulation/block.py</code></td>
 </tr>
 <tr>
 <td>Solver settings dialog</td>
-<td><code>lib/dialogs.py</code></td>
+<td><code>src/diablos/core/dialogs.py</code></td>
 </tr>
 <tr>
 <td><code>.diablos</code> read/write</td>
-<td><code>lib/services/file_service.py</code></td>
+<td><code>src/diablos/core/services/file_service.py</code></td>
 </tr>
 <tr>
 <td>Headless runs and export</td>
-<td><code>lib/cli.py</code></td>
+<td><code>src/diablos/core/cli.py</code></td>
 </tr>
 <tr>
 <td>Solver rows, fallback reason, stiffness rows</td>
-<td><code>modern_ui/widgets/property_editor.py</code></td>
+<td><code>src/diablos/gui/widgets/property_editor.py</code></td>
 </tr>
 <tr>
 <td>End-of-run status messages</td>
-<td><code>modern_ui/controllers/simulation_controller.py</code></td>
+<td><code>src/diablos/gui/controllers/simulation_controller.py</code></td>
 </tr>
 </tbody>
 </table>

@@ -2154,7 +2154,7 @@
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
 <p>Modern DiaBloS simulates hierarchical models (models containing Subsystems) by <strong>flattening</strong> the hierarchy at runtime. This means that while the user sees a nested structure (Parent -&gt; Subsystem -&gt; Child), the simulation engine sees a single flat list of blocks (Parent -&gt; Subsystem/Child).</p>
 <h2 id="flattening-process">Flattening Process<a class="headerlink" href="#flattening-process" title="Permanent link">&para;</a></h2>
-<p>The flattening logic resides in <code>lib/engine/flattener.py</code>.</p>
+<p>The flattening logic resides in <code>src/diablos/core/engine/flattener.py</code>.</p>
 <ol>
 <li><strong>Recursion</strong>: The <code>Flattener</code> recursively traverses the block list.</li>
 <li><strong>Naming</strong>: It renames blocks using a path-like convention: <code>SubsystemName/BlockName</code>.</li>

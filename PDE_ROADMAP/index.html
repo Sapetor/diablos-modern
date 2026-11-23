@@ -2261,9 +2261,9 @@
 - <strong>BCs</strong>: Dirichlet, Neumann, Robin (1D and 2D, per-edge <code>h</code>), Periodic (per axis)
 - <strong>Meshes</strong>: Structured uniform grids only</p>
 <p>The spatial discretisation and BC math for every family live in
-<code>lib/engine/pde_ops.py</code>, which both the interpreter blocks (<code>blocks/pde/</code>) and
-the compiled kernels (<code>lib/engine/compiler_kernels/pde.py</code>) call. Initial
-conditions are single-sourced the same way through <code>lib/engine/pde_helpers.py</code>.
+<code>src/diablos/core/engine/pde_ops.py</code>, which both the interpreter blocks (<code>src/diablos/blocks/pde/</code>) and
+the compiled kernels (<code>src/diablos/core/engine/compiler_kernels/pde.py</code>) call. Initial
+conditions are single-sourced the same way through <code>src/diablos/core/engine/pde_helpers.py</code>.
 Adding a BC or an IC in one place therefore reaches both execution paths.</p>
 <h3 id="existing-pde-blocks">Existing PDE Blocks<a class="headerlink" href="#existing-pde-blocks" title="Permanent link">&para;</a></h3>
 <table>
@@ -2310,7 +2310,7 @@ Adding a BC or an IC in one place therefore reaches both execution paths.</p>
   freedom, so the effective period is <code>N·dx</code>, not <code>L = (N-1)·dx</code>. This matches
   the pre-existing advection convention and makes the discrete Laplacian
   circulant — which is what conserves total heat exactly.
-- Implemented in <code>lib/engine/pde_ops.py</code>, so the interpreter and compiled paths
+- Implemented in <code>src/diablos/core/engine/pde_ops.py</code>, so the interpreter and compiled paths
   are equivalent by construction. The non-periodic branches were left
   bit-identical so the pinned golden traces did not move.</p>
 <p><strong>1.2 Dynamic BC Coefficients</strong> — ✅ done
@@ -2328,7 +2328,7 @@ Adding a BC or an IC in one place therefore reaches both execution paths.</p>
   <code>'gaussian'</code>, <code>'uniform'</code>).
 - 2D: <code>'linear'</code>, <code>'step'</code>, <code>'random'</code>, <code>'checkerboard'</code>, <code>'radial'</code> (plus
   <code>'sinusoidal'</code>, <code>'gaussian'</code>, <code>'hot_spot'</code>).
-- <code>'random'</code> is seeded by a new <code>seed</code> param following the <code>blocks/noise.py</code>
+- <code>'random'</code> is seeded by a new <code>seed</code> param following the <code>src/diablos/blocks/noise.py</code>
   convention (<code>0</code> = entropy / not reproducible). The wave blocks build two
   fields from one seed, so the velocity field uses <code>companion_seed()</code> to stay
   independent of the displacement field.
@@ -2358,7 +2358,7 @@ by a ramped ambient temperature).</p>
 <h3 id="phase-2-geometric-abstraction-medium-effort">Phase 2: Geometric Abstraction (Medium Effort)<a class="headerlink" href="#phase-2-geometric-abstraction-medium-effort" title="Permanent link">&para;</a></h3>
 <p><strong>Goal</strong>: Decouple PDE solvers from grid topology</p>
 <p><strong>2.1 MeshBase Abstract Class</strong>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>blocks/pde/mesh/
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>src/diablos/blocks/pde/mesh/
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── __init__.py
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>├── mesh_base.py          # Abstract interface
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>├── rectangular_mesh.py   # Current behavior
@@ -2375,9 +2375,9 @@ by a ramped ambient temperature).</p>
 - Replace hardcoded <code>(i,j)</code> loops with mesh interface calls
 - Keep <code>RectangularMesh</code> as default (backward compatible)
 - Files affected:
-  - <code>blocks/pde/heat_equation_2d.py</code>
-  - <code>blocks/pde/wave_equation_2d.py</code>
-  - <code>blocks/pde/advection_equation_2d.py</code></p>
+  - <code>src/diablos/blocks/pde/heat_equation_2d.py</code>
+  - <code>src/diablos/blocks/pde/wave_equation_2d.py</code>
+  - <code>src/diablos/blocks/pde/advection_equation_2d.py</code></p>
 <p><strong>2.3 Curvilinear Mesh Support</strong>
 - Mapped coordinates for non-rectangular but structured grids
 - Examples: Annular domains, tapered channels
@@ -2469,15 +2469,15 @@ by a ramped ambient temperature).</p>
 <tbody>
 <tr>
 <td>1</td>
-<td><code>blocks/pde/heat_equation_*.py</code>, <code>wave_equation_*.py</code>, <code>advection_*.py</code></td>
+<td><code>src/diablos/blocks/pde/heat_equation_*.py</code>, <code>wave_equation_*.py</code>, <code>advection_*.py</code></td>
 </tr>
 <tr>
 <td>2</td>
-<td>New: <code>blocks/pde/mesh/</code>, modify all 2D PDE blocks</td>
+<td>New: <code>src/diablos/blocks/pde/mesh/</code>, modify all 2D PDE blocks</td>
 </tr>
 <tr>
 <td>3</td>
-<td>New: <code>blocks/mesh/</code>, <code>lib/engine/system_compiler.py</code> (sparse support)</td>
+<td>New: <code>blocks/mesh/</code>, <code>src/diablos/core/engine/system_compiler.py</code> (sparse support)</td>
 </tr>
 <tr>
 <td>4</td>
@@ -2551,7 +2551,7 @@ by a ramped ambient temperature).</p>
 <p><strong>Recommended starting point</strong>: Phase 1 is complete. Phase 2's mesh
 abstraction is the next step, and it inherits a useful precondition from Phase
 1: all spatial-operator and IC math is already funnelled through
-<code>lib/engine/pde_ops.py</code> and <code>lib/engine/pde_helpers.py</code>, so the mesh interface
+<code>src/diablos/core/engine/pde_ops.py</code> and <code>src/diablos/core/engine/pde_helpers.py</code>, so the mesh interface
 has exactly two seams to replace rather than one per block per execution path.</p>
 <hr />
 <p><em>Last updated: September 2026 (Phase 1 completed)</em></p>

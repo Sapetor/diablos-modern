@@ -3461,12 +3461,12 @@ user blocks folder (<code>&lt;user data dir&gt;/blocks/</code>, any folder liste
 <a href="../examples/custom_block_template.py"><code>examples/custom_block_template.py</code></a>
 (stateless + stateful) or
 <a href="../examples/custom_kernel_template.py"><code>examples/custom_kernel_template.py</code></a>
-(compiled-path kernel). The loader is <code>lib/user_blocks.py</code>.</p>
+(compiled-path kernel). The loader is <code>src/diablos/core/user_blocks.py</code>.</p>
 </blockquote>
 <h3 id="step-1-create-block-class">Step 1: Create Block Class<a class="headerlink" href="#step-1-create-block-class" title="Permanent link">&para;</a></h3>
 <p>Create a new file in <code>blocks/</code> directory:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># blocks/my_custom_block.py</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">blocks.base_block</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseBlock</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diablos.blocks.base_block</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseBlock</span>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
 <a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyCustomBlock</span><span class="p">(</span><span class="n">BaseBlock</span><span class="p">):</span>
@@ -3541,8 +3541,8 @@ user blocks folder (<code>&lt;user data dir&gt;/blocks/</code>, any folder liste
 <li>The virtual line label is set to <code>signal_name</code> (defaults to <code>tag</code>), which can later be used for workspace binding/export.</li>
 </ul>
 <h3 id="step-3-validate-the-contract">Step 3: Validate the contract<a class="headerlink" href="#step-3-validate-the-contract" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">blocks.base_block</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_block_class</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">blocks.my_custom_block</span><span class="w"> </span><span class="kn">import</span> <span class="n">MyCustomBlock</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diablos.blocks.base_block</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_block_class</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diablos.blocks.my_custom_block</span><span class="w"> </span><span class="kn">import</span> <span class="n">MyCustomBlock</span>
 <a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
 <a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">validate_block_class</span><span class="p">(</span><span class="n">MyCustomBlock</span><span class="p">)</span>   <span class="c1"># raises BlockContractError with details</span>
 </code></pre></div>
@@ -3552,7 +3552,7 @@ block with a malformed params spec, a port dict missing <code>name</code>, or an
 <h3 id="step-4-write-tests">Step 4: Write Tests<a class="headerlink" href="#step-4-write-tests" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># tests/unit/test_my_custom_block.py</span>
 <a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">blocks.my_custom_block</span><span class="w"> </span><span class="kn">import</span> <span class="n">MyCustomBlock</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diablos.blocks.my_custom_block</span><span class="w"> </span><span class="kn">import</span> <span class="n">MyCustomBlock</span>
 <a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
 <a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>
 <a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">unit</span>
@@ -3573,7 +3573,7 @@ block with a malformed params spec, a port dict missing <code>name</code>, or an
 <h2 id="working-with-the-mvc-architecture">Working with the MVC Architecture<a class="headerlink" href="#working-with-the-mvc-architecture" title="Permanent link">&para;</a></h2>
 <h3 id="model-layer-data-management">Model Layer (Data Management)<a class="headerlink" href="#model-layer-data-management" title="Permanent link">&para;</a></h3>
 <p>Use <code>SimulationModel</code> for all diagram data operations:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lib.models.simulation_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">SimulationModel</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diablos.core.models.simulation_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">SimulationModel</span>
 <a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
 <a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">model</span> <span class="o">=</span> <span class="n">SimulationModel</span><span class="p">()</span>
 <a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>
@@ -3600,7 +3600,7 @@ block with a malformed params spec, a port dict missing <code>name</code>, or an
 </code></pre></div>
 <h3 id="engine-layer-business-logic">Engine Layer (Business Logic)<a class="headerlink" href="#engine-layer-business-logic" title="Permanent link">&para;</a></h3>
 <p>Use <code>SimulationEngine</code> for simulation operations:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lib.engine.simulation_engine</span><span class="w"> </span><span class="kn">import</span> <span class="n">SimulationEngine</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diablos.core.engine.simulation_engine</span><span class="w"> </span><span class="kn">import</span> <span class="n">SimulationEngine</span>
 <a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
 <a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">engine</span> <span class="o">=</span> <span class="n">SimulationEngine</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
 <a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>
@@ -3618,7 +3618,7 @@ block with a malformed params spec, a port dict missing <code>name</code>, or an
 </code></pre></div>
 <h3 id="services-layer-file-io">Services Layer (File I/O)<a class="headerlink" href="#services-layer-file-io" title="Permanent link">&para;</a></h3>
 <p>Use <code>FileService</code> for persistence:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lib.services.file_service</span><span class="w"> </span><span class="kn">import</span> <span class="n">FileService</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diablos.core.services.file_service</span><span class="w"> </span><span class="kn">import</span> <span class="n">FileService</span>
 <a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
 <a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">file_service</span> <span class="o">=</span> <span class="n">FileService</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
 <a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>
@@ -3633,7 +3633,7 @@ block with a malformed params spec, a port dict missing <code>name</code>, or an
 </code></pre></div>
 <h3 id="controller-layer-coordination">Controller Layer (Coordination)<a class="headerlink" href="#controller-layer-coordination" title="Permanent link">&para;</a></h3>
 <p><code>DSim</code> coordinates between layers:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lib.lib</span><span class="w"> </span><span class="kn">import</span> <span class="n">DSim</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diablos.core.lib</span><span class="w"> </span><span class="kn">import</span> <span class="n">DSim</span>
 <a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
 <a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="n">dsim</span> <span class="o">=</span> <span class="n">DSim</span><span class="p">()</span>
 <a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>
@@ -3648,7 +3648,7 @@ block with a malformed params spec, a port dict missing <code>name</code>, or an
 </code></pre></div>
 <h2 id="masks-and-the-library-file-format">Masks and the Library File Format<a class="headerlink" href="#masks-and-the-library-file-format" title="Permanent link">&para;</a></h2>
 <h3 id="where-a-mask-is-stored">Where a mask is stored<a class="headerlink" href="#where-a-mask-is-stored" title="Permanent link">&para;</a></h3>
-<p><code>lib/masks.py</code> keeps a mask inside the Subsystem block's own <code>params</code> dict, so
+<p><code>src/diablos/core/masks.py</code> keeps a mask inside the Subsystem block's own <code>params</code> dict, so
 it round-trips through <code>FileService</code> with no extra serialization:</p>
 <table>
 <thead>
@@ -3687,12 +3687,12 @@ list for the same reason.</p>
 <h3 id="where-resolution-happens">Where resolution happens<a class="headerlink" href="#where-resolution-happens" title="Permanent link">&para;</a></h3>
 <p>Mask expressions are resolved into the <strong>exec-time</strong> copies only:</p>
 <ul>
-<li><code>Flattener._collect_recursive</code> (<code>lib/engine/flattener.py</code>) opens a new scope
+<li><code>Flattener._collect_recursive</code> (<code>src/diablos/core/engine/flattener.py</code>) opens a new scope
   via <code>masks.child_scope_for()</code> when it descends into a masked subsystem, and
   applies <code>masks.resolve_params_in_scope()</code> to each clone it emits. Nested
   masks resolve outer-to-inner; an <em>unmasked</em> subsystem passes the enclosing
   scope straight through.</li>
-<li><code>DSim._resolve_block_params</code> (<code>lib/lib.py</code>) applies the same scope when it
+<li><code>DSim._resolve_block_params</code> (<code>src/diablos/core/lib.py</code>) applies the same scope when it
   builds <code>exec_params</code>, so <code>SimulationEngine.set_block_type</code> sees resolved
   transfer-function coefficients rather than raw variable names.</li>
 </ul>
@@ -3919,11 +3919,11 @@ in <code>scripts/</code> (<code>scripts/verify_*.py</code>, <code>scripts/debug_
 <a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a><span class="kn">from</span><span class="w"> </span><span class="nn">PyQt6.QtWidgets</span><span class="w"> </span><span class="kn">import</span> <span class="n">QApplication</span>
 <a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a>
 <a id="__codelineno-20-11" name="__codelineno-20-11" href="#__codelineno-20-11"></a><span class="c1"># Local application</span>
-<a id="__codelineno-20-12" name="__codelineno-20-12" href="#__codelineno-20-12"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lib.models.simulation_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">SimulationModel</span>
-<a id="__codelineno-20-13" name="__codelineno-20-13" href="#__codelineno-20-13"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lib.simulation.block</span><span class="w"> </span><span class="kn">import</span> <span class="n">DBlock</span>
+<a id="__codelineno-20-12" name="__codelineno-20-12" href="#__codelineno-20-12"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diablos.core.models.simulation_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">SimulationModel</span>
+<a id="__codelineno-20-13" name="__codelineno-20-13" href="#__codelineno-20-13"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diablos.core.simulation.block</span><span class="w"> </span><span class="kn">import</span> <span class="n">DBlock</span>
 </code></pre></div>
 <h2 id="localization">Localization<a class="headerlink" href="#localization" title="Permanent link">&para;</a></h2>
-<p>The UI is translated through a small home-grown catalog system (<code>lib/i18n.py</code>),
+<p>The UI is translated through a small home-grown catalog system (<code>src/diablos/core/i18n.py</code>),
 not Qt's <code>.ts</code>/<code>.qm</code> toolchain — catalogs are plain JSON, need no build step and
 are unit-testable.</p>
 <h3 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h3>
@@ -3941,7 +3941,7 @@ are unit-testable.</p>
   <code>diablos.spec</code> <code>datas</code>, so catalogs ship in frozen builds.</li>
 </ul>
 <h3 id="wrapping-a-string">Wrapping a string<a class="headerlink" href="#wrapping-a-string" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lib.i18n</span><span class="w"> </span><span class="kn">import</span> <span class="n">tr</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diablos.core.i18n</span><span class="w"> </span><span class="kn">import</span> <span class="n">tr</span>
 <a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>
 <a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="bp">self</span><span class="o">.</span><span class="n">setWindowTitle</span><span class="p">(</span><span class="n">tr</span><span class="p">(</span><span class="s2">"Monte Carlo"</span><span class="p">))</span>
 <a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="bp">self</span><span class="o">.</span><span class="n">statusBar</span><span class="p">()</span><span class="o">.</span><span class="n">showMessage</span><span class="p">(</span><span class="n">tr</span><span class="p">(</span><span class="s2">"Loaded </span><span class="si">{name}</span><span class="s2">"</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">filename</span><span class="p">))</span>
@@ -4002,14 +4002,14 @@ are unit-testable.</p>
 </ol>
 <h3 id="live-retranslation">Live retranslation<a class="headerlink" href="#live-retranslation" title="Permanent link">&para;</a></h3>
 <p><code>ModernDiaBloSWindow.retranslate_ui()</code> rebuilds the menu bar, toolbar, palette,
-dock titles and status bar in the new language; <code>lib.i18n.add_language_listener</code>
+dock titles and status bar in the new language; <code>diablos.core.i18n.add_language_listener</code>
 lets other components hook the same event. Widgets built inside already-open
 dialogs and result windows keep the language they were created with — reopening
 them picks up the new one.</p>
 <h2 id="common-tasks">Common Tasks<a class="headerlink" href="#common-tasks" title="Permanent link">&para;</a></h2>
 <h3 id="adding-a-menu-action">Adding a Menu Action<a class="headerlink" href="#adding-a-menu-action" title="Permanent link">&para;</a></h3>
 <ol>
-<li>Edit <code>modern_ui/main_window.py</code>:</li>
+<li>Edit <code>src/diablos/gui/main_window.py</code>:</li>
 </ol>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">_create_menu_bar</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>    <span class="c1"># ... existing code ...</span>
@@ -4045,7 +4045,7 @@ them picks up the new one.</p>
 <a id="__codelineno-27-8" name="__codelineno-27-8" href="#__codelineno-27-8"></a>        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">keyPressEvent</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="adding-a-theme-color">Adding a Theme Color<a class="headerlink" href="#adding-a-theme-color" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="c1"># modern_ui/themes/theme_manager.py</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="c1"># src/diablos/gui/themes/theme_manager.py</span>
 <a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>
 <a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a><span class="n">THEMES</span> <span class="o">=</span> <span class="p">{</span>
 <a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a>    <span class="s2">"light"</span><span class="p">:</span> <span class="p">{</span>
@@ -4059,7 +4059,7 @@ them picks up the new one.</p>
 <a id="__codelineno-28-12" name="__codelineno-28-12" href="#__codelineno-28-12"></a><span class="p">}</span>
 <a id="__codelineno-28-13" name="__codelineno-28-13" href="#__codelineno-28-13"></a>
 <a id="__codelineno-28-14" name="__codelineno-28-14" href="#__codelineno-28-14"></a><span class="c1"># Use in code:</span>
-<a id="__codelineno-28-15" name="__codelineno-28-15" href="#__codelineno-28-15"></a><span class="kn">from</span><span class="w"> </span><span class="nn">modern_ui.themes.theme_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">theme_manager</span>
+<a id="__codelineno-28-15" name="__codelineno-28-15" href="#__codelineno-28-15"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diablos.gui.themes.theme_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">theme_manager</span>
 <a id="__codelineno-28-16" name="__codelineno-28-16" href="#__codelineno-28-16"></a>
 <a id="__codelineno-28-17" name="__codelineno-28-17" href="#__codelineno-28-17"></a><span class="n">color</span> <span class="o">=</span> <span class="n">theme_manager</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span><span class="s2">"my_new_color"</span><span class="p">)</span>
 </code></pre></div>
@@ -4071,7 +4071,7 @@ them picks up the new one.</p>
 <a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a><span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
 <a id="__codelineno-29-5" name="__codelineno-29-5" href="#__codelineno-29-5"></a>
 <a id="__codelineno-29-6" name="__codelineno-29-6" href="#__codelineno-29-6"></a><span class="c1"># Or for specific modules</span>
-<a id="__codelineno-29-7" name="__codelineno-29-7" href="#__codelineno-29-7"></a><span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">"lib.models.simulation_model"</span><span class="p">)</span>
+<a id="__codelineno-29-7" name="__codelineno-29-7" href="#__codelineno-29-7"></a><span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">"diablos.core.models.simulation_model"</span><span class="p">)</span>
 <a id="__codelineno-29-8" name="__codelineno-29-8" href="#__codelineno-29-8"></a><span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="use-python-debugger">Use Python Debugger<a class="headerlink" href="#use-python-debugger" title="Permanent link">&para;</a></h3>

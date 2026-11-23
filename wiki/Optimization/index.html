@@ -2617,9 +2617,9 @@
 <h2 id="how-to-run-optimization">How to Run Optimization<a class="headerlink" href="#how-to-run-optimization" title="Permanent link">&para;</a></h2>
 <p>There is currently <strong>no menu entry</strong> for this family in the modern UI. The
 optimizer is driven programmatically through <code>DSim.run_optimization()</code>
-(<code>lib/lib.py</code>), which collects the Parameter / CostFunction / Constraint /
+(<code>src/diablos/core/lib.py</code>), which collects the Parameter / CostFunction / Constraint /
 Optimizer blocks in the diagram and hands them to
-<code>lib/engine/optimization_engine.py</code>:</p>
+<code>src/diablos/core/engine/optimization_engine.py</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">result</span> <span class="o">=</span> <span class="n">dsim</span><span class="o">.</span><span class="n">run_optimization</span><span class="p">()</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">if</span> <span class="n">result</span><span class="p">[</span><span class="s2">"success"</span><span class="p">]:</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">"optimal_cost"</span><span class="p">],</span> <span class="n">result</span><span class="p">[</span><span class="s2">"optimal_params"</span><span class="p">])</span>
